@@ -3,21 +3,33 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class Prestataire extends Model
 {
-    use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
-    /**
-     * Champs autorisés en mass assignment
-     */
+    /* =========================
+       TYPES DE PRESTATAIRE
+       ========================= */
+
+    public const TYPE_MACHINISTE = 'machiniste';
+    public const TYPE_MECANICIEN = 'mecanicien';
+    public const TYPE_CONSULTANT = 'consultant';
+    public const TYPE_FOURNISSEUR = 'fournisseur';
+
+    public const TYPES = [
+        self::TYPE_MACHINISTE => 'Machiniste',
+        self::TYPE_MECANICIEN => 'Mécanicien',
+        self::TYPE_CONSULTANT => 'Consultant',
+        self::TYPE_FOURNISSEUR => 'Fournisseur',
+    ];
+
     protected $fillable = [
         'nom',
         'prenom',
+        'raison_sociale',
         'phone',
         'email',
         'pays',
@@ -25,39 +37,25 @@ class User extends Authenticatable
         'code_phone_pays',
         'ville',
         'quartier',
+        'adresse',
+        'specialite',
+        'type',
+        'tarif_horaire',
+        'notes',
         'reference',
-        'role',
-        'password',
         'is_active',
-        'last_login_at',
-        'last_login_ip',
     ];
 
-    /**
-     * Champs cachés
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Champs en append
-     */
     protected $appends = [
         'nom_complet',
+        'type_label',
     ];
 
-    /**
-     * Casts
-     */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'last_login_at' => 'datetime',
-            'password' => 'hashed',
             'is_active' => 'boolean',
+            'tarif_horaire' => 'integer',
         ];
     }
 
@@ -77,7 +75,6 @@ class User extends Authenticatable
 
     public function setPhoneAttribute($value): void
     {
-        // Nettoyer le numéro de téléphone
         $this->attributes['phone'] = preg_replace('/[^0-9+]/', '', $value);
     }
 
@@ -101,10 +98,10 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
-        static::creating(function ($user) {
-            if (empty($user->reference)) {
+        static::creating(function ($prestataire) {
+            if (empty($prestataire->reference)) {
                 $lastId = self::withTrashed()->max('id') ?? 0;
-                $user->reference = 'USR-' . now()->format('Ymd') . '-' . str_pad(
+                $prestataire->reference = 'PREST-' . now()->format('Ymd') . '-' . str_pad(
                     $lastId + 1,
                     4,
                     '0',
@@ -115,26 +112,35 @@ class User extends Authenticatable
     }
 
     /* =========================
-       MÉTHODES UTILITAIRES
+       SCOPES
        ========================= */
 
-    public function updateLastLogin(?string $ip = null): void
+    public function scopeActifs($query)
     {
-        $this->update([
-            'last_login_at' => now(),
-            'last_login_ip' => $ip ?? request()->ip(),
-        ]);
+        return $query->where('is_active', true);
     }
 
-    public function isEmailVerified(): bool
+    public function scopeParSpecialite($query, string $specialite)
     {
-        return !is_null($this->email_verified_at);
+        return $query->where('specialite', 'like', "%{$specialite}%");
     }
 
-    public function markEmailAsVerified(): void
+    public function scopeParType($query, string $type)
     {
-        $this->forceFill([
-            'email_verified_at' => now(),
-        ])->save();
+        return $query->where('type', $type);
+    }
+
+    /* =========================
+       HELPERS
+       ========================= */
+
+    public function getTypeLabelAttribute(): string
+    {
+        return self::TYPES[$this->type] ?? $this->type;
+    }
+
+    public static function getTypes(): array
+    {
+        return self::TYPES;
     }
 }

@@ -13,7 +13,7 @@ class ProduitDestroyController extends Controller
     use ApiResponse;
 
     public function __invoke($id)
-    {
+    { 
         try {
             $produit = Produit::find($id);
 

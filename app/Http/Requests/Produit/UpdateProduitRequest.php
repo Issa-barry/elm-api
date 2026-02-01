@@ -43,7 +43,6 @@ class UpdateProduitRequest extends FormRequest
             // Optionnels
             'description' => 'nullable|string|max:5000',
             'image_url' => 'nullable|string|max:500',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ];
     }
 
@@ -122,11 +121,6 @@ class UpdateProduitRequest extends FormRequest
             // Coût
             'cout.integer' => 'Le coût doit être un nombre entier (GNF).',
             'cout.min' => 'Le coût ne peut pas être négatif.',
-
-            // Image
-            'image.image' => 'Le fichier doit être une image.',
-            'image.mimes' => 'L\'image doit être de type : jpeg, png, jpg, gif ou webp.',
-            'image.max' => 'L\'image ne peut pas dépasser 2 Mo.',
 
             // Description
             'description.max' => 'La description ne peut pas dépasser 5000 caractères.',
