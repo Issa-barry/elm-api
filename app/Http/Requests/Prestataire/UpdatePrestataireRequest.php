@@ -68,7 +68,7 @@ class UpdatePrestataireRequest extends FormRequest
             'tarif_horaire' => 'nullable|integer|min:0',
             'notes' => 'nullable|string|max:5000',
             'is_active' => 'nullable|boolean',
-        ];
+        ]);
     }
 
     public function messages(): array

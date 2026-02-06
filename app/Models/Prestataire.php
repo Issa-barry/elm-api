@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Prestataire extends Model
@@ -130,12 +131,29 @@ class Prestataire extends Model
         return $query->where('type', $type);
     }
 
+    public function scopeMachinistes($query)
+    {
+        return $query->where('type', self::TYPE_MACHINISTE);
+    }
+
+    /* =========================
+       RELATIONS
+       ========================= */
+
+    public function packings(): HasMany
+    {
+        return $this->hasMany(Packing::class);
+    }
+
     /* =========================
        HELPERS
        ========================= */
 
     public function getTypeLabelAttribute(): string
     {
+        if (!$this->type) {
+            return '';
+        }
         return self::TYPES[$this->type] ?? $this->type;
     }
 
