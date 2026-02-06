@@ -3,21 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class Client extends Model
 {
-    use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
-    /**
-     * Champs autorisés en mass assignment
-     */
     protected $fillable = [
         'nom',
         'prenom',
+        'raison_sociale',
         'phone',
         'email',
         'pays',
@@ -25,38 +21,19 @@ class User extends Authenticatable
         'code_phone_pays',
         'ville',
         'quartier',
+        'adresse',
+        'notes',
         'reference',
-        'role',
-        'password',
         'is_active',
-        'last_login_at',
-        'last_login_ip',
     ];
 
-    /**
-     * Champs cachés
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Champs en append
-     */
     protected $appends = [
         'nom_complet',
     ];
 
-    /**
-     * Casts
-     */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'last_login_at' => 'datetime',
-            'password' => 'hashed',
             'is_active' => 'boolean',
         ];
     }
@@ -77,7 +54,6 @@ class User extends Authenticatable
 
     public function setPhoneAttribute($value): void
     {
-        // Nettoyer le numéro de téléphone
         $this->attributes['phone'] = preg_replace('/[^0-9+]/', '', $value);
     }
 
@@ -101,10 +77,10 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
-        static::creating(function ($user) {
-            if (empty($user->reference)) {
+        static::creating(function ($client) {
+            if (empty($client->reference)) {
                 $lastId = self::withTrashed()->max('id') ?? 0;
-                $user->reference = 'USR-' . now()->format('Ymd') . '-' . str_pad(
+                $client->reference = 'CLI-' . now()->format('Ymd') . '-' . str_pad(
                     $lastId + 1,
                     4,
                     '0',
@@ -115,26 +91,11 @@ class User extends Authenticatable
     }
 
     /* =========================
-       MÉTHODES UTILITAIRES
+       SCOPES
        ========================= */
 
-    public function updateLastLogin(?string $ip = null): void
+    public function scopeActifs($query)
     {
-        $this->update([
-            'last_login_at' => now(),
-            'last_login_ip' => $ip ?? request()->ip(),
-        ]);
-    }
-
-    public function isEmailVerified(): bool
-    {
-        return !is_null($this->email_verified_at);
-    }
-
-    public function markEmailAsVerified(): void
-    {
-        $this->forceFill([
-            'email_verified_at' => now(),
-        ])->save();
+        return $query->where('is_active', true);
     }
 }

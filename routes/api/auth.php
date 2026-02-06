@@ -1,41 +1,38 @@
 <?php
 
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\TokenController;
 use Illuminate\Support\Facades\Route;
-// use App\Http\Controllers\Auth\{
-//     LogoutController,
-//     PasswordResetLinkController,
-//     ResetPasswordController,
-//     VerifyEmailController,
-//     ResendVerificationController,
-//     CheckTokenController,
-//     LoginStatelessController,
-//     MeController
-// };
 
 /*
 |--------------------------------------------------------------------------
-| Public (pas de sanctum)
+| Routes d'authentification
 |--------------------------------------------------------------------------
 */
 
-// Route::post('/login-stateless', LoginStatelessController::class)->name('auth.login.stateless');
+// Routes publiques (sans authentification)
+Route::post('/register', [RegisterController::class, 'register']);
+Route::post('/login', [LoginController::class, 'login']);
 
-// Route::post('/sendResetPasswordLink', PasswordResetLinkController::class)->name('auth.sendReset');
-
-// Route::post('/ResetPassword', ResetPasswordController::class)->name('auth.reset');
-
-// Route::get('/verify-email/{id}/{hash}', VerifyEmailController::class)->middleware('signed')->name('verification.verify');
-
-// Route::post('/resend-verification-email', ResendVerificationController::class)->name('auth.resendVerification');
-
-/*
-|--------------------------------------------------------------------------
-| Protégées (Sanctum)
-|--------------------------------------------------------------------------
-*/
+// Routes protégées (avec authentification)
 Route::middleware('auth:sanctum')->group(function () {
-    // Route::post('/logout', LogoutController::class)->name('auth.logout');
-    // Route::get('/check-token-header', CheckTokenController::class)->name('auth.checkToken');
-    // Route::get('users/me', MeController::class);
-    // Route::get('test-endpoint', [MeController::class, 'index'])->name('index');
+    
+    // Déconnexion
+    Route::post('/logout', [LogoutController::class, 'logout']);
+    Route::post('/logout-all', [LogoutController::class, 'logoutAll']);
+    
+    // Profil
+    Route::get('/me', [ProfileController::class, 'me']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    
+    // Mot de passe
+    Route::post('/change-password', [PasswordController::class, 'change']);
+    
+    // Token
+    Route::post('/refresh-token', [TokenController::class, 'refresh']);
+    Route::get('/check-token', [TokenController::class, 'check']);
 });

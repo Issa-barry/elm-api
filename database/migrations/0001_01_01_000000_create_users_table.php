@@ -21,20 +21,26 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
 
             // Localisation
-            $table->string('pays')->nullable();
-            $table->string('code_pays', 5)->nullable();
-            $table->string('code_phone_pays', 5)->nullable();
-            $table->string('ville')->nullable();
-            $table->string('quartier')->nullable();
+            $table->string('pays');
+            $table->string('code_pays', 5);
+            $table->string('code_phone_pays', 5);
+            $table->string('ville');
+            $table->string('quartier');
 
-            // Métier
+            // Référence (auto-généré)
             $table->string('reference')->unique();
 
             // Auth
-            $table->string('password')->nullable();
+            $table->string('password');
+            $table->boolean('is_active')->default(true);
             $table->rememberToken();
 
+            // Tracking
+            $table->timestamp('last_login_at')->nullable();
+            $table->string('last_login_ip')->nullable();
+
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
