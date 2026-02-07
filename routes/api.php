@@ -12,4 +12,6 @@ Route::prefix('v1')->group(function () {
     require __DIR__.'/api/prestataires.php';
     require __DIR__.'/api/clients.php';
     require __DIR__.'/api/packings.php';
+    require __DIR__.'/api/facture-packings.php';
+    require __DIR__.'/api/parametres.php';
 });

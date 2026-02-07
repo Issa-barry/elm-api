@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Packing;
 
 use App\Models\Packing;
+use App\Models\Parametre;
 use App\Models\Prestataire;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,10 +31,23 @@ class StorePackingRequest extends FormRequest
             'date_debut' => 'required|date',
             'date_fin' => 'required|date|after_or_equal:date_debut',
             'nb_rouleaux' => 'required|integer|min:1',
-            'prix_par_rouleau' => 'required|integer|min:0',
+            'prix_par_rouleau' => 'nullable|integer|min:0',
             'statut' => ['nullable', Rule::in(array_keys(Packing::STATUTS))],
             'notes' => 'nullable|string|max:5000',
         ];
+    }
+
+    /**
+     * Préparer les données pour la validation
+     */
+    protected function prepareForValidation(): void
+    {
+        // Si prix_par_rouleau n'est pas fourni, utiliser la valeur par défaut
+        if (!$this->has('prix_par_rouleau') || $this->prix_par_rouleau === null) {
+            $this->merge([
+                'prix_par_rouleau' => Parametre::getPrixRouleauDefaut(),
+            ]);
+        }
     }
 
     public function messages(): array
@@ -49,7 +63,6 @@ class StorePackingRequest extends FormRequest
             'nb_rouleaux.required' => 'Le nombre de rouleaux est obligatoire.',
             'nb_rouleaux.integer' => 'Le nombre de rouleaux doit être un nombre entier.',
             'nb_rouleaux.min' => 'Le nombre de rouleaux doit être au moins 1.',
-            'prix_par_rouleau.required' => 'Le prix par rouleau est obligatoire.',
             'prix_par_rouleau.integer' => 'Le prix par rouleau doit être un nombre entier.',
             'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas être négatif.',
             'statut.in' => 'Le statut doit être : en_cours, termine, paye ou annule.',

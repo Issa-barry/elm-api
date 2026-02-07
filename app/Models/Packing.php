@@ -16,17 +16,17 @@ class Packing extends Model
        STATUTS
        ========================= */
 
-    public const STATUT_EN_COURS = 'en_cours';
-    public const STATUT_TERMINE = 'termine';
-    public const STATUT_PAYE = 'paye';
+    public const STATUT_A_VALIDER = 'a_valider';
+    public const STATUT_VALIDE = 'valide';
     public const STATUT_ANNULE = 'annule';
 
     public const STATUTS = [
-        self::STATUT_EN_COURS => 'En cours',
-        self::STATUT_TERMINE => 'Terminé',
-        self::STATUT_PAYE => 'Payé',
+        self::STATUT_A_VALIDER => 'À valider',
+        self::STATUT_VALIDE => 'Validé',
         self::STATUT_ANNULE => 'Annulé',
     ];
+
+    public const STATUT_DEFAUT = self::STATUT_VALIDE;
 
     protected $fillable = [
         'prestataire_id',
@@ -37,6 +37,7 @@ class Packing extends Model
         'montant',
         'reference',
         'statut',
+        'facture_id',
         'notes',
         'created_by',
         'updated_by',
@@ -77,6 +78,11 @@ class Packing extends Model
                 );
             }
 
+            // Statut par défaut
+            if (empty($packing->statut)) {
+                $packing->statut = self::STATUT_DEFAUT;
+            }
+
             // Calculer le montant
             $packing->montant = $packing->nb_rouleaux * $packing->prix_par_rouleau;
 
@@ -94,6 +100,23 @@ class Packing extends Model
             // Traçabilité
             if (Auth::check()) {
                 $packing->updated_by = Auth::id();
+            }
+        });
+
+        // Après création, créer automatiquement une facture si statut = valide
+        static::created(function ($packing) {
+            if ($packing->statut === self::STATUT_VALIDE && !$packing->facture_id) {
+                $facture = FacturePacking::create([
+                    'prestataire_id' => $packing->prestataire_id,
+                    'periode_debut' => $packing->date_debut,
+                    'periode_fin' => $packing->date_fin,
+                    'montant_total' => $packing->montant,
+                    'nb_packings' => 1,
+                    'statut' => FacturePacking::STATUT_IMPAYEE,
+                ]);
+
+                // Associer la facture au packing (sans déclencher d'events)
+                $packing->updateQuietly(['facture_id' => $facture->id]);
             }
         });
     }
@@ -117,6 +140,11 @@ class Packing extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function facture(): BelongsTo
+    {
+        return $this->belongsTo(FacturePacking::class, 'facture_id');
+    }
+
     /* =========================
        ACCESSEURS
        ========================= */
@@ -124,7 +152,7 @@ class Packing extends Model
     public function getStatutLabelAttribute(): string
     {
         if (!$this->statut) {
-            return self::STATUTS[self::STATUT_EN_COURS];
+            return self::STATUTS[self::STATUT_DEFAUT];
         }
         return self::STATUTS[$this->statut] ?? $this->statut;
     }
@@ -146,24 +174,30 @@ class Packing extends Model
        SCOPES
        ========================= */
 
-    public function scopeEnCours($query)
+    public function scopeAValider($query)
     {
-        return $query->where('statut', self::STATUT_EN_COURS);
+        return $query->where('statut', self::STATUT_A_VALIDER);
     }
 
-    public function scopeTermines($query)
+    public function scopeValides($query)
     {
-        return $query->where('statut', self::STATUT_TERMINE);
+        return $query->where('statut', self::STATUT_VALIDE);
     }
 
-    public function scopePayes($query)
+    public function scopeAnnules($query)
     {
-        return $query->where('statut', self::STATUT_PAYE);
+        return $query->where('statut', self::STATUT_ANNULE);
     }
 
-    public function scopeNonPayes($query)
+    public function scopeNonAnnules($query)
     {
-        return $query->whereIn('statut', [self::STATUT_EN_COURS, self::STATUT_TERMINE]);
+        return $query->whereIn('statut', [self::STATUT_A_VALIDER, self::STATUT_VALIDE]);
+    }
+
+    public function scopeFacturables($query)
+    {
+        return $query->where('statut', self::STATUT_VALIDE)
+                     ->whereNull('facture_id');
     }
 
     public function scopeParPrestataire($query, int $prestataireId)
@@ -191,22 +225,40 @@ class Packing extends Model
         return $this->nb_rouleaux * $this->prix_par_rouleau;
     }
 
-    public function terminer(): bool
+    /**
+     * Valider le packing et créer automatiquement une facture
+     */
+    public function valider(): FacturePacking
     {
-        $this->statut = self::STATUT_TERMINE;
-        return $this->save();
-    }
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            // Créer la facture pour ce packing
+            $facture = FacturePacking::create([
+                'prestataire_id' => $this->prestataire_id,
+                'periode_debut' => $this->date_debut,
+                'periode_fin' => $this->date_fin,
+                'montant_total' => $this->montant,
+                'nb_packings' => 1,
+                'statut' => FacturePacking::STATUT_IMPAYEE,
+            ]);
 
-    public function marquerPaye(): bool
-    {
-        $this->statut = self::STATUT_PAYE;
-        return $this->save();
+            // Mettre à jour le packing
+            $this->statut = self::STATUT_VALIDE;
+            $this->facture_id = $facture->id;
+            $this->save();
+
+            return $facture;
+        });
     }
 
     public function annuler(): bool
     {
         $this->statut = self::STATUT_ANNULE;
         return $this->save();
+    }
+
+    public function estFacturable(): bool
+    {
+        return $this->statut === self::STATUT_VALIDE && $this->facture_id === null;
     }
 
     public static function getStatuts(): array

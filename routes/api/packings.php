@@ -7,6 +7,7 @@ use App\Http\Controllers\Packing\PackingStoreController;
 use App\Http\Controllers\Packing\PackingUpdateController;
 use App\Http\Controllers\Packing\PackingDestroyController;
 use App\Http\Controllers\Packing\PackingChangeStatutController;
+use App\Http\Controllers\Packing\PackingValiderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,4 +32,7 @@ Route::prefix('packings')->group(function () {
 
     // Changement de statut
     Route::patch('/{id}/statut', PackingChangeStatutController::class)->where('id', '[0-9]+');
+
+    // Validation (crée automatiquement une facture)
+    Route::post('/{id}/valider', PackingValiderController::class)->where('id', '[0-9]+');
 });
