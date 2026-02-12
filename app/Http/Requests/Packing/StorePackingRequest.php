@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Packing;
 
 use App\Models\Packing;
+use App\Models\Parametre;
 use App\Models\Prestataire;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -27,13 +28,42 @@ class StorePackingRequest extends FormRequest
                           ->whereNull('deleted_at');
                 }),
             ],
-            'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'date' => 'required|date',
             'nb_rouleaux' => 'required|integer|min:1',
-            'prix_par_rouleau' => 'required|integer|min:0',
+            'prix_par_rouleau' => 'nullable|integer|min:0',
             'statut' => ['nullable', Rule::in(array_keys(Packing::STATUTS))],
             'notes' => 'nullable|string|max:5000',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $nbRouleaux = (int) $this->input('nb_rouleaux', 0);
+            if ($nbRouleaux <= 0) {
+                return;
+            }
+
+            $produit = Parametre::getProduitRouleau();
+            if (!$produit) {
+                return;
+            }
+
+            if ($produit->qte_stock <= 0) {
+                $validator->errors()->add('nb_rouleaux', 'Stock de rouleaux épuisé (stock actuel : 0).');
+            } elseif ($produit->qte_stock < $nbRouleaux) {
+                $validator->errors()->add('nb_rouleaux', "Stock insuffisant. Stock disponible : {$produit->qte_stock} rouleaux.");
+            }
+        });
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('prix_par_rouleau') || $this->prix_par_rouleau === null) {
+            $this->merge([
+                'prix_par_rouleau' => Parametre::getPrixRouleauDefaut(),
+            ]);
+        }
     }
 
     public function messages(): array
@@ -41,18 +71,14 @@ class StorePackingRequest extends FormRequest
         return [
             'prestataire_id.required' => 'Le prestataire est obligatoire.',
             'prestataire_id.exists' => 'Le prestataire sélectionné doit être un machiniste actif.',
-            'date_debut.required' => 'La date de début est obligatoire.',
-            'date_debut.date' => 'La date de début n\'est pas valide.',
-            'date_fin.required' => 'La date de fin est obligatoire.',
-            'date_fin.date' => 'La date de fin n\'est pas valide.',
-            'date_fin.after_or_equal' => 'La date de fin doit être égale ou postérieure à la date de début.',
+            'date.required' => 'La date est obligatoire.',
+            'date.date' => 'La date n\'est pas valide.',
             'nb_rouleaux.required' => 'Le nombre de rouleaux est obligatoire.',
             'nb_rouleaux.integer' => 'Le nombre de rouleaux doit être un nombre entier.',
             'nb_rouleaux.min' => 'Le nombre de rouleaux doit être au moins 1.',
-            'prix_par_rouleau.required' => 'Le prix par rouleau est obligatoire.',
             'prix_par_rouleau.integer' => 'Le prix par rouleau doit être un nombre entier.',
             'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas être négatif.',
-            'statut.in' => 'Le statut doit être : en_cours, termine, paye ou annule.',
+            'statut.in' => 'Le statut doit être : a_valider, valide ou annule.',
         ];
     }
 

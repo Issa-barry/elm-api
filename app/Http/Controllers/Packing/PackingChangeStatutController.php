@@ -25,10 +25,24 @@ class PackingChangeStatutController extends Controller
                 'statut' => ['required', Rule::in(array_keys(Packing::STATUTS))],
             ], [
                 'statut.required' => 'Le statut est obligatoire.',
-                'statut.in' => 'Le statut doit être : en_cours, termine, paye ou annule.',
+                'statut.in' => 'Le statut doit être : a_valider, valide ou annule.',
             ]);
 
-            $packing->update(['statut' => $validated['statut']]);
+            $newStatut = $validated['statut'];
+
+            // Si on valide le packing, créer automatiquement une facture
+            if ($newStatut === Packing::STATUT_VALIDE && $packing->statut === Packing::STATUT_A_VALIDER) {
+                $facture = $packing->valider();
+                $packing->load(['prestataire', 'facture']);
+
+                return $this->successResponse([
+                    'packing' => $packing,
+                    'facture' => $facture,
+                ], 'Packing validé et facture créée avec succès');
+            }
+
+            // Sinon, changer simplement le statut
+            $packing->update(['statut' => $newStatut]);
             $packing->load('prestataire');
 
             return $this->successResponse($packing, 'Statut du packing mis à jour avec succès');

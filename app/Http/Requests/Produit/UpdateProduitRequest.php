@@ -27,7 +27,7 @@ class UpdateProduitRequest extends FormRequest
 
         return [
             'nom' => 'sometimes|required|string|max:255',
-            'code' => ['sometimes', 'nullable', 'string', 'max:100', Rule::unique('produits', 'code')->ignore($produitId)],
+            'code' => ['sometimes', 'nullable', 'string', 'size:12', 'regex:/^\d+$/', Rule::unique('produits', 'code')->ignore($produitId)],
             'type' => ['sometimes', Rule::enum(ProduitType::class)],
             'statut' => ['sometimes', Rule::enum(ProduitStatut::class)],
 
@@ -56,6 +56,11 @@ class UpdateProduitRequest extends FormRequest
             return 'nullable|integer|min:0';
         }
 
+        // Service: achat ou vente (au moins un des deux sera vérifié globalement)
+        if ($typeEnum === ProduitType::SERVICE && in_array($field, ['prix_achat', 'prix_vente'], true)) {
+            return 'sometimes|nullable|integer|min:0';
+        }
+
         $requiredPrices = $typeEnum->requiredPrices();
 
         // Si le champ est requis pour ce type ET qu'on change le type OU le champ est présent
@@ -69,6 +74,29 @@ class UpdateProduitRequest extends FormRequest
         }
 
         return 'nullable|integer|min:0';
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $produitId = $this->route('id');
+            $produit = Produit::find($produitId);
+
+            $typeFinal = $this->input('type', $produit?->type?->value);
+            if ($typeFinal !== ProduitType::SERVICE->value) {
+                return;
+            }
+
+            $prixAchat = $this->has('prix_achat') ? $this->input('prix_achat') : $produit?->prix_achat;
+            $prixVente = $this->has('prix_vente') ? $this->input('prix_vente') : $produit?->prix_vente;
+
+            if (($prixAchat === null || $prixAchat === '') && ($prixVente === null || $prixVente === '')) {
+                $validator->errors()->add(
+                    'prix_achat',
+                    'Pour un service, renseignez au moins un prix : achat ou vente.'
+                );
+            }
+        });
     }
 
     /**
@@ -95,7 +123,8 @@ class UpdateProduitRequest extends FormRequest
 
             // Code
             'code.unique' => 'Ce code produit existe déjà.',
-            'code.max' => 'Le code ne peut pas dépasser 100 caractères.',
+            'code.size' => 'Le code doit contenir exactement 12 chiffres.',
+            'code.regex' => 'Le code produit doit être uniquement numérique.',
 
             // Type et Statut
             'type.Illuminate\Validation\Rules\Enum' => 'Le type doit être : materiel, service, fabricable ou achat_vente.',

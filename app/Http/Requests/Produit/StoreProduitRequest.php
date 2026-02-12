@@ -22,7 +22,7 @@ class StoreProduitRequest extends FormRequest
 
         return [
             'nom' => 'required|string|max:255',
-            'code' => 'nullable|string|max:100|unique:produits,code',
+            'code' => 'nullable|string|size:12|regex:/^\\d+$/|unique:produits,code',
             'type' => ['required', Rule::enum(ProduitType::class)],
             'statut' => ['nullable', Rule::enum(ProduitStatut::class)],
 
@@ -51,6 +51,11 @@ class StoreProduitRequest extends FormRequest
             return 'nullable|integer|min:0';
         }
 
+        // Service: achat ou vente (au moins un des deux sera vérifié globalement)
+        if ($typeEnum === ProduitType::SERVICE && in_array($field, ['prix_achat', 'prix_vente'], true)) {
+            return 'nullable|integer|min:0';
+        }
+
         $requiredPrices = $typeEnum->requiredPrices();
 
         if (in_array($field, $requiredPrices)) {
@@ -58,6 +63,25 @@ class StoreProduitRequest extends FormRequest
         }
 
         return 'nullable|integer|min:0';
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->input('type') !== ProduitType::SERVICE->value) {
+                return;
+            }
+
+            $prixAchat = $this->input('prix_achat');
+            $prixVente = $this->input('prix_vente');
+
+            if (($prixAchat === null || $prixAchat === '') && ($prixVente === null || $prixVente === '')) {
+                $validator->errors()->add(
+                    'prix_achat',
+                    'Pour un service, renseignez au moins un prix : achat ou vente.'
+                );
+            }
+        });
     }
 
     /**
@@ -84,7 +108,8 @@ class StoreProduitRequest extends FormRequest
 
             // Code
             'code.unique' => 'Ce code produit existe déjà.',
-            'code.max' => 'Le code ne peut pas dépasser 100 caractères.',
+            'code.size' => 'Le code doit contenir exactement 12 chiffres.',
+            'code.regex' => 'Le code produit doit être uniquement numérique.',
 
             // Type et Statut
             'type.required' => 'Le type de produit est obligatoire.',

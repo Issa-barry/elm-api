@@ -20,17 +20,16 @@ class LoginController extends Controller
         try {
             // Validation
             $validated = $request->validate([
-                'identifier' => ['required', 'string'],
+                'phone' => ['required', 'string'],
                 'password' => ['required', 'string'],
                 'remember_me' => ['nullable', 'boolean'],
             ]);
 
-            $fieldType = filter_var($validated['identifier'], FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
-            $user = User::where($fieldType, $validated['identifier'])->first();
+            $user = User::where('phone', $validated['phone'])->first();
 
             if (!$user || !Hash::check($validated['password'], $user->password)) {
                 throw ValidationException::withMessages([
-                    'identifier' => ['Les informations de connexion sont incorrectes.'],
+                    'phone' => ['Les informations de connexion sont incorrectes.'],
                 ]);
             }
 

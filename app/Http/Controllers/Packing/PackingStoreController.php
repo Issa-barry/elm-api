@@ -15,9 +15,12 @@ class PackingStoreController extends Controller
     {
         try {
             $packing = Packing::create($request->validated());
-            $packing->load('prestataire');
+            $packing->load(['prestataire', 'facture']);
 
-            return $this->createdResponse($packing, 'Packing créé avec succès');
+            return $this->createdResponse([
+                'packing' => $packing,
+                'facture' => $packing->facture,
+            ], 'Packing créé et facture générée avec succès');
         } catch (\Exception $e) {
             return $this->errorResponse('Erreur lors de la création du packing', $e->getMessage());
         }

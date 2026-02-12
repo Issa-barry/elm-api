@@ -16,9 +16,8 @@ return new class extends Migration
                 ->constrained('prestataires')
                 ->onDelete('restrict');
 
-            // Période
-            $table->date('date_debut');
-            $table->date('date_fin');
+            // Date unique du packing
+            $table->date('date');
 
             // Détails du packing
             $table->integer('nb_rouleaux')->default(0);
@@ -28,8 +27,8 @@ return new class extends Migration
             // Référence auto-générée
             $table->string('reference')->unique();
 
-            // Statut et notes
-            $table->string('statut')->default('en_cours');
+            // Statut et notes (a_valider, valide, annule)
+            $table->string('statut')->default('valide');
             $table->text('notes')->nullable();
 
             // Traçabilité
@@ -39,9 +38,16 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            // Relation avec facture_packings
+            $table->foreignId('facture_id')
+                ->nullable()
+                ->constrained('facture_packings')
+                ->nullOnDelete();
+
             // Index
             $table->index('statut');
-            $table->index(['date_debut', 'date_fin']);
+            $table->index('facture_id');
+            $table->index('date');
         });
     }
 

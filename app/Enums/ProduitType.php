@@ -40,7 +40,8 @@ enum ProduitType: string
     {
         return match ($this) {
             self::MATERIEL => ['prix_achat'],
-            self::SERVICE => ['prix_vente'],
+            // Cas géré par validation dédiée: service = prix_achat ou prix_vente
+            self::SERVICE => [],
             self::FABRICABLE => ['prix_usine', 'prix_vente'],
             self::ACHAT_VENTE => ['prix_achat', 'prix_vente'],
         };
