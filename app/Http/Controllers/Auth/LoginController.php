@@ -48,6 +48,8 @@ class LoginController extends Controller
 
             return $this->successResponse([
                 'user' => $user,
+                'roles' => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'expires_in' => $expiresAt->diffInSeconds(now()),

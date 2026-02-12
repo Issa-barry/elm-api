@@ -19,16 +19,16 @@ use App\Http\Controllers\Prestataire\PrestataireToggleStatusController;
 
 Route::prefix('prestataires')->group(function () {
     // Liste et consultation
-    Route::get('/', PrestataireIndexController::class);
-    Route::get('/{id}', PrestataireShowController::class)->where('id', '[0-9]+');
+    Route::get('/', PrestataireIndexController::class)->middleware('permission:prestataires.index');
+    Route::get('/{id}', PrestataireShowController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.show');
 
     // Création
-    Route::post('/', PrestataireStoreController::class);
+    Route::post('/', PrestataireStoreController::class)->middleware('permission:prestataires.store');
 
     // Mise à jour et suppression
-    Route::put('/{id}', PrestataireUpdateController::class)->where('id', '[0-9]+');
-    Route::delete('/{id}', PrestataireDestroyController::class)->where('id', '[0-9]+');
+    Route::put('/{id}', PrestataireUpdateController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.update');
+    Route::delete('/{id}', PrestataireDestroyController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.destroy');
 
     // Actions sur le statut
-    Route::patch('/{id}/toggle-status', PrestataireToggleStatusController::class)->where('id', '[0-9]+');
+    Route::patch('/{id}/toggle-status', PrestataireToggleStatusController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.toggle-status');
 });
