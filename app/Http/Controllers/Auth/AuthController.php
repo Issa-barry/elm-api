@@ -127,23 +127,20 @@ class AuthController extends Controller
         try {
             // Validation
             $validated = $request->validate([
-                'identifier' => ['required', 'string'],
+                'phone' => ['required', 'string'],
                 'password' => ['required', 'string'],
                 'remember_me' => ['nullable', 'boolean'],
             ], [
-                'identifier.required' => 'Le téléphone ou l\'email est obligatoire',
+                'phone.required' => 'Le numéro de téléphone est obligatoire',
                 'password.required' => 'Le mot de passe est obligatoire',
             ]);
 
-            // Déterminer si l'identifiant est un email ou un téléphone
-            $fieldType = filter_var($validated['identifier'], FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
-            
-            $user = User::where($fieldType, $validated['identifier'])->first();
+            $user = User::where('phone', $validated['phone'])->first();
 
             // Vérifier les credentials
             if (!$user || !Hash::check($validated['password'], $user->password)) {
                 throw ValidationException::withMessages([
-                    'identifier' => ['Les informations de connexion sont incorrectes.'],
+                    'phone' => ['Les informations de connexion sont incorrectes.'],
                 ]);
             }
 

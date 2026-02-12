@@ -51,6 +51,11 @@ class StoreProduitRequest extends FormRequest
             return 'nullable|integer|min:0';
         }
 
+        // Service: achat ou vente (au moins un des deux sera vérifié globalement)
+        if ($typeEnum === ProduitType::SERVICE && in_array($field, ['prix_achat', 'prix_vente'], true)) {
+            return 'nullable|integer|min:0';
+        }
+
         $requiredPrices = $typeEnum->requiredPrices();
 
         if (in_array($field, $requiredPrices)) {
@@ -58,6 +63,25 @@ class StoreProduitRequest extends FormRequest
         }
 
         return 'nullable|integer|min:0';
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->input('type') !== ProduitType::SERVICE->value) {
+                return;
+            }
+
+            $prixAchat = $this->input('prix_achat');
+            $prixVente = $this->input('prix_vente');
+
+            if (($prixAchat === null || $prixAchat === '') && ($prixVente === null || $prixVente === '')) {
+                $validator->errors()->add(
+                    'prix_achat',
+                    'Pour un service, renseignez au moins un prix : achat ou vente.'
+                );
+            }
+        });
     }
 
     /**

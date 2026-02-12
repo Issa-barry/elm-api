@@ -19,13 +19,16 @@ return new class extends Migration
                 ->constrained('prestataires')
                 ->onDelete('restrict');
 
-            // Période couverte
-            $table->date('periode_debut');
-            $table->date('periode_fin');
+            // Date de la facture
+            $table->date('date');
 
             // Montants
             $table->integer('montant_total')->default(0);
             $table->integer('nb_packings')->default(0);
+
+            // Paiement
+            $table->date('date_paiement')->nullable();
+            $table->string('mode_paiement')->default('especes');
 
             // Statut (impayee, partielle, payee, annulee)
             $table->string('statut')->default('impayee');
@@ -35,6 +38,7 @@ return new class extends Migration
 
             // Traçabilité
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('validated_by')->nullable()->constrained('users')->nullOnDelete();
 
             $table->timestamps();
             $table->softDeletes();
@@ -42,7 +46,8 @@ return new class extends Migration
             // Index
             $table->index('prestataire_id');
             $table->index('statut');
-            $table->index(['periode_debut', 'periode_fin']);
+            $table->index('date');
+            $table->index(['prestataire_id', 'date']);
         });
     }
 

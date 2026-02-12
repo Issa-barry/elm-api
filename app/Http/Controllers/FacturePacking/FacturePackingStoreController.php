@@ -19,11 +19,10 @@ class FacturePackingStoreController extends Controller
             return DB::transaction(function () use ($request) {
                 $validated = $request->validated();
 
-                // Récupérer les packings facturables pour ce prestataire et cette période
+                // Récupérer les packings facturables pour ce prestataire et cette plage de dates
                 $packings = Packing::where('prestataire_id', $validated['prestataire_id'])
                     ->facturables()
-                    ->where('date_fin', '>=', $validated['periode_debut'])
-                    ->where('date_fin', '<=', $validated['periode_fin'])
+                    ->whereBetween('date', [$validated['date_debut'], $validated['date_fin']])
                     ->get();
 
                 if ($packings->isEmpty()) {
@@ -34,13 +33,14 @@ class FacturePackingStoreController extends Controller
                     );
                 }
 
-                // Créer la facture
+                // Créer la facture avec la date du jour
                 $facture = FacturePacking::create([
                     'prestataire_id' => $validated['prestataire_id'],
-                    'periode_debut' => $validated['periode_debut'],
-                    'periode_fin' => $validated['periode_fin'],
+                    'date' => now()->toDateString(),
                     'montant_total' => $packings->sum('montant'),
                     'nb_packings' => $packings->count(),
+                    'date_paiement' => $validated['date_paiement'] ?? null,
+                    'mode_paiement' => $validated['mode_paiement'] ?? null,
                     'statut' => $validated['statut'] ?? FacturePacking::STATUT_DEFAUT,
                     'notes' => $validated['notes'] ?? null,
                 ]);

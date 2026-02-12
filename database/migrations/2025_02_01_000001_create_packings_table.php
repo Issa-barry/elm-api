@@ -16,9 +16,8 @@ return new class extends Migration
                 ->constrained('prestataires')
                 ->onDelete('restrict');
 
-            // Période
-            $table->date('date_debut');
-            $table->date('date_fin');
+            // Date unique du packing
+            $table->date('date');
 
             // Détails du packing
             $table->integer('nb_rouleaux')->default(0);
@@ -48,7 +47,7 @@ return new class extends Migration
             // Index
             $table->index('statut');
             $table->index('facture_id');
-            $table->index(['date_debut', 'date_fin']);
+            $table->index('date');
         });
     }
 

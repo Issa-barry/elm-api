@@ -21,7 +21,7 @@ class VersementIndexController extends Controller
                 'montant_total' => $facture->montant_total,
                 'montant_verse' => $facture->montant_verse,
                 'montant_restant' => $facture->montant_restant,
-                'is_soldee' => $facture->is_soldee,
+                'is_soldee' => $facture->montant_restant <= 0,
                 'versements' => $facture->versements,
             ], 'Versements récupérés avec succès');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

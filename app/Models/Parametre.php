@@ -35,10 +35,7 @@ class Parametre extends Model
        ========================= */
 
     public const CLE_PRIX_ROULEAU_DEFAUT = 'prix_rouleau_defaut';
-    public const CLE_PERIODE_1_DEBUT = 'periode_1_debut';
-    public const CLE_PERIODE_1_FIN = 'periode_1_fin';
-    public const CLE_PERIODE_2_DEBUT = 'periode_2_debut';
-    public const CLE_PERIODE_2_FIN = 'periode_2_fin';
+    public const CLE_PRODUIT_ROULEAU_ID = 'produit_rouleau_id';
 
     protected $table = 'parametres';
 
@@ -128,41 +125,16 @@ class Parametre extends Model
         return (int) self::get(self::CLE_PRIX_ROULEAU_DEFAUT, 500);
     }
 
-    /**
-     * Récupérer les dates de période pour un mois donné
-     *
-     * @param int $periode 1 ou 2
-     * @param int|null $mois Mois (1-12), null = mois courant
-     * @param int|null $annee Année, null = année courante
-     * @return array ['debut' => date, 'fin' => date]
-     */
-    public static function getPeriodeDates(int $periode, ?int $mois = null, ?int $annee = null): array
+    public static function getProduitRouleauId(): ?int
     {
-        $mois = $mois ?? (int) now()->format('m');
-        $annee = $annee ?? (int) now()->format('Y');
+        $id = self::get(self::CLE_PRODUIT_ROULEAU_ID);
+        return $id ? (int) $id : null;
+    }
 
-        if ($periode === 1) {
-            $jourDebut = (int) self::get(self::CLE_PERIODE_1_DEBUT, 1);
-            $jourFin = (int) self::get(self::CLE_PERIODE_1_FIN, 15);
-        } else {
-            $jourDebut = (int) self::get(self::CLE_PERIODE_2_DEBUT, 16);
-            $jourFinConfig = self::get(self::CLE_PERIODE_2_FIN, 0);
-
-            // 0 ou -1 signifie dernier jour du mois
-            if ($jourFinConfig <= 0) {
-                $jourFin = (int) now()->setYear($annee)->setMonth($mois)->endOfMonth()->format('d');
-            } else {
-                $jourFin = (int) $jourFinConfig;
-            }
-        }
-
-        $debut = sprintf('%04d-%02d-%02d', $annee, $mois, $jourDebut);
-        $fin = sprintf('%04d-%02d-%02d', $annee, $mois, $jourFin);
-
-        return [
-            'debut' => $debut,
-            'fin' => $fin,
-        ];
+    public static function getProduitRouleau(): ?Produit
+    {
+        $id = self::getProduitRouleauId();
+        return $id ? Produit::find($id) : null;
     }
 
     /**

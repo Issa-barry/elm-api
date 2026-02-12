@@ -310,6 +310,18 @@ class Produit extends Model
     public function validatePricesForType(): array
     {
         $errors = [];
+
+        if ($this->type === ProduitType::SERVICE) {
+            $hasPrixAchat = !is_null($this->prix_achat) && $this->prix_achat !== '';
+            $hasPrixVente = !is_null($this->prix_vente) && $this->prix_vente !== '';
+
+            if (!$hasPrixAchat && !$hasPrixVente) {
+                $errors['prix_achat'] = 'Pour un service, renseignez au moins un prix : achat ou vente.';
+            }
+
+            return $errors;
+        }
+
         $requiredPrices = $this->type->requiredPrices();
 
         foreach ($requiredPrices as $priceField) {

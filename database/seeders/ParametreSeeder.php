@@ -18,35 +18,12 @@ class ParametreSeeder extends Seeder
                 'groupe' => Parametre::GROUPE_PACKING,
                 'description' => 'Prix par rouleau par défaut pour le packing',
             ],
-
-            // Périodes de paiement
             [
-                'cle' => Parametre::CLE_PERIODE_1_DEBUT,
-                'valeur' => '1',
+                'cle' => Parametre::CLE_PRODUIT_ROULEAU_ID,
+                'valeur' => null,
                 'type' => Parametre::TYPE_INTEGER,
-                'groupe' => Parametre::GROUPE_PAIEMENT,
-                'description' => 'Jour de début de la période 1 (1ère quinzaine)',
-            ],
-            [
-                'cle' => Parametre::CLE_PERIODE_1_FIN,
-                'valeur' => '15',
-                'type' => Parametre::TYPE_INTEGER,
-                'groupe' => Parametre::GROUPE_PAIEMENT,
-                'description' => 'Jour de fin de la période 1 (1ère quinzaine)',
-            ],
-            [
-                'cle' => Parametre::CLE_PERIODE_2_DEBUT,
-                'valeur' => '16',
-                'type' => Parametre::TYPE_INTEGER,
-                'groupe' => Parametre::GROUPE_PAIEMENT,
-                'description' => 'Jour de début de la période 2 (2ème quinzaine)',
-            ],
-            [
-                'cle' => Parametre::CLE_PERIODE_2_FIN,
-                'valeur' => '0',
-                'type' => Parametre::TYPE_INTEGER,
-                'groupe' => Parametre::GROUPE_PAIEMENT,
-                'description' => 'Jour de fin de la période 2 (0 = dernier jour du mois)',
+                'groupe' => Parametre::GROUPE_PACKING,
+                'description' => 'ID du produit rouleau utilisé pour le packing (gestion du stock)',
             ],
         ];
 

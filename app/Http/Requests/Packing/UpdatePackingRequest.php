@@ -27,8 +27,7 @@ class UpdatePackingRequest extends FormRequest
                           ->whereNull('deleted_at');
                 }),
             ],
-            'date_debut' => 'sometimes|date',
-            'date_fin' => 'sometimes|date|after_or_equal:date_debut',
+            'date' => 'sometimes|date',
             'nb_rouleaux' => 'sometimes|integer|min:1',
             'prix_par_rouleau' => 'sometimes|integer|min:0',
             'statut' => ['sometimes', Rule::in(array_keys(Packing::STATUTS))],
@@ -40,14 +39,12 @@ class UpdatePackingRequest extends FormRequest
     {
         return [
             'prestataire_id.exists' => 'Le prestataire sélectionné doit être un machiniste actif.',
-            'date_debut.date' => 'La date de début n\'est pas valide.',
-            'date_fin.date' => 'La date de fin n\'est pas valide.',
-            'date_fin.after_or_equal' => 'La date de fin doit être égale ou postérieure à la date de début.',
+            'date.date' => 'La date n\'est pas valide.',
             'nb_rouleaux.integer' => 'Le nombre de rouleaux doit être un nombre entier.',
             'nb_rouleaux.min' => 'Le nombre de rouleaux doit être au moins 1.',
             'prix_par_rouleau.integer' => 'Le prix par rouleau doit être un nombre entier.',
             'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas être négatif.',
-            'statut.in' => 'Le statut doit être : en_cours, termine, paye ou annule.',
+            'statut.in' => 'Le statut doit être : a_valider, valide ou annule.',
         ];
     }
 

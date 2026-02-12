@@ -30,8 +30,7 @@ class Packing extends Model
 
     protected $fillable = [
         'prestataire_id',
-        'date_debut',
-        'date_fin',
+        'date',
         'nb_rouleaux',
         'prix_par_rouleau',
         'montant',
@@ -46,14 +45,12 @@ class Packing extends Model
     protected $appends = [
         'statut_label',
         'prestataire_nom',
-        'duree_jours',
     ];
 
     protected function casts(): array
     {
         return [
-            'date_debut' => 'date',
-            'date_fin' => 'date',
+            'date' => 'date:Y-m-d',
             'nb_rouleaux' => 'integer',
             'prix_par_rouleau' => 'integer',
             'montant' => 'integer',
@@ -103,13 +100,18 @@ class Packing extends Model
             }
         });
 
-        // Après création, créer automatiquement une facture si statut = valide
+        // Après création : décrémenter stock + créer facture si statut = valide
         static::created(function ($packing) {
+            // Décrémenter le stock du produit rouleau
+            $produit = Parametre::getProduitRouleau();
+            if ($produit) {
+                $produit->ajusterStock(-$packing->nb_rouleaux);
+            }
+
             if ($packing->statut === self::STATUT_VALIDE && !$packing->facture_id) {
                 $facture = FacturePacking::create([
                     'prestataire_id' => $packing->prestataire_id,
-                    'periode_debut' => $packing->date_debut,
-                    'periode_fin' => $packing->date_fin,
+                    'date' => $packing->date,
                     'montant_total' => $packing->montant,
                     'nb_packings' => 1,
                     'statut' => FacturePacking::STATUT_IMPAYEE,
@@ -119,6 +121,15 @@ class Packing extends Model
                 $packing->updateQuietly(['facture_id' => $facture->id]);
             }
         });
+    }
+
+    /* =========================
+       FORMATAGE AUTOMATIQUE
+       ========================= */
+
+    public function setNotesAttribute($value): void
+    {
+        $this->attributes['notes'] = $value ? trim($value) : null;
     }
 
     /* =========================
@@ -162,14 +173,6 @@ class Packing extends Model
         return $this->prestataire?->nom_complet ?? $this->prestataire?->raison_sociale;
     }
 
-    public function getDureeJoursAttribute(): int
-    {
-        if (!$this->date_debut || !$this->date_fin) {
-            return 0;
-        }
-        return $this->date_debut->diffInDays($this->date_fin) + 1;
-    }
-
     /* =========================
        SCOPES
        ========================= */
@@ -207,8 +210,8 @@ class Packing extends Model
 
     public function scopeParPeriode($query, $dateDebut, $dateFin)
     {
-        return $query->where('date_debut', '>=', $dateDebut)
-                     ->where('date_fin', '<=', $dateFin);
+        return $query->where('date', '>=', $dateDebut)
+                     ->where('date', '<=', $dateFin);
     }
 
     public function scopeParStatut($query, string $statut)
@@ -225,23 +228,17 @@ class Packing extends Model
         return $this->nb_rouleaux * $this->prix_par_rouleau;
     }
 
-    /**
-     * Valider le packing et créer automatiquement une facture
-     */
     public function valider(): FacturePacking
     {
         return \Illuminate\Support\Facades\DB::transaction(function () {
-            // Créer la facture pour ce packing
             $facture = FacturePacking::create([
                 'prestataire_id' => $this->prestataire_id,
-                'periode_debut' => $this->date_debut,
-                'periode_fin' => $this->date_fin,
+                'date' => $this->date,
                 'montant_total' => $this->montant,
                 'nb_packings' => 1,
                 'statut' => FacturePacking::STATUT_IMPAYEE,
             ]);
 
-            // Mettre à jour le packing
             $this->statut = self::STATUT_VALIDE;
             $this->facture_id = $facture->id;
             $this->save();

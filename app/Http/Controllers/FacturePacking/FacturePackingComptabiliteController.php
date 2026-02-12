@@ -18,8 +18,8 @@ class FacturePackingComptabiliteController extends Controller
     {
         try {
             $request->validate([
-                'periode_debut' => 'nullable|date',
-                'periode_fin' => 'nullable|date|after_or_equal:periode_debut',
+                'date_debut' => 'nullable|date',
+                'date_fin' => 'nullable|date|after_or_equal:date_debut',
                 'prestataire_id' => 'nullable|exists:prestataires,id',
             ]);
 
@@ -27,13 +27,16 @@ class FacturePackingComptabiliteController extends Controller
             $queryNonFactures = Packing::query()
                 ->facturables();
 
-            if ($request->has('periode_debut')) {
-                $queryNonFactures->where('date_fin', '>=', $request->periode_debut);
+            // Filtrer par plage de dates si spécifiée
+            if ($request->filled('date_debut') && $request->filled('date_fin')) {
+                $queryNonFactures->whereBetween('date', [$request->date_debut, $request->date_fin]);
+            } elseif ($request->filled('date_debut')) {
+                $queryNonFactures->where('date', '>=', $request->date_debut);
+            } elseif ($request->filled('date_fin')) {
+                $queryNonFactures->where('date', '<=', $request->date_fin);
             }
-            if ($request->has('periode_fin')) {
-                $queryNonFactures->where('date_fin', '<=', $request->periode_fin);
-            }
-            if ($request->has('prestataire_id')) {
+
+            if ($request->filled('prestataire_id')) {
                 $queryNonFactures->where('prestataire_id', $request->prestataire_id);
             }
 
@@ -42,7 +45,8 @@ class FacturePackingComptabiliteController extends Controller
                     'prestataire_id',
                     DB::raw('COUNT(*) as nb_packings'),
                     DB::raw('SUM(montant) as montant_total'),
-                    DB::raw('SUM(nb_rouleaux) as total_rouleaux')
+                    DB::raw('SUM(nb_rouleaux) as total_rouleaux'),
+                    DB::raw('MAX(date) as derniere_date')
                 )
                 ->groupBy('prestataire_id')
                 ->get()
@@ -52,7 +56,15 @@ class FacturePackingComptabiliteController extends Controller
             $queryFactures = FacturePacking::query()
                 ->nonPayees();
 
-            if ($request->has('prestataire_id')) {
+            if ($request->filled('date_debut') && $request->filled('date_fin')) {
+                $queryFactures->whereBetween('date', [$request->date_debut, $request->date_fin]);
+            } elseif ($request->filled('date_debut')) {
+                $queryFactures->where('date', '>=', $request->date_debut);
+            } elseif ($request->filled('date_fin')) {
+                $queryFactures->where('date', '<=', $request->date_fin);
+            }
+
+            if ($request->filled('prestataire_id')) {
                 $queryFactures->where('prestataire_id', $request->prestataire_id);
             }
 
@@ -61,7 +73,8 @@ class FacturePackingComptabiliteController extends Controller
                     'prestataire_id',
                     DB::raw('COUNT(*) as nb_factures'),
                     DB::raw('SUM(montant_total) as montant_facture'),
-                    DB::raw('SUM(nb_packings) as nb_packings_factures')
+                    DB::raw('SUM(nb_packings) as nb_packings_factures'),
+                    DB::raw('MAX(date) as derniere_date_facture')
                 )
                 ->groupBy('prestataire_id')
                 ->get()
@@ -72,7 +85,16 @@ class FacturePackingComptabiliteController extends Controller
                 ->join('facture_packings', 'versements.facture_packing_id', '=', 'facture_packings.id')
                 ->whereNull('versements.deleted_at')
                 ->whereNull('facture_packings.deleted_at')
-                ->when($request->has('prestataire_id'), function ($q) use ($request) {
+                ->when($request->filled('date_debut') && $request->filled('date_fin'), function ($q) use ($request) {
+                    $q->whereBetween('facture_packings.date', [$request->date_debut, $request->date_fin]);
+                })
+                ->when($request->filled('date_debut') && !$request->filled('date_fin'), function ($q) use ($request) {
+                    $q->where('facture_packings.date', '>=', $request->date_debut);
+                })
+                ->when(!$request->filled('date_debut') && $request->filled('date_fin'), function ($q) use ($request) {
+                    $q->where('facture_packings.date', '<=', $request->date_fin);
+                })
+                ->when($request->filled('prestataire_id'), function ($q) use ($request) {
                     $q->where('facture_packings.prestataire_id', $request->prestataire_id);
                 })
                 ->select(
@@ -111,11 +133,17 @@ class FacturePackingComptabiliteController extends Controller
                 $montantRestantFacture = $montantFacture - $montantVerse;
                 $montantTotalDu = $montantNonFacture + $montantRestantFacture;
 
+                // Dernière date d'activité (max entre packing et facture)
+                $derniereDatePacking = $nonFacture->derniere_date ?? null;
+                $derniereDateFacture = $enCours->derniere_date_facture ?? null;
+                $derniereDate = max($derniereDatePacking, $derniereDateFacture) ?: $derniereDatePacking ?? $derniereDateFacture;
+
                 return [
                     'prestataire_id' => $prestataireId,
                     'prestataire_nom' => $prestataire?->nom_complet ?? $prestataire?->raison_sociale,
                     'prestataire_phone' => $prestataire?->phone,
                     'prestataire_type' => $prestataire?->type,
+                    'derniere_date' => $derniereDate,
 
                     // Packings non encore facturés
                     'nb_packings_non_factures' => (int) ($nonFacture->nb_packings ?? 0),
@@ -136,8 +164,8 @@ class FacturePackingComptabiliteController extends Controller
 
             // Totaux généraux
             $summary = [
-                'periode_debut' => $request->periode_debut,
-                'periode_fin' => $request->periode_fin,
+                'date_debut' => $request->date_debut,
+                'date_fin' => $request->date_fin,
                 'nb_prestataires' => $result->count(),
 
                 // Totaux non facturés

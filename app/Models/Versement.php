@@ -45,9 +45,18 @@ class Versement extends Model
     protected function casts(): array
     {
         return [
-            'date_versement' => 'date',
+            'date_versement' => 'date:Y-m-d',
             'montant' => 'integer',
         ];
+    }
+
+    /* =========================
+       FORMATAGE AUTOMATIQUE
+       ========================= */
+
+    public function setNotesAttribute($value): void
+    {
+        $this->attributes['notes'] = $value ? trim($value) : null;
     }
 
     /* =========================
@@ -57,7 +66,6 @@ class Versement extends Model
     protected static function booted(): void
     {
         static::creating(function ($versement) {
-            // Auto-générer la référence
             if (empty($versement->reference)) {
                 $lastId = self::withTrashed()->max('id') ?? 0;
                 $versement->reference = 'VERS-' . now()->format('Ymd') . '-' . str_pad(
@@ -68,7 +76,6 @@ class Versement extends Model
                 );
             }
 
-            // Traçabilité
             if (Auth::check() && !$versement->created_by) {
                 $versement->created_by = Auth::id();
             }

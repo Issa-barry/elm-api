@@ -31,18 +31,36 @@ class FacturePacking extends Model
 
     public const STATUT_DEFAUT = self::STATUT_IMPAYEE;
 
+    /* =========================
+       MODES DE PAIEMENT
+       ========================= */
+
+    public const MODE_ESPECES = 'especes';
+    public const MODE_VIREMENT = 'virement';
+    public const MODE_CHEQUE = 'cheque';
+    public const MODE_MOBILE_MONEY = 'mobile_money';
+
+    public const MODES_PAIEMENT = [
+        self::MODE_ESPECES => 'Espèces',
+        self::MODE_VIREMENT => 'Virement bancaire',
+        self::MODE_CHEQUE => 'Chèque',
+        self::MODE_MOBILE_MONEY => 'Mobile Money',
+    ];
+
     protected $table = 'facture_packings';
 
     protected $fillable = [
         'reference',
         'prestataire_id',
-        'periode_debut',
-        'periode_fin',
+        'date',
         'montant_total',
         'nb_packings',
+        'date_paiement',
+        'mode_paiement',
         'statut',
         'notes',
         'created_by',
+        'validated_by',
     ];
 
     protected $appends = [
@@ -50,13 +68,14 @@ class FacturePacking extends Model
         'prestataire_nom',
         'montant_verse',
         'montant_restant',
+        'mode_paiement_label',
     ];
 
     protected function casts(): array
     {
         return [
-            'periode_debut' => 'date',
-            'periode_fin' => 'date',
+            'date' => 'date:Y-m-d',
+            'date_paiement' => 'date:Y-m-d',
             'montant_total' => 'integer',
             'nb_packings' => 'integer',
         ];
@@ -93,6 +112,15 @@ class FacturePacking extends Model
     }
 
     /* =========================
+       FORMATAGE AUTOMATIQUE
+       ========================= */
+
+    public function setNotesAttribute($value): void
+    {
+        $this->attributes['notes'] = $value ? trim($value) : null;
+    }
+
+    /* =========================
        RELATIONS
        ========================= */
 
@@ -109,6 +137,11 @@ class FacturePacking extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function validator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'validated_by');
     }
 
     public function versements(): HasMany
@@ -140,6 +173,11 @@ class FacturePacking extends Model
         return $this->montant_total - $this->montant_verse;
     }
 
+    public function getModePaiementLabelAttribute(): string
+    {
+        return self::MODES_PAIEMENT[$this->mode_paiement] ?? $this->mode_paiement ?? '';
+    }
+
     /* =========================
        SCOPES
        ========================= */
@@ -149,10 +187,9 @@ class FacturePacking extends Model
         return $query->where('prestataire_id', $prestataireId);
     }
 
-    public function scopeParPeriode($query, $dateDebut, $dateFin)
+    public function scopeParDate($query, string $dateDebut, string $dateFin)
     {
-        return $query->where('periode_debut', '>=', $dateDebut)
-                     ->where('periode_fin', '<=', $dateFin);
+        return $query->whereBetween('date', [$dateDebut, $dateFin]);
     }
 
     public function scopeImpayees($query)
@@ -185,13 +222,20 @@ class FacturePacking extends Model
         return $query->whereIn('statut', [self::STATUT_IMPAYEE, self::STATUT_PARTIELLE]);
     }
 
+    public function scopeSoldees($query)
+    {
+        return $query->where('statut', self::STATUT_PAYEE);
+    }
+
+    public function scopeNonSoldees($query)
+    {
+        return $query->whereIn('statut', [self::STATUT_IMPAYEE, self::STATUT_PARTIELLE]);
+    }
+
     /* =========================
        MÉTHODES MÉTIER
        ========================= */
 
-    /**
-     * Mettre à jour le statut en fonction des versements
-     */
     public function mettreAJourStatut(): bool
     {
         if ($this->statut === self::STATUT_ANNULEE) {
@@ -211,12 +255,8 @@ class FacturePacking extends Model
         return $this->save();
     }
 
-    /**
-     * Annuler la facture et libérer les packings
-     */
     public function annuler(): bool
     {
-        // Remettre les packings en statut "a_valider" (facturables à nouveau)
         $this->packings()->update([
             'statut' => Packing::STATUT_A_VALIDER,
             'facture_id' => null,
@@ -226,12 +266,8 @@ class FacturePacking extends Model
         return $this->save();
     }
 
-    /**
-     * Supprimer la facture et libérer les packings
-     */
     public function supprimer(): bool
     {
-        // Remettre les packings en statut "a_valider" (facturables à nouveau)
         $this->packings()->update([
             'statut' => Packing::STATUT_A_VALIDER,
             'facture_id' => null,
@@ -240,11 +276,13 @@ class FacturePacking extends Model
         return $this->delete();
     }
 
-    /**
-     * Récupérer les statuts disponibles
-     */
     public static function getStatuts(): array
     {
         return self::STATUTS;
+    }
+
+    public static function getModesPaiement(): array
+    {
+        return self::MODES_PAIEMENT;
     }
 }

@@ -26,13 +26,13 @@ class PackingIndexController extends Controller
                 $query->parStatut($request->statut);
             }
 
-            // Filtre par période
+            // Filtre par date (plage)
             if ($request->has('date_debut') && $request->has('date_fin')) {
                 $query->parPeriode($request->date_debut, $request->date_fin);
             } elseif ($request->has('date_debut')) {
-                $query->where('date_debut', '>=', $request->date_debut);
+                $query->where('date', '>=', $request->date_debut);
             } elseif ($request->has('date_fin')) {
-                $query->where('date_fin', '<=', $request->date_fin);
+                $query->where('date', '<=', $request->date_fin);
             }
 
             // Filtre non payés
@@ -56,7 +56,7 @@ class PackingIndexController extends Controller
             // Tri
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
-            $allowedSorts = ['date_debut', 'date_fin', 'created_at', 'montant', 'nb_rouleaux', 'statut'];
+            $allowedSorts = ['date', 'created_at', 'montant', 'nb_rouleaux', 'statut'];
             if (in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
             }

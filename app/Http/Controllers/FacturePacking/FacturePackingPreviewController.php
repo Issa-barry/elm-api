@@ -5,7 +5,6 @@ namespace App\Http\Controllers\FacturePacking;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Packing;
-use App\Models\Parametre;
 use Illuminate\Http\Request;
 
 class FacturePackingPreviewController extends Controller
@@ -15,41 +14,24 @@ class FacturePackingPreviewController extends Controller
     public function __invoke(Request $request)
     {
         try {
-            // Validation de base
             $request->validate([
                 'prestataire_id' => 'required|exists:prestataires,id',
-                'periode' => 'nullable|integer|in:1,2',
-                'mois' => 'nullable|integer|min:1|max:12',
-                'annee' => 'nullable|integer|min:2020|max:2100',
-                'periode_debut' => 'required_without:periode|date',
-                'periode_fin' => 'required_without:periode|date|after_or_equal:periode_debut',
+                'date_debut' => 'required|date',
+                'date_fin' => 'required|date|after_or_equal:date_debut',
             ]);
 
-            // Si une période est spécifiée, calculer les dates automatiquement
-            if ($request->has('periode')) {
-                $mois = $request->integer('mois', (int) now()->format('m'));
-                $annee = $request->integer('annee', (int) now()->format('Y'));
-                $dates = Parametre::getPeriodeDates($request->integer('periode'), $mois, $annee);
-
-                $request->merge([
-                    'periode_debut' => $dates['debut'],
-                    'periode_fin' => $dates['fin'],
-                ]);
-            }
-
-            // Récupérer les packings facturables pour ce prestataire et cette période
+            // Récupérer les packings facturables pour ce prestataire et cette plage de dates
             $packings = Packing::with('prestataire')
                 ->where('prestataire_id', $request->prestataire_id)
                 ->facturables()
-                ->where('date_fin', '>=', $request->periode_debut)
-                ->where('date_fin', '<=', $request->periode_fin)
-                ->orderBy('date_debut')
+                ->whereBetween('date', [$request->date_debut, $request->date_fin])
+                ->orderBy('date')
                 ->get();
 
             $summary = [
                 'prestataire_id' => $request->integer('prestataire_id'),
-                'periode_debut' => $request->periode_debut,
-                'periode_fin' => $request->periode_fin,
+                'date_debut' => $request->date_debut,
+                'date_fin' => $request->date_fin,
                 'nb_packings' => $packings->count(),
                 'montant_total' => $packings->sum('montant'),
                 'total_rouleaux' => $packings->sum('nb_rouleaux'),

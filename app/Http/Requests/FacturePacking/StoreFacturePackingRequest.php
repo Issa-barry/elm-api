@@ -3,7 +3,6 @@
 namespace App\Http\Requests\FacturePacking;
 
 use App\Models\FacturePacking;
-use App\Models\Parametre;
 use App\Models\Prestataire;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,32 +27,13 @@ class StoreFacturePackingRequest extends FormRequest
                           ->whereNull('deleted_at');
                 }),
             ],
-            'periode' => 'nullable|integer|in:1,2',
-            'mois' => 'nullable|integer|min:1|max:12',
-            'annee' => 'nullable|integer|min:2020|max:2100',
-            'periode_debut' => 'required_without:periode|date',
-            'periode_fin' => 'required_without:periode|date|after_or_equal:periode_debut',
+            'date_debut' => 'required|date',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'date_paiement' => 'nullable|date',
+            'mode_paiement' => ['nullable', Rule::in(array_keys(FacturePacking::MODES_PAIEMENT))],
             'statut' => ['nullable', Rule::in(array_keys(FacturePacking::STATUTS))],
             'notes' => 'nullable|string|max:5000',
         ];
-    }
-
-    /**
-     * Préparer les données pour la validation
-     */
-    protected function prepareForValidation(): void
-    {
-        // Si une période est spécifiée, calculer les dates automatiquement
-        if ($this->has('periode') && $this->periode) {
-            $mois = $this->integer('mois', (int) now()->format('m'));
-            $annee = $this->integer('annee', (int) now()->format('Y'));
-            $dates = Parametre::getPeriodeDates($this->integer('periode'), $mois, $annee);
-
-            $this->merge([
-                'periode_debut' => $dates['debut'],
-                'periode_fin' => $dates['fin'],
-            ]);
-        }
     }
 
     public function messages(): array
@@ -61,13 +41,14 @@ class StoreFacturePackingRequest extends FormRequest
         return [
             'prestataire_id.required' => 'Le prestataire est obligatoire.',
             'prestataire_id.exists' => 'Le prestataire sélectionné doit être un machiniste actif.',
-            'periode.in' => 'La période doit être 1 (1ère quinzaine) ou 2 (2ème quinzaine).',
-            'periode_debut.required_without' => 'La date de début est obligatoire si aucune période n\'est spécifiée.',
-            'periode_debut.date' => 'La date de début n\'est pas valide.',
-            'periode_fin.required_without' => 'La date de fin est obligatoire si aucune période n\'est spécifiée.',
-            'periode_fin.date' => 'La date de fin n\'est pas valide.',
-            'periode_fin.after_or_equal' => 'La date de fin doit être égale ou postérieure à la date de début.',
-            'statut.in' => 'Le statut doit être : brouillon, validee ou annulee.',
+            'date_debut.required' => 'La date de début est obligatoire.',
+            'date_debut.date' => 'La date de début n\'est pas valide.',
+            'date_fin.required' => 'La date de fin est obligatoire.',
+            'date_fin.date' => 'La date de fin n\'est pas valide.',
+            'date_fin.after_or_equal' => 'La date de fin doit être postérieure ou égale à la date de début.',
+            'date_paiement.date' => 'La date de paiement n\'est pas valide.',
+            'mode_paiement.in' => 'Le mode de paiement doit être : especes, virement, cheque ou mobile_money.',
+            'statut.in' => 'Le statut doit être : impayee, partielle, payee ou annulee.',
         ];
     }
 
