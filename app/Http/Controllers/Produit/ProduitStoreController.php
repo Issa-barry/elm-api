@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\StoreProduitRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use Illuminate\Support\Str;
 
 class ProduitStoreController extends Controller
 {
@@ -21,13 +20,7 @@ class ProduitStoreController extends Controller
 
             // Générer code si non fourni
             if (empty($data['code'])) {
-                $prefix = match (ProduitType::from($data['type'])) {
-                    ProduitType::MATERIEL => 'MAT',
-                    ProduitType::SERVICE => 'SRV',
-                    ProduitType::FABRICABLE => 'FAB',
-                    ProduitType::ACHAT_VENTE => 'AV',
-                };
-                $data['code'] = $prefix . '-' . strtoupper(Str::random(8));
+                $data['code'] = $this->generateNumericProductCode();
             }
 
             // Statut par défaut selon le stock et le type
@@ -50,5 +43,30 @@ class ProduitStoreController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Erreur lors de la création du produit: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Format 100% numérique (12 chiffres):
+     * AAAAMMJJ + NNNN
+     * Exemple: 202602120001
+     */
+    private function generateNumericProductCode(): string
+    {
+        $prefix = now()->format('Ymd');
+
+        $lastCode = Produit::withTrashed()
+            ->where('code', 'like', $prefix . '%')
+            ->whereRaw('LENGTH(code) = 12')
+            ->orderByDesc('code')
+            ->value('code');
+
+        $nextSequence = 1;
+        if ($lastCode) {
+            $nextSequence = ((int) substr($lastCode, -4)) + 1;
+        }
+
+        $nextSequence = min($nextSequence, 9999);
+
+        return $prefix . str_pad((string) $nextSequence, 4, '0', STR_PAD_LEFT);
     }
 }

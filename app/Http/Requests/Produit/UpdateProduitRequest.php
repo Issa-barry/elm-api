@@ -27,7 +27,7 @@ class UpdateProduitRequest extends FormRequest
 
         return [
             'nom' => 'sometimes|required|string|max:255',
-            'code' => ['sometimes', 'nullable', 'string', 'max:100', Rule::unique('produits', 'code')->ignore($produitId)],
+            'code' => ['sometimes', 'nullable', 'string', 'size:12', 'regex:/^\d+$/', Rule::unique('produits', 'code')->ignore($produitId)],
             'type' => ['sometimes', Rule::enum(ProduitType::class)],
             'statut' => ['sometimes', Rule::enum(ProduitStatut::class)],
 
@@ -123,7 +123,8 @@ class UpdateProduitRequest extends FormRequest
 
             // Code
             'code.unique' => 'Ce code produit existe déjà.',
-            'code.max' => 'Le code ne peut pas dépasser 100 caractères.',
+            'code.size' => 'Le code doit contenir exactement 12 chiffres.',
+            'code.regex' => 'Le code produit doit être uniquement numérique.',
 
             // Type et Statut
             'type.Illuminate\Validation\Rules\Enum' => 'Le type doit être : materiel, service, fabricable ou achat_vente.',

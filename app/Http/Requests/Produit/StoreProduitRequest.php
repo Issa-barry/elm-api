@@ -22,7 +22,7 @@ class StoreProduitRequest extends FormRequest
 
         return [
             'nom' => 'required|string|max:255',
-            'code' => 'nullable|string|max:100|unique:produits,code',
+            'code' => 'nullable|string|size:12|regex:/^\\d+$/|unique:produits,code',
             'type' => ['required', Rule::enum(ProduitType::class)],
             'statut' => ['nullable', Rule::enum(ProduitStatut::class)],
 
@@ -108,7 +108,8 @@ class StoreProduitRequest extends FormRequest
 
             // Code
             'code.unique' => 'Ce code produit existe déjà.',
-            'code.max' => 'Le code ne peut pas dépasser 100 caractères.',
+            'code.size' => 'Le code doit contenir exactement 12 chiffres.',
+            'code.regex' => 'Le code produit doit être uniquement numérique.',
 
             // Type et Statut
             'type.required' => 'Le type de produit est obligatoire.',
