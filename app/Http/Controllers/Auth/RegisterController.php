@@ -31,6 +31,7 @@ class RegisterController extends Controller
                 'ville' => ['required', 'string', 'min:2', 'max:100'],
                 'quartier' => ['required', 'string', 'min:2', 'max:100'],
                 'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()->mixedCase()],
+                'role' => ['required', 'string', 'exists:roles,name'],
             ], [
                 'nom.required' => 'Le nom est obligatoire',
                 'prenom.required' => 'Le prénom est obligatoire',
@@ -38,6 +39,8 @@ class RegisterController extends Controller
                 'phone.unique' => 'Ce numéro de téléphone est déjà utilisé',
                 'email.unique' => 'Cette adresse email est déjà utilisée',
                 'password.confirmed' => 'Les mots de passe ne correspondent pas',
+                'role.required' => 'Le rôle est obligatoire',
+                'role.exists' => 'Ce rôle n\'existe pas',
             ]);
 
             DB::beginTransaction();
@@ -55,6 +58,9 @@ class RegisterController extends Controller
                 'quartier' => $validated['quartier'],
                 'password' => $validated['password'],
             ]);
+
+            // Assigner le rôle
+            $user->assignRole($validated['role']);
 
             // Créer un token
             $token = $user->createToken(

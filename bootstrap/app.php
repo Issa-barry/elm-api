@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Spatie\Permission\Exceptions\UnauthorizedException;
 use App\Http\Middleware\Cors;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -25,6 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // CORS middleware en premier
         $middleware->prepend(Cors::class);
+
+        // Ne pas rediriger les requêtes API non authentifiées vers une route 'login'
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/login');
+
+        // Middleware Spatie Permission
+        $middleware->alias([
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Toujours retourner JSON pour les requêtes API
@@ -107,6 +118,16 @@ return Application::configure(basePath: dirname(__DIR__))
                     'success' => false,
                     'message' => $message,
                 ], 500);
+            }
+        });
+
+        // Gestion des erreurs de permissions (Spatie)
+        $exceptions->render(function (UnauthorizedException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous n\'avez pas les permissions nécessaires pour effectuer cette action.',
+                ], 403);
             }
         });
 

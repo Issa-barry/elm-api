@@ -18,13 +18,13 @@ use App\Http\Controllers\Users\UserToggleStatusController;
 
 Route::prefix('users')->group(function () {
     // Liste et consultation
-    Route::get('/', UserIndexController::class);
-    Route::get('/{id}', UserShowController::class)->where('id', '[0-9]+');
+    Route::get('/', UserIndexController::class)->middleware('permission:users.index');
+    Route::get('/{id}', UserShowController::class)->where('id', '[0-9]+')->middleware('permission:users.show');
 
     // Mise à jour et suppression
-    Route::put('/{id}', UserUpdateController::class)->where('id', '[0-9]+');
-    Route::delete('/{id}', UserDestroyController::class)->where('id', '[0-9]+');
+    Route::put('/{id}', UserUpdateController::class)->where('id', '[0-9]+')->middleware('permission:users.update');
+    Route::delete('/{id}', UserDestroyController::class)->where('id', '[0-9]+')->middleware('permission:users.destroy');
 
     // Actions sur le statut
-    Route::patch('/{id}/toggle-status', UserToggleStatusController::class)->where('id', '[0-9]+');
+    Route::patch('/{id}/toggle-status', UserToggleStatusController::class)->where('id', '[0-9]+')->middleware('permission:users.toggle-status');
 });

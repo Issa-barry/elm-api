@@ -19,16 +19,16 @@ use App\Http\Controllers\Client\ClientToggleStatusController;
 
 Route::prefix('clients')->group(function () {
     // Liste et consultation
-    Route::get('/', ClientIndexController::class);
-    Route::get('/{id}', ClientShowController::class)->where('id', '[0-9]+');
+    Route::get('/', ClientIndexController::class)->middleware('permission:clients.index');
+    Route::get('/{id}', ClientShowController::class)->where('id', '[0-9]+')->middleware('permission:clients.show');
 
     // Création
-    Route::post('/', ClientStoreController::class);
+    Route::post('/', ClientStoreController::class)->middleware('permission:clients.store');
 
     // Mise à jour et suppression
-    Route::put('/{id}', ClientUpdateController::class)->where('id', '[0-9]+');
-    Route::delete('/{id}', ClientDestroyController::class)->where('id', '[0-9]+');
+    Route::put('/{id}', ClientUpdateController::class)->where('id', '[0-9]+')->middleware('permission:clients.update');
+    Route::delete('/{id}', ClientDestroyController::class)->where('id', '[0-9]+')->middleware('permission:clients.destroy');
 
     // Actions sur le statut
-    Route::patch('/{id}/toggle-status', ClientToggleStatusController::class)->where('id', '[0-9]+');
+    Route::patch('/{id}/toggle-status', ClientToggleStatusController::class)->where('id', '[0-9]+')->middleware('permission:clients.toggle-status');
 });

@@ -22,26 +22,26 @@ use App\Http\Controllers\FacturePacking\VersementDestroyController;
 
 Route::prefix('facture-packings')->group(function () {
     // Liste des factures
-    Route::get('/', FacturePackingIndexController::class);
+    Route::get('/', FacturePackingIndexController::class)->middleware('permission:facture-packings.index');
 
     // Prévisualisation avant facturation
-    Route::get('/preview', FacturePackingPreviewController::class);
+    Route::get('/preview', FacturePackingPreviewController::class)->middleware('permission:facture-packings.preview');
 
     // Comptabilité - récapitulatif par prestataire
-    Route::get('/comptabilite', FacturePackingComptabiliteController::class);
+    Route::get('/comptabilite', FacturePackingComptabiliteController::class)->middleware('permission:facture-packings.comptabilite');
 
     // Détail d'une facture
-    Route::get('/{id}', FacturePackingShowController::class)->where('id', '[0-9]+');
+    Route::get('/{id}', FacturePackingShowController::class)->where('id', '[0-9]+')->middleware('permission:facture-packings.show');
 
     // Créer une facture
-    Route::post('/', FacturePackingStoreController::class);
+    Route::post('/', FacturePackingStoreController::class)->middleware('permission:facture-packings.store');
 
     // Supprimer une facture
-    Route::delete('/{id}', FacturePackingDestroyController::class)->where('id', '[0-9]+');
+    Route::delete('/{id}', FacturePackingDestroyController::class)->where('id', '[0-9]+')->middleware('permission:facture-packings.destroy');
 
     // Versements (paiements partiels)
-    Route::get('/{id}/versements', VersementIndexController::class)->where('id', '[0-9]+');
-    Route::post('/{id}/versements', VersementStoreController::class)->where('id', '[0-9]+');
+    Route::get('/{id}/versements', VersementIndexController::class)->where('id', '[0-9]+')->middleware('permission:versements.index');
+    Route::post('/{id}/versements', VersementStoreController::class)->where('id', '[0-9]+')->middleware('permission:versements.store');
     Route::delete('/{factureId}/versements/{versementId}', VersementDestroyController::class)
-        ->where(['factureId' => '[0-9]+', 'versementId' => '[0-9]+']);
+        ->where(['factureId' => '[0-9]+', 'versementId' => '[0-9]+'])->middleware('permission:versements.destroy');
 });

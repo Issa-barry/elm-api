@@ -16,7 +16,13 @@ class ProfileController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return $this->successResponse($request->user(), 'Profil récupéré avec succès');
+        $user = $request->user();
+
+        return $this->successResponse([
+            'user' => $user,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ], 'Profil récupéré avec succès');
     }
 
     public function update(Request $request): JsonResponse
