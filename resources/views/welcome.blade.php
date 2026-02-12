@@ -266,8 +266,13 @@
                         </g>
                     </svg>
                     <div class="absolute inset-0 rounded-t-lg lg:rounded-t-none lg:rounded-r-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"></div>
+                   
                 </div>
             </main>
+                <h1 class="mt-6 ml-4 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl lg:text-5xl">
+                 Version 1.4.0 | 25/01/2026
+            </h1>
+
         </div>
 
         @if (Route::has('login'))
