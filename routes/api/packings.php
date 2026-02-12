@@ -19,20 +19,18 @@ use App\Http\Controllers\Packing\PackingValiderController;
 */
 
 Route::prefix('packings')->group(function () {
-    // Liste et consultation
-    Route::get('/', PackingIndexController::class)->middleware('permission:packings.index');
-    Route::get('/{id}', PackingShowController::class)->where('id', '[0-9]+')->middleware('permission:packings.show');
+    // Lecture
+    Route::get('/', PackingIndexController::class)->middleware('permission:packings.read');
+    Route::get('/{id}', PackingShowController::class)->where('id', '[0-9]+')->middleware('permission:packings.read');
 
     // Création
-    Route::post('/', PackingStoreController::class)->middleware('permission:packings.store');
+    Route::post('/', PackingStoreController::class)->middleware('permission:packings.create');
+    Route::post('/{id}/valider', PackingValiderController::class)->where('id', '[0-9]+')->middleware('permission:packings.create');
 
-    // Mise à jour et suppression
+    // Mise à jour
     Route::put('/{id}', PackingUpdateController::class)->where('id', '[0-9]+')->middleware('permission:packings.update');
-    Route::delete('/{id}', PackingDestroyController::class)->where('id', '[0-9]+')->middleware('permission:packings.destroy');
+    Route::patch('/{id}/statut', PackingChangeStatutController::class)->where('id', '[0-9]+')->middleware('permission:packings.update');
 
-    // Changement de statut
-    Route::patch('/{id}/statut', PackingChangeStatutController::class)->where('id', '[0-9]+')->middleware('permission:packings.change-statut');
-
-    // Validation (crée automatiquement une facture)
-    Route::post('/{id}/valider', PackingValiderController::class)->where('id', '[0-9]+')->middleware('permission:packings.valider');
+    // Suppression
+    Route::delete('/{id}', PackingDestroyController::class)->where('id', '[0-9]+')->middleware('permission:packings.delete');
 });

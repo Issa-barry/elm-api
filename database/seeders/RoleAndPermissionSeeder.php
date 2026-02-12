@@ -14,16 +14,19 @@ class RoleAndPermissionSeeder extends Seeder
         // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Permissions par module
+        // Supprimer les anciennes permissions
+        Permission::query()->delete();
+
+        // Permissions CRUD par module (style Strapi)
         $modules = [
-            'users'            => ['index', 'show', 'store', 'update', 'destroy', 'toggle-status'],
-            'produits'         => ['index', 'show', 'store', 'update', 'destroy', 'search', 'statistics', 'update-stock', 'change-status', 'archive', 'unarchive', 'archived-list'],
-            'prestataires'     => ['index', 'show', 'store', 'update', 'destroy', 'toggle-status'],
-            'clients'          => ['index', 'show', 'store', 'update', 'destroy', 'toggle-status'],
-            'packings'         => ['index', 'show', 'store', 'update', 'destroy', 'change-statut', 'valider'],
-            'facture-packings' => ['index', 'show', 'store', 'destroy', 'preview', 'comptabilite'],
-            'versements'       => ['index', 'store', 'destroy'],
-            'parametres'       => ['index', 'update'],
+            'users'            => ['create', 'read', 'update', 'delete'],
+            'produits'         => ['create', 'read', 'update', 'delete'],
+            'prestataires'     => ['create', 'read', 'update', 'delete'],
+            'clients'          => ['create', 'read', 'update', 'delete'],
+            'packings'         => ['create', 'read', 'update', 'delete'],
+            'facture-packings' => ['create', 'read', 'update', 'delete'],
+            'versements'       => ['create', 'read', 'delete'],
+            'parametres'       => ['read', 'update'],
         ];
 
         // Creer toutes les permissions
@@ -37,7 +40,7 @@ class RoleAndPermissionSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->syncPermissions(Permission::all());
 
-        // MANAGER : CRUD operationnel + lecture users/parametres
+        // MANAGER : CRUD opérationnel + lecture users/parametres
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $managerPermissions = [];
 
@@ -48,24 +51,22 @@ class RoleAndPermissionSeeder extends Seeder
             }
         }
 
-        // Lecture users et parametres
-        $managerPermissions[] = 'users.index';
-        $managerPermissions[] = 'users.show';
-        $managerPermissions[] = 'parametres.index';
+        $managerPermissions[] = 'users.read';
+        $managerPermissions[] = 'parametres.read';
 
         $manager->syncPermissions($managerPermissions);
 
-        // EMPLOYE : lecture sur tous les modules + creation/modification packings
+        // EMPLOYE : lecture sur tous les modules + create/update packings
         $employe = Role::firstOrCreate(['name' => 'employe']);
         $employePermissions = [
-            'users.index', 'users.show',
-            'produits.index', 'produits.show', 'produits.search', 'produits.statistics', 'produits.archived-list',
-            'prestataires.index', 'prestataires.show',
-            'clients.index', 'clients.show',
-            'packings.index', 'packings.show', 'packings.store', 'packings.update',
-            'facture-packings.index', 'facture-packings.show', 'facture-packings.preview', 'facture-packings.comptabilite',
-            'versements.index',
-            'parametres.index',
+            'users.read',
+            'produits.read',
+            'prestataires.read',
+            'clients.read',
+            'packings.read', 'packings.create', 'packings.update',
+            'facture-packings.read',
+            'versements.read',
+            'parametres.read',
         ];
         $employe->syncPermissions($employePermissions);
     }
