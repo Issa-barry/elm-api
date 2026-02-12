@@ -25,23 +25,23 @@ use App\Http\Controllers\Produit\ProduitArchivedListController;
 */
 
 Route::prefix('produits')->group(function () {
-    // Liste et consultation
-    Route::get('/', ProduitIndexController::class)->middleware('permission:produits.index');
-    Route::get('/archived', ProduitArchivedListController::class)->middleware('permission:produits.archived-list');
-    Route::get('/search', ProduitSearchController::class)->middleware('permission:produits.search');
-    Route::get('/statistics', ProduitStatisticsController::class)->middleware('permission:produits.statistics');
-    Route::get('/{id}', ProduitShowController::class)->where('id', '[0-9]+')->middleware('permission:produits.show');
+    // Lecture
+    Route::get('/', ProduitIndexController::class)->middleware('permission:produits.read');
+    Route::get('/archived', ProduitArchivedListController::class)->middleware('permission:produits.read');
+    Route::get('/search', ProduitSearchController::class)->middleware('permission:produits.read');
+    Route::get('/statistics', ProduitStatisticsController::class)->middleware('permission:produits.read');
+    Route::get('/{id}', ProduitShowController::class)->where('id', '[0-9]+')->middleware('permission:produits.read');
 
-    // CRUD
-    Route::post('/', ProduitStoreController::class)->middleware('permission:produits.store');
+    // Création
+    Route::post('/', ProduitStoreController::class)->middleware('permission:produits.create');
+
+    // Mise à jour
     Route::put('/{id}', ProduitUpdateController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
-    Route::delete('/{id}', ProduitDestroyController::class)->where('id', '[0-9]+')->middleware('permission:produits.destroy');
+    Route::patch('/{id}/stock', ProduitUpdateStockController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
+    Route::patch('/{id}/status', ProduitChangeStatusController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
+    Route::patch('/{id}/archive', ProduitArchiveController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
+    Route::patch('/{id}/unarchive', ProduitUnarchiveController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
 
-    // Actions sur le stock
-    Route::patch('/{id}/stock', ProduitUpdateStockController::class)->where('id', '[0-9]+')->middleware('permission:produits.update-stock');
-
-    // Actions sur le statut
-    Route::patch('/{id}/status', ProduitChangeStatusController::class)->where('id', '[0-9]+')->middleware('permission:produits.change-status');
-    Route::patch('/{id}/archive', ProduitArchiveController::class)->where('id', '[0-9]+')->middleware('permission:produits.archive');
-    Route::patch('/{id}/unarchive', ProduitUnarchiveController::class)->where('id', '[0-9]+')->middleware('permission:produits.unarchive');
+    // Suppression
+    Route::delete('/{id}', ProduitDestroyController::class)->where('id', '[0-9]+')->middleware('permission:produits.delete');
 });

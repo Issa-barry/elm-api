@@ -14,9 +14,9 @@ use App\Http\Controllers\Parametre\ParametreUpdateController;
 */
 
 Route::prefix('parametres')->group(function () {
-    // Liste des paramètres
-    Route::get('/', ParametreIndexController::class)->middleware('permission:parametres.index');
+    // Lecture
+    Route::get('/', ParametreIndexController::class)->middleware('permission:parametres.read');
 
-    // Modifier un paramètre
+    // Mise à jour
     Route::put('/{id}', ParametreUpdateController::class)->where('id', '[0-9]+')->middleware('permission:parametres.update');
 });

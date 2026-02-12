@@ -13,7 +13,8 @@
       "Bash(export PATH:*)",
       "Bash(php:*)",
       "Bash(ls:*)",
-      "Bash(/c/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe:*)"
+      "Bash(/c/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe:*)",
+      "Bash(/c/laragon/bin/php/php-8.4.3-nts-Win32-vs17-x64/php.exe artisan db:seed:*)"
     ]
   }
 }

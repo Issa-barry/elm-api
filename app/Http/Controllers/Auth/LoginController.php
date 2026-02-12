@@ -47,7 +47,7 @@ class LoginController extends Controller
             Log::info('Utilisateur connecté', ['user_id' => $user->id]);
 
             return $this->successResponse([
-                'user' => $user,
+                'user' => $user->makeHidden(['roles', 'permissions']),
                 'roles' => $user->getRoleNames(),
                 'permissions' => $user->getAllPermissions()->pluck('name'),
                 'access_token' => $token,
