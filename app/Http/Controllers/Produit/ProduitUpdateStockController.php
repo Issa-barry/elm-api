@@ -18,7 +18,7 @@ class ProduitUpdateStockController extends Controller
             $produit = Produit::find($id);
 
             if (!$produit) {
-                return $this->notFoundResponse('Produit non trouvé');
+                return $this->notFoundResponse('Produit non trouve');
             }
 
             // Service : pas de stock
@@ -31,12 +31,13 @@ class ProduitUpdateStockController extends Controller
             }
 
             $request->validate([
-                'quantite' => 'required|integer',
+                'quantite' => 'required|integer|min:0',
                 'operation' => 'nullable|string|in:set,add,subtract',
             ], [
-                'quantite.required' => 'La quantité est obligatoire.',
-                'quantite.integer' => 'La quantité doit être un nombre entier.',
-                'operation.in' => 'L\'opération doit être : set, add ou subtract.',
+                'quantite.required' => 'La quantite est obligatoire.',
+                'quantite.integer' => 'La quantite doit etre un nombre entier.',
+                'quantite.min' => 'La quantite ne peut pas etre negative.',
+                'operation.in' => 'L\'operation doit etre : set, add ou subtract.',
             ]);
 
             $operation = $request->operation ?? 'set';
@@ -65,9 +66,9 @@ class ProduitUpdateStockController extends Controller
                 'difference' => $produit->qte_stock - $ancienStock,
                 'ancien_statut' => $ancienStatut->value,
                 'nouveau_statut' => $produit->statut->value,
-            ], 'Stock mis à jour avec succès');
+            ], 'Stock mis a jour avec succes');
         } catch (\Exception $e) {
-            return $this->errorResponse('Erreur lors de la mise à jour du stock', $e->getMessage());
+            return $this->errorResponse('Erreur lors de la mise a jour du stock', $e->getMessage());
         }
     }
 }

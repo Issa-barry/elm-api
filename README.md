@@ -2,7 +2,6 @@
 ### Deploye
 composer2 update
 
-
 php artisan optimize:clear
 
 php artisan optimize
