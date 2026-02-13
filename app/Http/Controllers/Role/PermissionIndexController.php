@@ -13,17 +13,20 @@ class PermissionIndexController extends Controller
     public function __invoke()
     {
         try {
-            $permissions = Permission::all(['id', 'name']);
+            $modules = Permission::all()
+                ->groupBy(fn($p) => explode('.', $p->name)[0])
+                ->map(function ($perms, $module) {
+                    $actions = $perms->pluck('name')->map(fn($p) => explode('.', $p)[1])->values();
 
-            // Grouper par module pour le frontend
-            $grouped = $permissions->groupBy(function ($permission) {
-                return explode('.', $permission->name)[0];
-            });
+                    return [
+                        'module' => $module,
+                        'actions' => $actions,
+                        'permissions' => collect(['create', 'read', 'update', 'delete'])
+                            ->mapWithKeys(fn($action) => [$action => false]),
+                    ];
+                })->values();
 
-            return $this->successResponse([
-                'permissions' => $permissions,
-                'grouped' => $grouped,
-            ], 'Liste des permissions récupérée avec succès');
+            return $this->successResponse($modules, 'Liste des permissions récupérée avec succès');
         } catch (\Exception $e) {
             return $this->errorResponse('Erreur lors de la récupération des permissions', $e->getMessage());
         }
