@@ -45,6 +45,139 @@ class Produit extends Model
 
     protected $appends = ['in_stock', 'is_archived'];
 
+    /* =========================
+       FORMATAGE AUTOMATIQUE
+       ========================= */
+
+    public function setNomAttribute($value): void
+    {
+        $normalizedNom = $this->normalizeText($value);
+
+        if ($normalizedNom === null) {
+            $this->attributes['nom'] = null;
+            return;
+        }
+
+        $lowerNom = mb_strtolower($normalizedNom, 'UTF-8');
+        $firstChar = mb_strtoupper(mb_substr($lowerNom, 0, 1, 'UTF-8'), 'UTF-8');
+        $rest = mb_substr($lowerNom, 1, null, 'UTF-8');
+
+        $this->attributes['nom'] = $firstChar . $rest;
+    }
+
+    public function setCodeAttribute($value): void
+    {
+        $normalizedCode = $this->normalizeText($value, false);
+
+        if ($normalizedCode === null) {
+            $this->attributes['code'] = null;
+            return;
+        }
+
+        // Le code ne doit pas contenir d'espaces, meme internes.
+        $normalizedCode = preg_replace('/\s+/u', '', $normalizedCode) ?? $normalizedCode;
+
+        $this->attributes['code'] = mb_strtoupper($normalizedCode, 'UTF-8');
+    }
+
+    public function setDescriptionAttribute($value): void
+    {
+        $this->attributes['description'] = $this->normalizeText($value);
+    }
+
+    public function setPrixUsineAttribute($value): void
+    {
+        $this->attributes['prix_usine'] = $this->normalizeNonNegativeInteger($value);
+    }
+
+    public function setPrixVenteAttribute($value): void
+    {
+        $this->attributes['prix_vente'] = $this->normalizeNonNegativeInteger($value);
+    }
+
+    public function setPrixAchatAttribute($value): void
+    {
+        $this->attributes['prix_achat'] = $this->normalizeNonNegativeInteger($value);
+    }
+
+    public function setCoutAttribute($value): void
+    {
+        $this->attributes['cout'] = $this->normalizeNonNegativeInteger($value);
+    }
+
+    public function setQteStockAttribute($value): void
+    {
+        $normalizedQte = $this->normalizeNonNegativeInteger($value, false);
+        $this->attributes['qte_stock'] = is_int($normalizedQte) ? $normalizedQte : 0;
+    }
+
+    public function setImageUrlAttribute($value): void
+    {
+        $this->attributes['image_url'] = $this->normalizeText($value, false);
+    }
+
+    public function setTypeAttribute($value): void
+    {
+        if ($value instanceof ProduitType) {
+            $this->attributes['type'] = $value->value;
+            return;
+        }
+
+        if (is_string($value)) {
+            $this->attributes['type'] = strtolower(trim($value));
+            return;
+        }
+
+        $this->attributes['type'] = $value;
+    }
+
+    public function setStatutAttribute($value): void
+    {
+        if ($value instanceof ProduitStatut) {
+            $this->attributes['statut'] = $value->value;
+            return;
+        }
+
+        if (is_string($value)) {
+            $this->attributes['statut'] = strtolower(trim($value));
+            return;
+        }
+
+        $this->attributes['statut'] = $value;
+    }
+
+    private function normalizeText($value, bool $collapseSpaces = true): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($collapseSpaces) {
+            $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+        }
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private function normalizeNonNegativeInteger($value, bool $nullable = true): mixed
+    {
+        if ($value === null || $value === '') {
+            return $nullable ? null : 0;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+        }
+
+        if (is_int($value) || is_float($value) || (is_string($value) && preg_match('/^-?\d+$/', $value))) {
+            return max(0, (int) $value);
+        }
+
+        return $nullable ? null : 0;
+    }
+
     // ========================================
     // BOOT / OBSERVERS
     // ========================================

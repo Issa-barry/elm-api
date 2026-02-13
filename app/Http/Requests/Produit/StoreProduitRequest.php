@@ -173,14 +173,115 @@ class StoreProduitRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Si pas de type spécifié, utiliser materiel par défaut
-        if (!$this->has('type')) {
-            $this->merge(['type' => ProduitType::MATERIEL->value]);
+        $data = [];
+
+        $type = $this->has('type')
+            ? $this->normalizeEnumInput($this->input('type'))
+            : ProduitType::MATERIEL->value;
+        $data['type'] = $type;
+
+        if ($this->has('statut')) {
+            $data['statut'] = $this->normalizeEnumInput($this->input('statut'));
         }
 
-        // Si type service, forcer qte_stock à 0
-        if ($this->input('type') === ProduitType::SERVICE->value) {
-            $this->merge(['qte_stock' => 0]);
+        if ($this->has('nom')) {
+            $data['nom'] = $this->normalizeTextInput($this->input('nom'));
         }
+
+        if ($this->has('code')) {
+            $data['code'] = $this->normalizeCodeInput($this->input('code'));
+        }
+
+        if ($this->has('description')) {
+            $data['description'] = $this->normalizeTextInput($this->input('description'));
+        }
+
+        if ($this->has('image_url')) {
+            $data['image_url'] = $this->normalizeTextInput($this->input('image_url'), false);
+        }
+
+        foreach (['prix_usine', 'prix_vente', 'prix_achat', 'qte_stock', 'cout'] as $field) {
+            if ($this->has($field)) {
+                $data[$field] = $this->normalizeIntegerInput($this->input($field));
+            }
+        }
+
+        if ($type === ProduitType::SERVICE->value) {
+            $data['qte_stock'] = 0;
+        }
+
+        $this->merge($data);
+    }
+
+    private function normalizeTextInput($value, bool $collapseSpaces = true): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($collapseSpaces) {
+            $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+        }
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private function normalizeCodeInput($value): ?string
+    {
+        $normalized = $this->normalizeTextInput($value, false);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', '', $normalized) ?? $normalized;
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return mb_strtoupper($normalized, 'UTF-8');
+    }
+
+    private function normalizeEnumInput($value): ?string
+    {
+        $normalized = $this->normalizeTextInput($value, false);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        return strtolower($normalized);
+    }
+
+    private function normalizeIntegerInput($value)
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $normalized = trim($value);
+
+            // Retirer les separateurs d'espaces (y compris espace inseparable).
+            $normalized = str_replace([' ', "\u{00A0}"], '', $normalized);
+
+            // Retirer les virgules uniquement si elles sont des separateurs de milliers.
+            if (str_contains($normalized, ',')) {
+                if (preg_match('/^-?\d{1,3}(,\d{3})+$/', $normalized)) {
+                    $normalized = str_replace(',', '', $normalized);
+                } else {
+                    return $value;
+                }
+            }
+
+            if (preg_match('/^-?\d+$/', $normalized)) {
+                return (int) $normalized;
+            }
+        }
+
+        return $value;
     }
 }
