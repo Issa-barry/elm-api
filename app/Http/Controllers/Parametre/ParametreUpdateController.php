@@ -21,15 +21,21 @@ class ParametreUpdateController extends Controller
                 'valeur' => 'required',
             ]);
 
-            // Valider selon le type
             $valeur = $validated['valeur'];
 
             switch ($parametre->type) {
                 case Parametre::TYPE_INTEGER:
-                    if (!is_numeric($valeur)) {
-                        return $this->errorResponse('La valeur doit être un nombre entier', null, 422);
+                    if (filter_var($valeur, FILTER_VALIDATE_INT) === false) {
+                        return $this->errorResponse('La valeur doit etre un nombre entier', null, 422);
                     }
-                    $parametre->valeur = (string) (int) $valeur;
+
+                    $intValue = (int) $valeur;
+
+                    if ($parametre->cle === Parametre::CLE_SEUIL_STOCK_FAIBLE && $intValue < 0) {
+                        return $this->errorResponse('Le seuil de stock faible ne peut pas etre negatif', null, 422);
+                    }
+
+                    $parametre->valeur = (string) $intValue;
                     break;
 
                 case Parametre::TYPE_BOOLEAN:
@@ -50,7 +56,6 @@ class ParametreUpdateController extends Controller
 
             $parametre->save();
 
-            // Invalider le cache
             Cache::forget("parametre_{$parametre->cle}");
 
             return $this->successResponse([
@@ -60,17 +65,17 @@ class ParametreUpdateController extends Controller
                 'type' => $parametre->type,
                 'groupe' => $parametre->groupe,
                 'description' => $parametre->description,
-            ], 'Paramètre mis à jour avec succès');
+            ], 'Parametre mis a jour avec succes');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->notFoundResponse('Paramètre non trouvé');
+            return $this->notFoundResponse('Parametre non trouve');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Les données fournies sont invalides.',
+                'message' => 'Les donnees fournies sont invalides.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            return $this->errorResponse('Erreur lors de la mise à jour du paramètre', $e->getMessage());
+            return $this->errorResponse('Erreur lors de la mise a jour du parametre', $e->getMessage());
         }
     }
 }

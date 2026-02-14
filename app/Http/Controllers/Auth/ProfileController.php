@@ -16,7 +16,13 @@ class ProfileController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return $this->successResponse($request->user(), 'Profil récupéré avec succès');
+        $user = $request->user();
+
+        return $this->successResponse([
+            'user' => $user,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ], 'Profil récupéré avec succès');
     }
 
     public function update(Request $request): JsonResponse
@@ -24,10 +30,28 @@ class ProfileController extends Controller
         try {
             $user = $request->user();
 
+            $normalized = [];
+
+            if ($request->exists('email')) {
+                $normalized['email'] = $this->normalizeEmail($request->input('email'));
+            }
+
+            if ($request->exists('ville')) {
+                $normalized['ville'] = $this->normalizeLocation($request->input('ville'));
+            }
+
+            if ($request->exists('quartier')) {
+                $normalized['quartier'] = $this->normalizeLocation($request->input('quartier'));
+            }
+
+            if ($normalized !== []) {
+                $request->merge($normalized);
+            }
+
             $validated = $request->validate([
                 'nom' => ['sometimes', 'string', 'min:2', 'max:100'],
                 'prenom' => ['sometimes', 'string', 'min:2', 'max:100'],
-                'email' => ['sometimes', 'nullable', 'email', 'max:255', 'unique:users,email,' . $user->id],
+                'email' => ['sometimes', 'nullable', 'email:rfc,dns', 'max:255', 'unique:users,email,' . $user->id],
                 'ville' => ['sometimes', 'string', 'min:2', 'max:100'],
                 'quartier' => ['sometimes', 'string', 'min:2', 'max:100'],
             ]);
@@ -46,7 +70,7 @@ class ProfileController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Erreur lors de la mise à jour du profil', [
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage()
@@ -54,5 +78,31 @@ class ProfileController extends Controller
 
             return $this->errorResponse('Erreur lors de la mise à jour du profil', $e->getMessage());
         }
+    }
+
+    private function normalizeEmail($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized === '' ? null : strtolower($normalized);
+    }
+
+    private function normalizeLocation($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return mb_convert_case($normalized, MB_CASE_TITLE, 'UTF-8');
     }
 }

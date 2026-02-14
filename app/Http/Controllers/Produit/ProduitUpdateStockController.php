@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Produit;
 use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Models\Parametre;
 use App\Models\Produit;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class ProduitUpdateStockController extends Controller
             $produit = Produit::find($id);
 
             if (!$produit) {
-                return $this->notFoundResponse('Produit non trouvé');
+                return $this->notFoundResponse('Produit non trouve');
             }
 
             // Service : pas de stock
@@ -31,12 +32,13 @@ class ProduitUpdateStockController extends Controller
             }
 
             $request->validate([
-                'quantite' => 'required|integer',
+                'quantite' => 'required|integer|min:0',
                 'operation' => 'nullable|string|in:set,add,subtract',
             ], [
-                'quantite.required' => 'La quantité est obligatoire.',
-                'quantite.integer' => 'La quantité doit être un nombre entier.',
-                'operation.in' => 'L\'opération doit être : set, add ou subtract.',
+                'quantite.required' => 'La quantite est obligatoire.',
+                'quantite.integer' => 'La quantite doit etre un nombre entier.',
+                'quantite.min' => 'La quantite ne peut pas etre negative.',
+                'operation.in' => 'L\'operation doit etre : set, add ou subtract.',
             ]);
 
             $operation = $request->operation ?? 'set';
@@ -57,6 +59,8 @@ class ProduitUpdateStockController extends Controller
 
             $produit->qte_stock = $nouvelleQuantite;
             $produit->save();
+            $seuilStockFaible = Parametre::getSeuilStockFaible();
+            $niveauAlerte = Parametre::getNiveauAlerteStock($produit->qte_stock);
 
             return $this->successResponse([
                 'produit' => $produit->fresh(),
@@ -65,9 +69,20 @@ class ProduitUpdateStockController extends Controller
                 'difference' => $produit->qte_stock - $ancienStock,
                 'ancien_statut' => $ancienStatut->value,
                 'nouveau_statut' => $produit->statut->value,
-            ], 'Stock mis à jour avec succès');
+                'stock_alert' => [
+                    'seuil_stock_faible' => $seuilStockFaible,
+                    'niveau' => $niveauAlerte,
+                    'is_low_stock' => Parametre::isStockFaible($produit->qte_stock),
+                    'is_out_of_stock' => $produit->qte_stock <= 0,
+                    'message' => match ($niveauAlerte) {
+                        'out_of_stock' => 'Stock epuise. Reapprovisionnement requis.',
+                        'low_stock' => "Stock faible (seuil: {$seuilStockFaible}).",
+                        default => null,
+                    },
+                ],
+            ], 'Stock mis a jour avec succes');
         } catch (\Exception $e) {
-            return $this->errorResponse('Erreur lors de la mise à jour du stock', $e->getMessage());
+            return $this->errorResponse('Erreur lors de la mise a jour du stock', $e->getMessage());
         }
     }
 }

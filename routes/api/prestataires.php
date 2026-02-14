@@ -18,17 +18,17 @@ use App\Http\Controllers\Prestataire\PrestataireToggleStatusController;
 */
 
 Route::prefix('prestataires')->group(function () {
-    // Liste et consultation
-    Route::get('/', PrestataireIndexController::class);
-    Route::get('/{id}', PrestataireShowController::class)->where('id', '[0-9]+');
+    // Lecture
+    Route::get('/', PrestataireIndexController::class)->middleware('permission:prestataires.read');
+    Route::get('/{id}', PrestataireShowController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.read');
 
     // Création
-    Route::post('/', PrestataireStoreController::class);
+    Route::post('/', PrestataireStoreController::class)->middleware('permission:prestataires.create');
 
-    // Mise à jour et suppression
-    Route::put('/{id}', PrestataireUpdateController::class)->where('id', '[0-9]+');
-    Route::delete('/{id}', PrestataireDestroyController::class)->where('id', '[0-9]+');
+    // Mise à jour
+    Route::put('/{id}', PrestataireUpdateController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.update');
+    Route::patch('/{id}/toggle-status', PrestataireToggleStatusController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.update');
 
-    // Actions sur le statut
-    Route::patch('/{id}/toggle-status', PrestataireToggleStatusController::class)->where('id', '[0-9]+');
+    // Suppression
+    Route::delete('/{id}', PrestataireDestroyController::class)->where('id', '[0-9]+')->middleware('permission:prestataires.delete');
 });

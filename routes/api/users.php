@@ -17,14 +17,14 @@ use App\Http\Controllers\Users\UserToggleStatusController;
 */
 
 Route::prefix('users')->group(function () {
-    // Liste et consultation
-    Route::get('/', UserIndexController::class);
-    Route::get('/{id}', UserShowController::class)->where('id', '[0-9]+');
+    // Lecture
+    Route::get('/', UserIndexController::class)->middleware('permission:users.read');
+    Route::get('/{id}', UserShowController::class)->where('id', '[0-9]+')->middleware('permission:users.read');
 
-    // Mise à jour et suppression
-    Route::put('/{id}', UserUpdateController::class)->where('id', '[0-9]+');
-    Route::delete('/{id}', UserDestroyController::class)->where('id', '[0-9]+');
+    // Mise à jour
+    Route::put('/{id}', UserUpdateController::class)->where('id', '[0-9]+')->middleware('permission:users.update');
+    Route::patch('/{id}/toggle-status', UserToggleStatusController::class)->where('id', '[0-9]+')->middleware('permission:users.update');
 
-    // Actions sur le statut
-    Route::patch('/{id}/toggle-status', UserToggleStatusController::class)->where('id', '[0-9]+');
+    // Suppression
+    Route::delete('/{id}', UserDestroyController::class)->where('id', '[0-9]+')->middleware('permission:users.delete');
 });

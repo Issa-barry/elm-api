@@ -13,54 +13,69 @@ class TokenController extends Controller
     use ApiResponse;
 
     /**
-     * Rafraîchir le token
+     * Rafraichir le token
      */
     public function refresh(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
-            
-            // Révoquer le token actuel
-            $request->user()->currentAccessToken()->delete();
 
-            // Créer un nouveau token
-            $token = $user->createToken(
-                'auth_token',
-                ['*'],
-                now()->addMinutes(config('sanctum.expiration', 120))
-            )->plainTextToken;
+            $defaultTokenExpiration = (int) config('sanctum.default_expiration', 120);
+            $rememberMeTokenExpirationDays = (int) config('sanctum.remember_me_expiration_days', 30);
+            $currentToken = $request->user()->currentAccessToken();
 
-            Log::info('Token rafraîchi', [
-                'user_id' => $user->id
+            $currentTokenLifetimeMinutes = null;
+            if ($currentToken?->created_at && $currentToken?->expires_at) {
+                $currentTokenLifetimeMinutes = $currentToken->created_at->diffInMinutes($currentToken->expires_at);
+            }
+
+            $rememberMeThreshold = $defaultTokenExpiration;
+            $isRememberMeToken = $currentTokenLifetimeMinutes !== null
+                && $currentTokenLifetimeMinutes > $rememberMeThreshold;
+
+            if ($currentToken) {
+                $currentToken->delete();
+            }
+
+            $expiresAt = $isRememberMeToken
+                ? now()->addDays($rememberMeTokenExpirationDays)
+                : now()->addMinutes($defaultTokenExpiration);
+
+            $token = $user->createToken('auth_token', ['*'], $expiresAt)->plainTextToken;
+
+            Log::info('Token rafraichi', [
+                'user_id' => $user->id,
             ]);
 
             return $this->successResponse([
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'expires_in' => config('sanctum.expiration', 120) * 60,
-            ], 'Token rafraîchi avec succès');
+                'expires_in' => now()->diffInSeconds($expiresAt),
+                'expires_at' => $expiresAt->toISOString(),
+                'remember_me' => $isRememberMeToken,
+            ], 'Token rafraichi avec succes');
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors du rafraîchissement du token', [
+            Log::error('Erreur lors du rafraichissement du token', [
                 'user_id' => optional($request->user())->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return $this->errorResponse(
-                'Erreur lors du rafraîchissement du token',
+                'Erreur lors du rafraichissement du token',
                 config('app.debug') ? $e->getMessage() : null
             );
         }
     }
 
     /**
-     * Vérifier la validité du token
+     * Verifier la validite du token
      */
     public function check(Request $request): JsonResponse
     {
         return $this->successResponse([
             'valid' => true,
-            'user' => $request->user()
+            'user' => $request->user(),
         ], 'Token valide');
     }
 }

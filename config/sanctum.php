@@ -47,7 +47,23 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_USE_GLOBAL_EXPIRATION', false)
+        ? (int) env('SANCTUM_TOKEN_EXPIRATION', 120)
+        : null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Token Expiration Defaults
+    |--------------------------------------------------------------------------
+    |
+    | These values are used by the application's auth controllers to set the
+    | expires_at column per token. Keep "expiration" above null to honor
+    | per-token expiration windows.
+    |
+    */
+
+    'default_expiration' => (int) env('SANCTUM_DEFAULT_TOKEN_EXPIRATION', 120),
+    'remember_me_expiration_days' => (int) env('SANCTUM_REMEMBER_ME_EXPIRATION_DAYS', 30),
 
     /*
     |--------------------------------------------------------------------------

@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
+    use HasFactory, Notifiable, HasApiTokens, SoftDeletes, HasRoles;
 
     /**
      * Champs autorisés en mass assignment
@@ -26,7 +27,6 @@ class User extends Authenticatable
         'ville',
         'quartier',
         'reference',
-        'role',
         'password',
         'is_active',
         'last_login_at',
@@ -86,6 +86,16 @@ class User extends Authenticatable
         $this->attributes['email'] = $value ? strtolower(trim($value)) : null;
     }
 
+    public function setVilleAttribute($value): void
+    {
+        $this->attributes['ville'] = $this->normalizeLocation($value);
+    }
+
+    public function setQuartierAttribute($value): void
+    {
+        $this->attributes['quartier'] = $this->normalizeLocation($value);
+    }
+
     /* =========================
        ACCESSEURS
        ========================= */
@@ -136,5 +146,20 @@ class User extends Authenticatable
         $this->forceFill([
             'email_verified_at' => now(),
         ])->save();
+    }
+
+    private function normalizeLocation($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return mb_convert_case($normalized, MB_CASE_TITLE, 'UTF-8');
     }
 }
