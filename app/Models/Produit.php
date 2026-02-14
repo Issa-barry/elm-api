@@ -43,7 +43,7 @@ class Produit extends Model
         'archived_at' => 'datetime',
     ];
 
-    protected $appends = ['in_stock', 'is_archived'];
+    protected $appends = ['in_stock', 'is_archived', 'is_low_stock', 'is_out_of_stock', 'low_stock_threshold'];
 
     /* =========================
        FORMATAGE AUTOMATIQUE
@@ -270,6 +270,29 @@ class Produit extends Model
         }
 
         return $this->qte_stock > 0;
+    }
+
+    public function getIsOutOfStockAttribute(): bool
+    {
+        if ($this->type === ProduitType::SERVICE) {
+            return false;
+        }
+
+        return $this->qte_stock <= 0;
+    }
+
+    public function getIsLowStockAttribute(): bool
+    {
+        if ($this->type === ProduitType::SERVICE || $this->is_out_of_stock) {
+            return false;
+        }
+
+        return Parametre::isStockFaible($this->qte_stock);
+    }
+
+    public function getLowStockThresholdAttribute(): int
+    {
+        return Parametre::getSeuilStockFaible();
     }
 
     /**

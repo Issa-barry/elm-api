@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Produit;
 use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Models\Parametre;
 use App\Models\Produit;
 use Illuminate\Http\Request;
 
@@ -58,6 +59,8 @@ class ProduitUpdateStockController extends Controller
 
             $produit->qte_stock = $nouvelleQuantite;
             $produit->save();
+            $seuilStockFaible = Parametre::getSeuilStockFaible();
+            $niveauAlerte = Parametre::getNiveauAlerteStock($produit->qte_stock);
 
             return $this->successResponse([
                 'produit' => $produit->fresh(),
@@ -66,6 +69,17 @@ class ProduitUpdateStockController extends Controller
                 'difference' => $produit->qte_stock - $ancienStock,
                 'ancien_statut' => $ancienStatut->value,
                 'nouveau_statut' => $produit->statut->value,
+                'stock_alert' => [
+                    'seuil_stock_faible' => $seuilStockFaible,
+                    'niveau' => $niveauAlerte,
+                    'is_low_stock' => Parametre::isStockFaible($produit->qte_stock),
+                    'is_out_of_stock' => $produit->qte_stock <= 0,
+                    'message' => match ($niveauAlerte) {
+                        'out_of_stock' => 'Stock epuise. Reapprovisionnement requis.',
+                        'low_stock' => "Stock faible (seuil: {$seuilStockFaible}).",
+                        default => null,
+                    },
+                ],
             ], 'Stock mis a jour avec succes');
         } catch (\Exception $e) {
             return $this->errorResponse('Erreur lors de la mise a jour du stock', $e->getMessage());
