@@ -12,6 +12,27 @@ class UpdateUserRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $normalized = [];
+
+        if ($this->exists('email')) {
+            $normalized['email'] = $this->normalizeEmail($this->input('email'));
+        }
+
+        if ($this->exists('ville')) {
+            $normalized['ville'] = $this->normalizeLocation($this->input('ville'));
+        }
+
+        if ($this->exists('quartier')) {
+            $normalized['quartier'] = $this->normalizeLocation($this->input('quartier'));
+        }
+
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
+    }
+
     public function rules(): array
     {
         $userId = $this->route('id');
@@ -28,7 +49,7 @@ class UpdateUserRequest extends FormRequest
             'email' => [
                 'sometimes',
                 'nullable',
-                'email',
+                'email:rfc,dns',
                 'max:255',
                 Rule::unique('users', 'email')->ignore($userId)
             ],
@@ -54,5 +75,31 @@ class UpdateUserRequest extends FormRequest
             'email.unique' => 'Cette adresse email est déjà utilisée',
             'email.max' => 'L\'email ne peut pas dépasser 255 caractères',
         ];
+    }
+
+    private function normalizeEmail($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized === '' ? null : strtolower($normalized);
+    }
+
+    private function normalizeLocation($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return mb_convert_case($normalized, MB_CASE_TITLE, 'UTF-8');
     }
 }
