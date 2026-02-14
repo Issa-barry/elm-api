@@ -19,12 +19,18 @@ class RegisterController extends Controller
     public function register(Request $request): JsonResponse
     {
         try {
+            $request->merge([
+                'email' => $this->normalizeEmail($request->input('email')),
+                'ville' => $this->normalizeLocation($request->input('ville')),
+                'quartier' => $this->normalizeLocation($request->input('quartier')),
+            ]);
+
             // Validation
             $validated = $request->validate([
                 'nom' => ['required', 'string', 'min:2', 'max:100'],
                 'prenom' => ['required', 'string', 'min:2', 'max:100'],
                 'phone' => ['required', 'string', 'regex:/^[\+]?[0-9]{8,15}$/', 'unique:users,phone'],
-                'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
+                'email' => ['nullable', 'email:rfc,dns', 'max:255', 'unique:users,email'],
                 'pays' => ['required', 'string', 'max:100'],
                 'code_pays' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
                 'code_phone_pays' => ['required', 'string', 'regex:/^\+[0-9]{1,4}$/'],
@@ -37,6 +43,7 @@ class RegisterController extends Controller
                 'prenom.required' => 'Le prénom est obligatoire',
                 'phone.required' => 'Le numéro de téléphone est obligatoire',
                 'phone.unique' => 'Ce numéro de téléphone est déjà utilisé',
+                'email.email' => 'Le format de l\'adresse email est invalide',
                 'email.unique' => 'Cette adresse email est déjà utilisée',
                 'password.confirmed' => 'Les mots de passe ne correspondent pas',
                 'role.required' => 'Le rôle est obligatoire',
@@ -105,5 +112,31 @@ class RegisterController extends Controller
                 config('app.debug') ? $e->getMessage() : null
             );
         }
+    }
+
+    private function normalizeEmail($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized === '' ? null : strtolower($normalized);
+    }
+
+    private function normalizeLocation($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return mb_convert_case($normalized, MB_CASE_TITLE, 'UTF-8');
     }
 }
