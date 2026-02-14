@@ -20,9 +20,9 @@ class ParametreUpdateController extends Controller
             $validated = $request->validate([
                 'valeur' => 'required',
             ]);
-
+ 
             // Valider selon le type
-            $valeur = $validated['valeur'];
+            $valeur = $validated['valeur']; 
 
             switch ($parametre->type) {
                 case Parametre::TYPE_INTEGER:

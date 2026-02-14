@@ -37,9 +37,13 @@ class LoginController extends Controller
                 return $this->forbiddenResponse('Votre compte est désactivé. Veuillez contacter l\'administrateur.');
             }
 
-            $expiresAt = ($validated['remember_me'] ?? false)
-                ? now()->addDays(30)
-                : now()->addMinutes(config('sanctum.expiration', 120));
+            $isRememberMe = (bool) ($validated['remember_me'] ?? false);
+            $defaultTokenExpiration = (int) config('sanctum.default_expiration', 120);
+            $rememberMeTokenExpirationDays = (int) config('sanctum.remember_me_expiration_days', 30);
+
+            $expiresAt = $isRememberMe
+                ? now()->addDays($rememberMeTokenExpirationDays)
+                : now()->addMinutes($defaultTokenExpiration);
 
             $token = $user->createToken('auth_token', ['*'], $expiresAt)->plainTextToken;
             $user->updateLastLogin($request->ip());
@@ -52,7 +56,9 @@ class LoginController extends Controller
                 'permissions' => $user->getAllPermissions()->pluck('name'),
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'expires_in' => $expiresAt->diffInSeconds(now()),
+                'expires_in' => now()->diffInSeconds($expiresAt),
+                'expires_at' => $expiresAt->toISOString(),
+                'remember_me' => $isRememberMe,
             ], 'Connexion réussie');
 
         } catch (ValidationException $e) {
