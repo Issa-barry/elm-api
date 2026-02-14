@@ -63,10 +63,13 @@ class RegisterController extends Controller
             $user->assignRole($validated['role']);
 
             // Créer un token
+            $defaultTokenExpiration = (int) config('sanctum.default_expiration', 120);
+            $expiresAt = now()->addMinutes($defaultTokenExpiration);
+
             $token = $user->createToken(
                 'auth_token',
                 ['*'],
-                now()->addMinutes(config('sanctum.expiration', 120))
+                $expiresAt
             )->plainTextToken;
 
             $user->updateLastLogin($request->ip());
@@ -82,7 +85,8 @@ class RegisterController extends Controller
                 'user' => $user,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'expires_in' => config('sanctum.expiration', 120) * 60,
+                'expires_in' => now()->diffInSeconds($expiresAt),
+                'expires_at' => $expiresAt->toISOString(),
             ], 'Inscription réussie');
 
         } catch (ValidationException $e) {
