@@ -36,6 +36,7 @@ class Parametre extends Model
 
     public const CLE_PRIX_ROULEAU_DEFAUT = 'prix_rouleau_defaut';
     public const CLE_PRODUIT_ROULEAU_ID = 'produit_rouleau_id';
+    public const CLE_SEUIL_STOCK_FAIBLE = 'seuil_stock_faible';
 
     protected $table = 'parametres';
 
@@ -135,6 +136,39 @@ class Parametre extends Model
     {
         $id = self::getProduitRouleauId();
         return $id ? Produit::find($id) : null;
+    }
+
+    public static function getSeuilStockFaible(): int
+    {
+        $value = self::get(self::CLE_SEUIL_STOCK_FAIBLE, 10);
+
+        if (!is_numeric($value)) {
+            return 10;
+        }
+
+        return max(0, (int) $value);
+    }
+
+    public static function isStockFaible(int $stock): bool
+    {
+        if ($stock <= 0) {
+            return false;
+        }
+
+        return $stock <= self::getSeuilStockFaible();
+    }
+
+    public static function getNiveauAlerteStock(int $stock): string
+    {
+        if ($stock <= 0) {
+            return 'out_of_stock';
+        }
+
+        if (self::isStockFaible($stock)) {
+            return 'low_stock';
+        }
+
+        return 'in_stock';
     }
 
     /**

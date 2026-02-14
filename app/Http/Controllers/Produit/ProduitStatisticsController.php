@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Produit;
 
+use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Models\Parametre;
 use App\Models\Produit;
 use Illuminate\Support\Facades\DB;
 
@@ -17,10 +19,24 @@ class ProduitStatisticsController extends Controller
     public function __invoke()
     {
         try {
+            $seuilStockFaible = Parametre::getSeuilStockFaible();
+
             $stats = [
                 'total_produits' => Produit::count(),
-                'produits_en_stock' => Produit::where('in_stock', true)->count(),
-                'produits_en_rupture' => Produit::where('in_stock', false)->count(),
+                'produits_en_stock' => Produit::where(function ($query) {
+                    $query->where('qte_stock', '>', 0)
+                        ->orWhere('type', ProduitType::SERVICE);
+                })->count(),
+                'produits_en_rupture' => Produit::where('qte_stock', '<=', 0)
+                    ->where('type', '!=', ProduitType::SERVICE)
+                    ->count(),
+                'seuil_stock_faible' => $seuilStockFaible,
+                'produits_stock_faible' => $seuilStockFaible > 0
+                    ? Produit::where('qte_stock', '>', 0)
+                        ->where('qte_stock', '<=', $seuilStockFaible)
+                        ->where('type', '!=', ProduitType::SERVICE)
+                        ->count()
+                    : 0,
                 'valeur_stock_total' => Produit::sum(DB::raw('prix_vente * qte_stock')),
                 'valeur_achat_total' => Produit::sum(DB::raw('prix_achat * qte_stock')),
                 'valeur_usine_total' => Produit::sum(DB::raw('prix_usine * qte_stock')),
