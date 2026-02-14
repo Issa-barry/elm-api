@@ -18,6 +18,6 @@ php artisan optimize
 ### MEP (MISE EN PRODUCTION )
 composer2 update
 
-php artisan optimize:clear
+php artisan optimize:clear 
 
 php artisan optimize
