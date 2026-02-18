@@ -37,7 +37,7 @@ class StoreProduitRequest extends FormRequest
 
             // Optionnels
             'description' => 'nullable|string|max:5000',
-            'image_url' => 'nullable|string|max:500',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
         ];
     }
 
@@ -140,6 +140,11 @@ class StoreProduitRequest extends FormRequest
 
             // Description
             'description.max' => 'La description ne peut pas dépasser 5000 caractères.',
+
+            // Image
+            'image.image' => 'Le fichier doit être une image.',
+            'image.mimes' => 'L\'image doit être au format jpg, jpeg, png ou webp.',
+            'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
         ];
     }
 
@@ -194,10 +199,6 @@ class StoreProduitRequest extends FormRequest
 
         if ($this->has('description')) {
             $data['description'] = $this->normalizeTextInput($this->input('description'));
-        }
-
-        if ($this->has('image_url')) {
-            $data['image_url'] = $this->normalizeTextInput($this->input('image_url'), false);
         }
 
         foreach (['prix_usine', 'prix_vente', 'prix_achat', 'qte_stock', 'cout'] as $field) {

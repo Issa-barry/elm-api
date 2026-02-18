@@ -13,7 +13,7 @@ class UserShowController extends Controller
     public function __invoke($id)
     {
         try {
-            $user = User::find($id);
+            $user = User::with('roles')->find($id);
 
             if (!$user) {
                 return $this->notFoundResponse('Utilisateur non trouvé');

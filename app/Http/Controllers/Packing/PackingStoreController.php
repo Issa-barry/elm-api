@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Packing;
 
+use App\Enums\PackingStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Packing\StorePackingRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Packing;
 use App\Models\Parametre;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PackingStoreController extends Controller
 {
@@ -15,11 +18,33 @@ class PackingStoreController extends Controller
     public function __invoke(StorePackingRequest $request)
     {
         try {
-            $packing = Packing::create($request->validated());
-            $packing->load(['prestataire', 'facture']);
-            $produitRouleau = Parametre::getProduitRouleau()?->fresh();
+            $payload = $request->safe()->except(['montant']);
+            $targetStatut = $payload['statut'] ?? Packing::STATUT_DEFAUT;
+            $doImmediateValidation = $targetStatut === PackingStatut::VALIDE->value;
 
+            if ($doImmediateValidation) {
+                $payload['statut'] = PackingStatut::A_VALIDER->value;
+            }
+
+            $result = DB::transaction(function () use ($payload, $doImmediateValidation) {
+                $packing = Packing::create($payload);
+                $facture = null;
+
+                if ($doImmediateValidation) {
+                    $facture = $packing->valider();
+                }
+
+                $packing->refresh()->load(['prestataire', 'facture']);
+
+                return [
+                    'packing' => $packing,
+                    'facture' => $facture?->fresh(['prestataire', 'packings']) ?? $packing->facture,
+                ];
+            });
+
+            $produitRouleau = Parametre::getProduitRouleau()?->fresh();
             $stockAlert = null;
+
             if ($produitRouleau) {
                 $seuilStockFaible = Parametre::getSeuilStockFaible();
                 $niveauAlerte = Parametre::getNiveauAlerteStock($produitRouleau->qte_stock);
@@ -41,11 +66,15 @@ class PackingStoreController extends Controller
             }
 
             return $this->createdResponse([
-                'packing' => $packing,
-                'facture' => $packing->facture,
+                'packing' => $result['packing'],
+                'facture' => $result['facture'],
                 'stock_alert' => $stockAlert,
-            ], 'Packing cree et facture generee avec succes');
-        } catch (\Exception $e) {
+            ], $doImmediateValidation
+                ? 'Packing cree, valide et facture generee avec succes'
+                : 'Packing cree avec succes');
+        } catch (ValidationException $e) {
+            return $this->validationErrorResponse($e->errors(), 'Les donnees fournies sont invalides.');
+        } catch (\Throwable $e) {
             return $this->errorResponse('Erreur lors de la creation du packing', $e->getMessage());
         }
     }

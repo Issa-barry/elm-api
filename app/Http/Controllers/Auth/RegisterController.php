@@ -24,7 +24,6 @@ class RegisterController extends Controller
                 'ville' => $this->normalizeLocation($request->input('ville')),
                 'quartier' => $this->normalizeLocation($request->input('quartier')),
             ]);
-
             // Validation
             $validated = $request->validate([
                 'nom' => ['required', 'string', 'min:2', 'max:100'],

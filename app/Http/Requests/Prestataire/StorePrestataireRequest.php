@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Prestataire;
 
+use App\Enums\PrestataireType;
 use App\Models\Prestataire;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,43 +16,87 @@ class StorePrestataireRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $codePays = Prestataire::normalizeIsoCountryCode($this->input('code_pays')) ?? 'GN';
+        $codePhonePays = Prestataire::normalizeDialCode($this->input('code_phone_pays')) ?? '+224';
+
+        $this->merge([
+            'email' => Prestataire::normalizeEmail($this->input('email')),
+            'pays' => Prestataire::normalizeLocation($this->input('pays')) ?? 'Guinee',
+            'code_pays' => $codePays,
+            'code_phone_pays' => $codePhonePays,
+            'phone' => Prestataire::normalizePhoneE164($this->input('phone'), $codePhonePays),
+            'ville' => Prestataire::normalizeLocation($this->input('ville')),
+            'quartier' => Prestataire::normalizeLocation($this->input('quartier')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
-            'nom' => 'required_unless:type,fournisseur|nullable|string|max:255',
-            'prenom' => 'required_unless:type,fournisseur|nullable|string|max:255',
-            'raison_sociale' => 'required_if:type,fournisseur|nullable|string|max:255',
-            'phone' => 'required|string|max:20|unique:prestataires,phone',
-            'email' => 'nullable|email|max:255|unique:prestataires,email',
-            'pays' => 'nullable|string|max:100',
-            'code_pays' => 'nullable|string|max:5',
-            'code_phone_pays' => 'nullable|string|max:5',
-            'ville' => 'nullable|string|max:100',
-            'quartier' => 'nullable|string|max:100',
-            'adresse' => 'nullable|string|max:255',
-            'specialite' => 'nullable|string|max:255',
-            'type' => ['nullable', Rule::in(array_keys(Prestataire::TYPES))],
-            'tarif_horaire' => 'nullable|integer|min:0',
-            'notes' => 'nullable|string|max:5000',
-            'is_active' => 'nullable|boolean',
+            'nom' => ['nullable', 'string', 'max:255', 'required_without:raison_sociale'],
+            'prenom' => ['nullable', 'string', 'max:255', 'required_without:raison_sociale'],
+            'raison_sociale' => ['nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'regex:/^\+[1-9][0-9]{7,14}$/', 'unique:prestataires,phone'],
+            'email' => ['nullable', 'email:rfc,dns', 'max:255', 'unique:prestataires,email'],
+            'pays' => ['required', 'string', 'max:100'],
+            'code_pays' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
+            'code_phone_pays' => ['required', 'string', 'regex:/^\+[1-9][0-9]{0,3}$/'],
+            'ville' => ['nullable', 'string', 'max:100'],
+            'quartier' => ['nullable', 'string', 'max:100'],
+            'adresse' => ['nullable', 'string', 'max:255'],
+            'specialite' => ['nullable', 'string', 'max:255'],
+            'type' => ['required', Rule::enum(PrestataireType::class)],
+            'tarif_horaire' => ['nullable', 'integer', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+            'is_active' => ['nullable', 'boolean'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $raisonSociale = trim((string) $this->input('raison_sociale', ''));
+            $nom = trim((string) $this->input('nom', ''));
+            $prenom = trim((string) $this->input('prenom', ''));
+
+            if ($raisonSociale === '' && ($nom === '' || $prenom === '')) {
+                if ($nom === '') {
+                    $validator->errors()->add('nom', 'Le nom est obligatoire si raison_sociale est vide.');
+                }
+
+                if ($prenom === '') {
+                    $validator->errors()->add('prenom', 'Le prenom est obligatoire si raison_sociale est vide.');
+                }
+            }
+        });
     }
 
     public function messages(): array
     {
         return [
-            'nom.required_unless' => 'Le nom est obligatoire sauf pour les fournisseurs.',
-            'nom.max' => 'Le nom ne peut pas dépasser 255 caractères.',
-            'prenom.required_unless' => 'Le prénom est obligatoire sauf pour les fournisseurs.',
-            'prenom.max' => 'Le prénom ne peut pas dépasser 255 caractères.',
-            'raison_sociale.required_if' => 'La raison sociale est obligatoire pour les fournisseurs.',
-            'phone.required' => 'Le numéro de téléphone est obligatoire.',
-            'phone.unique' => 'Ce numéro de téléphone est déjà utilisé.',
-            'email.email' => 'L\'adresse email n\'est pas valide.',
-            'email.unique' => 'Cette adresse email est déjà utilisée.',
-            'tarif_horaire.integer' => 'Le tarif horaire doit être un nombre entier.',
-            'tarif_horaire.min' => 'Le tarif horaire ne peut pas être négatif.',
-            'type.in' => 'Le type doit être : machiniste, mecanicien, consultant ou fournisseur.',
+            'nom.required_without' => 'Le nom est obligatoire si raison_sociale est vide.',
+            'nom.max' => 'Le nom ne peut pas depasser 255 caracteres.',
+            'prenom.required_without' => 'Le prenom est obligatoire si raison_sociale est vide.',
+            'prenom.max' => 'Le prenom ne peut pas depasser 255 caracteres.',
+            'raison_sociale.max' => 'La raison sociale ne peut pas depasser 255 caracteres.',
+            'phone.required' => 'Le numero de telephone est obligatoire.',
+            'phone.regex' => 'Le numero de telephone doit etre au format E.164 (ex: +224...).',
+            'phone.unique' => 'Ce numero de telephone est deja utilise.',
+            'email.email' => 'L\'adresse email est invalide.',
+            'email.unique' => 'Cette adresse email est deja utilisee.',
+            'pays.required' => 'Le pays est obligatoire.',
+            'code_pays.required' => 'Le code pays est obligatoire.',
+            'code_pays.size' => 'Le code pays doit contenir exactement 2 lettres.',
+            'code_pays.regex' => 'Le code pays doit etre au format ISO alpha-2 (ex: GN).',
+            'code_phone_pays.required' => 'Le code telephone pays est obligatoire.',
+            'code_phone_pays.regex' => 'Le code telephone pays doit etre au format international (ex: +224).',
+            'type.required' => 'Le type est obligatoire.',
+            'type.enum' => 'Le type doit etre : machiniste, mecanicien, consultant ou fournisseur.',
+            'tarif_horaire.integer' => 'Le tarif horaire doit etre un nombre entier.',
+            'tarif_horaire.min' => 'Le tarif horaire ne peut pas etre negatif.',
+            'is_active.boolean' => 'Le statut actif doit etre un booleen.',
         ];
     }
 
@@ -59,7 +104,7 @@ class StorePrestataireRequest extends FormRequest
     {
         throw new HttpResponseException(response()->json([
             'success' => false,
-            'message' => 'Les données fournies sont invalides.',
+            'message' => 'Les donnees fournies sont invalides.',
             'errors' => $validator->errors(),
         ], 422));
     }

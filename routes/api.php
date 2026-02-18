@@ -7,8 +7,8 @@ Route::prefix('v1')->group(function () {
         require __DIR__.'/api/auth.php';
     });
 
-    // Routes protégées par authentification
-    Route::middleware('auth:sanctum')->group(function () {
+    // Routes backoffice (staff uniquement)
+    Route::middleware(['auth:sanctum', 'user.type:staff'])->group(function () {
         require __DIR__.'/api/roles.php';
         require __DIR__.'/api/produits.php';
         require __DIR__.'/api/users.php';
@@ -18,4 +18,9 @@ Route::prefix('v1')->group(function () {
         require __DIR__.'/api/facture-packings.php';
         require __DIR__.'/api/parametres.php';
     });
+
+    // Routes mobile (futur — client & prestataire)
+    // Route::middleware(['auth:sanctum', 'user.type:client,prestataire'])->prefix('mobile')->group(function () {
+    //     // require __DIR__.'/api/mobile.php';
+    // });
 });

@@ -14,7 +14,12 @@ class UserIndexController extends Controller
     public function __invoke(Request $request)
     {
         try {
-            $query = User::query();
+            $query = User::with('roles');
+
+            // Filtre par type de compte
+            if ($request->has('type')) {
+                $query->where('type', $request->type);
+            }
 
             // Filtre par statut actif
             if ($request->has('is_active')) {
