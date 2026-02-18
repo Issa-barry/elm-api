@@ -270,7 +270,7 @@
                 </div>
             </main>
                 <h1 class="mt-6 ml-4 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl lg:text-5xl">
-                 Version 5.0 (maj remeber) | 18/02/2026
+                 Version 5.1 (user , prest, utilisateur) | 18/02/2026
             </h1>
 
         </div>

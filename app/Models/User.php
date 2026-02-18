@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Enums\UserType;
 
 class User extends Authenticatable
 {
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'ville',
         'quartier',
         'reference',
+        'type',
         'password',
         'is_active',
         'last_login_at',
@@ -59,6 +61,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'type' => UserType::class,
         ];
     }
 
@@ -128,6 +131,30 @@ class User extends Authenticatable
                 );
             }
         });
+    }
+
+    /* =========================
+       TYPE DE COMPTE
+       ========================= */
+
+    public function isStaff(): bool
+    {
+        return $this->type === UserType::STAFF;
+    }
+
+    public function isClient(): bool
+    {
+        return $this->type === UserType::CLIENT;
+    }
+
+    public function isPrestataire(): bool
+    {
+        return $this->type === UserType::PRESTATAIRE;
+    }
+
+    public function isInvestisseur(): bool
+    {
+        return $this->type === UserType::INVESTISSEUR;
     }
 
     /* =========================

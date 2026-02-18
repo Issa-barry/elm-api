@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Enums\UserType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -58,6 +59,7 @@ class UpdateUserRequest extends FormRequest
             'code_phone_pays' => ['sometimes', 'nullable', 'string', 'max:10'],
             'ville' => ['sometimes', 'nullable', 'string', 'max:100'],
             'quartier' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'type' => ['sometimes', Rule::in(UserType::values())],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
@@ -74,6 +76,7 @@ class UpdateUserRequest extends FormRequest
             'email.email' => 'L\'adresse email doit être valide',
             'email.unique' => 'Cette adresse email est déjà utilisée',
             'email.max' => 'L\'email ne peut pas dépasser 255 caractères',
+            'type.in' => 'Le type de compte doit être : ' . implode(', ', UserType::values()) . '.',
         ];
     }
 

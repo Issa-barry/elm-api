@@ -30,6 +30,10 @@ return new class extends Migration
             // Référence (auto-généré)
             $table->string('reference')->unique();
 
+            // Type de compte (staff|client|prestataire)
+            $table->string('type', 20)->default('staff')->comment('Nature du compte : staff, client, prestataire, investisseur');
+            $table->index('type');
+
             // Auth
             $table->string('password');
             $table->boolean('is_active')->default(true);
