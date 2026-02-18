@@ -17,14 +17,15 @@ class PrestataireUpdateController extends Controller
             $prestataire = Prestataire::find($id);
 
             if (!$prestataire) {
-                return $this->notFoundResponse('Prestataire non trouvé');
+                return $this->notFoundResponse('Prestataire non trouve');
             }
 
-            $prestataire->update($request->validated());
+            $payload = $request->safe()->except(['reference']);
+            $prestataire->update($payload);
 
-            return $this->successResponse($prestataire->fresh(), 'Prestataire mis à jour avec succès');
-        } catch (\Exception $e) {
-            return $this->errorResponse('Erreur lors de la mise à jour du prestataire', $e->getMessage());
+            return $this->successResponse($prestataire->fresh(), 'Prestataire mis a jour avec succes');
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Erreur lors de la mise a jour du prestataire', $e->getMessage());
         }
     }
 }
