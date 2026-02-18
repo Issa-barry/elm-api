@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Packing;
 
+use App\Enums\PackingStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Packing;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PackingChangeStatutController extends Controller
 {
@@ -18,41 +20,42 @@ class PackingChangeStatutController extends Controller
             $packing = Packing::find($id);
 
             if (!$packing) {
-                return $this->notFoundResponse('Packing non trouvé');
+                return $this->notFoundResponse('Packing non trouve');
             }
 
             $validated = $request->validate([
-                'statut' => ['required', Rule::in(array_keys(Packing::STATUTS))],
+                'statut' => ['required', Rule::enum(PackingStatut::class)],
             ], [
                 'statut.required' => 'Le statut est obligatoire.',
-                'statut.in' => 'Le statut doit être : a_valider, valide ou annule.',
+                'statut.enum' => 'Le statut doit etre : a_valider, valide ou annule.',
             ]);
 
             $newStatut = $validated['statut'];
 
-            // Si on valide le packing, créer automatiquement une facture
-            if ($newStatut === Packing::STATUT_VALIDE && $packing->statut === Packing::STATUT_A_VALIDER) {
+            if ($newStatut === PackingStatut::VALIDE->value) {
                 $facture = $packing->valider();
-                $packing->load(['prestataire', 'facture']);
+                $packing->refresh()->load(['prestataire', 'facture']);
 
                 return $this->successResponse([
                     'packing' => $packing,
-                    'facture' => $facture,
-                ], 'Packing validé et facture créée avec succès');
+                    'facture' => $facture?->fresh(['prestataire', 'packings']) ?? $packing->facture,
+                ], 'Packing valide avec succes');
             }
 
-            // Sinon, changer simplement le statut
-            $packing->update(['statut' => $newStatut]);
-            $packing->load('prestataire');
+            if ($newStatut === PackingStatut::ANNULE->value) {
+                $packing->annuler();
+                $packing->refresh()->load(['prestataire', 'facture']);
 
-            return $this->successResponse($packing, 'Statut du packing mis à jour avec succès');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Les données fournies sont invalides.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
+                return $this->successResponse($packing, 'Packing annule avec succes');
+            }
+
+            $packing->update(['statut' => PackingStatut::A_VALIDER]);
+            $packing->refresh()->load(['prestataire', 'facture']);
+
+            return $this->successResponse($packing, 'Statut du packing mis a jour avec succes');
+        } catch (ValidationException $e) {
+            return $this->validationErrorResponse($e->errors(), 'Les donnees fournies sont invalides.');
+        } catch (\Throwable $e) {
             return $this->errorResponse('Erreur lors du changement de statut', $e->getMessage());
         }
     }

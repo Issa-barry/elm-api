@@ -46,6 +46,7 @@ class User extends Authenticatable
      */
     protected $appends = [
         'nom_complet',
+        'role_names',
     ];
 
     /**
@@ -103,6 +104,11 @@ class User extends Authenticatable
     public function getNomCompletAttribute(): string
     {
         return $this->prenom . ' ' . $this->nom;
+    }
+
+    public function getRoleNamesAttribute(): array
+    {
+        return $this->getRoleNames()->toArray();
     }
 
     /* =========================

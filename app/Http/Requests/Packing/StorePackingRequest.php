@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Packing;
 
+use App\Enums\PackingStatut;
 use App\Models\Packing;
 use App\Models\Parametre;
-use App\Models\Prestataire;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -20,25 +20,34 @@ class StorePackingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'prestataire_id' => [
-                'required',
-                'integer',
-                Rule::exists('prestataires', 'id')->where(function ($query) {
-                    $query->where('type', Prestataire::TYPE_MACHINISTE)
-                          ->whereNull('deleted_at');
-                }),
-            ],
-            'date' => 'required|date',
-            'nb_rouleaux' => 'required|integer|min:1',
-            'prix_par_rouleau' => 'nullable|integer|min:0',
-            'statut' => ['nullable', Rule::in(array_keys(Packing::STATUTS))],
-            'notes' => 'nullable|string|max:5000',
+            'prestataire_id' => ['required', 'integer', Rule::exists('prestataires', 'id')],
+            'date' => ['required', 'date'],
+            'nb_rouleaux' => ['required', 'integer', 'min:0'],
+            'prix_par_rouleau' => ['required', 'integer', 'min:0'],
+            'statut' => ['nullable', Rule::enum(PackingStatut::class)],
+            'facture_id' => ['nullable', 'integer', Rule::exists('facture_packings', 'id')],
+            'notes' => ['nullable', 'string'],
+            'montant' => ['prohibited'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('prix_par_rouleau') || $this->input('prix_par_rouleau') === null || $this->input('prix_par_rouleau') === '') {
+            $this->merge([
+                'prix_par_rouleau' => Parametre::getPrixRouleauDefaut(),
+            ]);
+        }
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $targetStatut = $this->input('statut', Packing::STATUT_DEFAUT);
+            if ($targetStatut !== PackingStatut::VALIDE->value) {
+                return;
+            }
+
             $nbRouleaux = (int) $this->input('nb_rouleaux', 0);
             if ($nbRouleaux <= 0) {
                 return;
@@ -49,36 +58,34 @@ class StorePackingRequest extends FormRequest
                 return;
             }
 
-            if ($produit->qte_stock <= 0) {
-                $validator->errors()->add('nb_rouleaux', 'Stock de rouleaux épuisé (stock actuel : 0).');
-            } elseif ($produit->qte_stock < $nbRouleaux) {
-                $validator->errors()->add('nb_rouleaux', "Stock insuffisant. Stock disponible : {$produit->qte_stock} rouleaux.");
+            if ($produit->qte_stock < $nbRouleaux) {
+                $validator->errors()->add(
+                    'nb_rouleaux',
+                    "Stock insuffisant. Stock disponible : {$produit->qte_stock} rouleaux."
+                );
             }
         });
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (!$this->has('prix_par_rouleau') || $this->prix_par_rouleau === null) {
-            $this->merge([
-                'prix_par_rouleau' => Parametre::getPrixRouleauDefaut(),
-            ]);
-        }
     }
 
     public function messages(): array
     {
         return [
             'prestataire_id.required' => 'Le prestataire est obligatoire.',
-            'prestataire_id.exists' => 'Le prestataire sélectionné doit être un machiniste actif.',
+            'prestataire_id.integer' => 'Le prestataire est invalide.',
+            'prestataire_id.exists' => 'Le prestataire selectionne est introuvable.',
             'date.required' => 'La date est obligatoire.',
-            'date.date' => 'La date n\'est pas valide.',
+            'date.date' => 'La date est invalide.',
             'nb_rouleaux.required' => 'Le nombre de rouleaux est obligatoire.',
-            'nb_rouleaux.integer' => 'Le nombre de rouleaux doit être un nombre entier.',
-            'nb_rouleaux.min' => 'Le nombre de rouleaux doit être au moins 1.',
-            'prix_par_rouleau.integer' => 'Le prix par rouleau doit être un nombre entier.',
-            'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas être négatif.',
-            'statut.in' => 'Le statut doit être : a_valider, valide ou annule.',
+            'nb_rouleaux.integer' => 'Le nombre de rouleaux doit etre un entier.',
+            'nb_rouleaux.min' => 'Le nombre de rouleaux ne peut pas etre negatif.',
+            'prix_par_rouleau.required' => 'Le prix par rouleau est obligatoire.',
+            'prix_par_rouleau.integer' => 'Le prix par rouleau doit etre un entier.',
+            'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas etre negatif.',
+            'statut.enum' => 'Le statut doit etre : a_valider, valide ou annule.',
+            'facture_id.integer' => 'La facture est invalide.',
+            'facture_id.exists' => 'La facture fournie est introuvable.',
+            'notes.string' => 'Les notes doivent etre une chaine de caracteres.',
+            'montant.prohibited' => 'Le montant est calcule automatiquement par le serveur.',
         ];
     }
 
@@ -86,7 +93,7 @@ class StorePackingRequest extends FormRequest
     {
         throw new HttpResponseException(response()->json([
             'success' => false,
-            'message' => 'Les données fournies sont invalides.',
+            'message' => 'Les donnees fournies sont invalides.',
             'errors' => $validator->errors(),
         ], 422));
     }

@@ -14,11 +14,12 @@ class PrestataireStoreController extends Controller
     public function __invoke(StorePrestataireRequest $request)
     {
         try {
-            $prestataire = Prestataire::create($request->validated());
+            $payload = $request->safe()->except(['reference']);
+            $prestataire = Prestataire::create($payload);
 
-            return $this->createdResponse($prestataire, 'Prestataire créé avec succès');
-        } catch (\Exception $e) {
-            return $this->errorResponse('Erreur lors de la création du prestataire', $e->getMessage());
+            return $this->createdResponse($prestataire->fresh(), 'Prestataire cree avec succes');
+        } catch (\Throwable $e) {
+            return $this->errorResponse('Erreur lors de la creation du prestataire', $e->getMessage());
         }
     }
 }
