@@ -20,7 +20,8 @@
       "Bash(C:/laragon/bin/php/php-8.4.6-nts-Win32-vs17-x64/php.exe artisan test:*)",
       "Bash(dir:*)",
       "Bash(cmd /c \"dir c:\\\\laragon\\\\www\\\\elm-api /b\")",
-      "Bash(powershell -command:*)"
+      "Bash(powershell -command:*)",
+      "Bash(composer require:*)"
     ]
   }
 }

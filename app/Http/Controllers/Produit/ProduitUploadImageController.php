@@ -23,36 +23,46 @@ class ProduitUploadImageController extends Controller
             }
 
             $request->validate([
-                'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+                'image' => [
+                    'required',
+                    'image',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:5120',
+                    function ($attribute, $value, $fail) {
+                        $parts = explode('.', $value->getClientOriginalName());
+                        if (count($parts) > 2) {
+                            $fail('Nom de fichier invalide.');
+                        }
+                    },
+                ],
             ], [
                 'image.required' => 'L\'image est obligatoire.',
-                'image.image' => 'Le fichier doit être une image.',
-                'image.mimes' => 'L\'image doit être au format jpg, jpeg, png ou webp.',
-                'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
+                'image.image'    => 'Le fichier doit être une image.',
+                'image.mimes'    => 'Formats acceptés : jpg, jpeg, png, webp.',
+                'image.max'      => 'L\'image ne doit pas dépasser 5 Mo.',
             ]);
 
-            // Supprimer l'ancienne image si elle existe
+            // Supprimer l'ancienne image
             if ($produit->image_url) {
-                $oldPath = str_replace(url('storage') . '/', '', $produit->image_url);
-                Storage::disk('public')->delete($oldPath);
+                $oldPath = str_replace(Storage::disk('public')->url(''), '', $produit->image_url);
+                Storage::disk('public')->delete(ltrim($oldPath, '/'));
             }
 
-            // Stocker la nouvelle image
+            // Stocker sans compression (intervention/image non installé)
             $path = $request->file('image')->store("produits/{$produit->id}", 'public');
-
-            // Générer l'URL publique
-            $url = Storage::disk('public')->url($path);
+            $url  = Storage::disk('public')->url($path);
 
             $produit->update(['image_url' => $url]);
             $produit->load(['creator:id,nom,prenom', 'updater:id,nom,prenom']);
 
-            return $this->successResponse($produit, 'Image du produit uploadée avec succès');
+            return $this->successResponse($produit, 'Image uploadée avec succès');
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->validationErrorResponse($e->errors());
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'upload de l\'image du produit', [
+            Log::error('Erreur upload image produit', [
                 'produit_id' => $id,
-                'error' => $e->getMessage(),
+                'error'      => $e->getMessage(),
             ]);
 
             return $this->errorResponse('Erreur lors de l\'upload de l\'image');
