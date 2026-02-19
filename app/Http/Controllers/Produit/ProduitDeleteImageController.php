@@ -25,18 +25,18 @@ class ProduitDeleteImageController extends Controller
                 return $this->errorResponse('Ce produit n\'a pas d\'image', null, 404);
             }
 
-            // Supprimer le fichier du storage
-            $path = str_replace(url('storage') . '/', '', $produit->image_url);
-            Storage::disk('public')->delete($path);
+            $path = str_replace(Storage::disk('public')->url(''), '', $produit->image_url);
+            Storage::disk('public')->delete(ltrim($path, '/'));
 
             $produit->update(['image_url' => null]);
             $produit->load(['creator:id,nom,prenom', 'updater:id,nom,prenom']);
 
-            return $this->successResponse($produit, 'Image du produit supprimée avec succès');
+            return $this->successResponse($produit, 'Image supprimée avec succès');
+
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la suppression de l\'image du produit', [
+            Log::error('Erreur suppression image produit', [
                 'produit_id' => $id,
-                'error' => $e->getMessage(),
+                'error'      => $e->getMessage(),
             ]);
 
             return $this->errorResponse('Erreur lors de la suppression de l\'image');
