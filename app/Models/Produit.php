@@ -26,6 +26,8 @@ class Produit extends Model
         'archived_at',
         'description',
         'image_url',
+        'is_critique',
+        'last_stockout_notified_at',
         'created_by',
         'updated_by',
         'deleted_by',
@@ -33,14 +35,16 @@ class Produit extends Model
     ];
 
     protected $casts = [
-        'prix_usine' => 'integer',
-        'prix_vente' => 'integer',
-        'prix_achat' => 'integer',
-        'cout' => 'integer',
-        'qte_stock' => 'integer',
-        'type' => ProduitType::class,
-        'statut' => ProduitStatut::class,
-        'archived_at' => 'datetime',
+        'prix_usine'               => 'integer',
+        'prix_vente'               => 'integer',
+        'prix_achat'               => 'integer',
+        'cout'                     => 'integer',
+        'qte_stock'                => 'integer',
+        'type'                     => ProduitType::class,
+        'statut'                   => ProduitStatut::class,
+        'archived_at'              => 'datetime',
+        'is_critique'              => 'boolean',
+        'last_stockout_notified_at'=> 'datetime',
     ];
 
     protected $appends = ['in_stock', 'is_archived', 'is_low_stock', 'is_out_of_stock', 'low_stock_threshold'];
