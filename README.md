@@ -1,8 +1,13 @@
 
 ### 1) Deploiement initiale (1er deployment)
+cd domains/usine-eau-api.fr/public_html
+
 composer2 update
 php artisan migrate
 php artisan db:seed
+php artisan optimize:clear
+php artisan optimize
+
  
 
 ## 1TER Seeders individuels (si besoin)
