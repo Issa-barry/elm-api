@@ -7,7 +7,7 @@ use App\Enums\UserType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateUserRequest extends FormRequest
+class StoreUserRequest extends FormRequest
 {
     use ValidatesKycFields;
 
@@ -42,46 +42,34 @@ class UpdateUserRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->route('id');
-
         return array_merge([
             // Identité
-            'civilite' => ['sometimes', 'nullable', Rule::in(Civilite::values())],
-            'nom' => ['sometimes', 'string', 'max:255'],
-            'prenom' => ['sometimes', 'string', 'max:255'],
-            'date_naissance' => ['sometimes', 'nullable', 'date', 'before:today'],
+            'civilite' => ['nullable', Rule::in(Civilite::values())],
+            'nom' => ['required', 'string', 'max:255'],
+            'prenom' => ['required', 'string', 'max:255'],
+            'date_naissance' => ['nullable', 'date', 'before:today'],
 
             // Contact
-            'phone' => [
-                'sometimes',
-                'string',
-                'max:20',
-                Rule::unique('users', 'phone')->ignore($userId),
-            ],
-            'email' => [
-                'sometimes',
-                'nullable',
-                'email:rfc,dns',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($userId),
-            ],
+            'phone' => ['required', 'string', 'max:20', Rule::unique('users', 'phone')],
+            'email' => ['nullable', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')],
 
             // Type & rôle
-            'type' => ['sometimes', Rule::in(UserType::values())],
-            'role' => ['sometimes', 'string', 'exists:roles,name'],
+            'type' => ['required', Rule::in(UserType::values())],
+            'role' => ['required', 'string', 'exists:roles,name'],
 
             // Localisation
-            'pays' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'code_pays' => ['sometimes', 'nullable', 'string', 'max:10'],
-            'code_phone_pays' => ['sometimes', 'nullable', 'string', 'max:10'],
-            'ville' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'quartier' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'adresse' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'pays' => ['required', 'string', 'max:100'],
+            'code_pays' => ['required', 'string', 'max:10'],
+            'code_phone_pays' => ['required', 'string', 'max:10'],
+            'ville' => ['required', 'string', 'max:100'],
+            'quartier' => ['required', 'string', 'max:100'],
+            'adresse' => ['nullable', 'string', 'max:500'],
 
             // Préférences
             'language' => ['sometimes', 'string', 'max:5'],
 
             // Auth
+            'password' => ['required', 'string', 'min:8'],
             'is_active' => ['sometimes', 'boolean'],
         ], $this->kycRules());
     }
@@ -89,17 +77,19 @@ class UpdateUserRequest extends FormRequest
     public function messages(): array
     {
         return array_merge([
-            'nom.string' => 'Le nom doit être une chaîne de caractères.',
-            'nom.max' => 'Le nom ne peut pas dépasser 255 caractères.',
-            'prenom.string' => 'Le prénom doit être une chaîne de caractères.',
-            'prenom.max' => 'Le prénom ne peut pas dépasser 255 caractères.',
+            'nom.required' => 'Le nom est obligatoire.',
+            'prenom.required' => 'Le prénom est obligatoire.',
+            'phone.required' => 'Le numéro de téléphone est obligatoire.',
             'phone.unique' => 'Ce numéro de téléphone est déjà utilisé.',
-            'phone.max' => 'Le numéro de téléphone ne peut pas dépasser 20 caractères.',
             'email.email' => 'L\'adresse email doit être valide.',
             'email.unique' => 'Cette adresse email est déjà utilisée.',
-            'email.max' => 'L\'email ne peut pas dépasser 255 caractères.',
+            'type.required' => 'Le type de compte est obligatoire.',
             'type.in' => 'Le type de compte doit être : ' . implode(', ', UserType::values()) . '.',
+            'role.required' => 'Le rôle est obligatoire.',
             'role.exists' => 'Le rôle sélectionné n\'existe pas.',
+            'password.required' => 'Le mot de passe est obligatoire.',
+            'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
+            'is_active.boolean' => 'Le champ actif doit être vrai ou faux.',
             'civilite.in' => 'La civilité doit être : ' . implode(', ', Civilite::values()) . '.',
             'date_naissance.date' => 'La date de naissance doit être une date valide.',
             'date_naissance.before' => 'La date de naissance doit être antérieure à aujourd\'hui.',

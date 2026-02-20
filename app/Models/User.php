@@ -8,6 +8,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Enums\Civilite;
+use App\Enums\PieceType;
+use App\Enums\UserType;
 
 class User extends Authenticatable
 {
@@ -17,8 +20,10 @@ class User extends Authenticatable
      * Champs autorisés en mass assignment
      */
     protected $fillable = [
+        'civilite',
         'nom',
         'prenom',
+        'date_naissance',
         'phone',
         'email',
         'pays',
@@ -26,10 +31,22 @@ class User extends Authenticatable
         'code_phone_pays',
         'ville',
         'quartier',
+        'adresse',
         'reference',
+        'type',
+        'language',
         'password',
         'is_active',
+        'piece_type',
+        'piece_numero',
+        'piece_delivree_le',
+        'piece_expire_le',
+        'piece_pays',
+        'piece_fichier',
+        'piece_fichier_verso',
+        'activated_at',
         'last_login_at',
+        'last_seen_at',
         'last_login_ip',
     ];
 
@@ -57,8 +74,16 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'last_seen_at' => 'datetime',
+            'activated_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'type' => UserType::class,
+            'civilite' => Civilite::class,
+            'date_naissance' => 'date:Y-m-d',
+            'piece_type' => PieceType::class,
+            'piece_delivree_le' => 'date',
+            'piece_expire_le' => 'date',
         ];
     }
 
@@ -128,6 +153,30 @@ class User extends Authenticatable
                 );
             }
         });
+    }
+
+    /* =========================
+       TYPE DE COMPTE
+       ========================= */
+
+    public function isStaff(): bool
+    {
+        return $this->type === UserType::STAFF;
+    }
+
+    public function isClient(): bool
+    {
+        return $this->type === UserType::CLIENT;
+    }
+
+    public function isPrestataire(): bool
+    {
+        return $this->type === UserType::PRESTATAIRE;
+    }
+
+    public function isInvestisseur(): bool
+    {
+        return $this->type === UserType::INVESTISSEUR;
     }
 
     /* =========================
