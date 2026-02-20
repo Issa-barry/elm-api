@@ -4,7 +4,9 @@ namespace Database\Factories;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
+use App\Enums\UsineType;
 use App\Models\Produit;
+use App\Models\Usine;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,6 +27,10 @@ class ProduitFactory extends Factory
             'qte_stock'          => fake()->numberBetween(1, 100),
             'seuil_alerte_stock' => null,
             'is_critique'        => false,
+            'usine_id'           => fn () => Usine::withoutGlobalScopes()->firstOrCreate(
+                ['code' => 'TEST-DEFAULT'],
+                ['nom' => 'Usine Test Default', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            )->id,
         ];
     }
 

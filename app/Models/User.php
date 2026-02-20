@@ -2,15 +2,19 @@
 
 namespace App\Models;
 
+use App\Enums\Civilite;
+use App\Enums\PieceType;
+use App\Enums\UsineRole;
+use App\Enums\UserType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
-use App\Enums\Civilite;
-use App\Enums\PieceType;
-use App\Enums\UserType;
 
 class User extends Authenticatable
 {
@@ -35,6 +39,7 @@ class User extends Authenticatable
         'reference',
         'type',
         'language',
+        'default_usine_id',
         'password',
         'is_active',
         'piece_type',
@@ -177,6 +182,55 @@ class User extends Authenticatable
     public function isInvestisseur(): bool
     {
         return $this->type === UserType::INVESTISSEUR;
+    }
+
+    /* =========================
+       RELATIONS USINES
+       ========================= */
+
+    /** Toutes les usines auxquelles cet utilisateur est affecté */
+    public function usines(): BelongsToMany
+    {
+        return $this->belongsToMany(Usine::class, 'user_usines')
+            ->withPivot(['role', 'is_default'])
+            ->withTimestamps()
+            ->using(UserUsine::class);
+    }
+
+    /** Entrées pivot user ↔ usine */
+    public function userUsines(): HasMany
+    {
+        return $this->hasMany(UserUsine::class);
+    }
+
+    /** Usine par défaut de cet utilisateur */
+    public function defaultUsine(): BelongsTo
+    {
+        return $this->belongsTo(Usine::class, 'default_usine_id');
+    }
+
+    /* =========================
+       ACCÈS USINE
+       ========================= */
+
+    /**
+     * L'utilisateur a-t-il un rôle siège sur au moins une usine de type SIEGE ?
+     * Résultat mis en cache sur l'instance pour éviter les requêtes répétées.
+     */
+    public function isSiege(): bool
+    {
+        return $this->usines()
+            ->where('usines.type', 'siege')
+            ->whereIn('user_usines.role', UsineRole::siegeRoles())
+            ->exists();
+    }
+
+    /**
+     * L'utilisateur a-t-il accès à l'usine donnée (est-il affecté) ?
+     */
+    public function hasUsineAccess(int $usineId): bool
+    {
+        return $this->usines()->where('usines.id', $usineId)->exists();
     }
 
     /* =========================

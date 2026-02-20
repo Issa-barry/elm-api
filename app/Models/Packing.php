@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PackingStatut;
+use App\Models\Traits\HasUsineScope;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class Packing extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUsineScope;
 
     public const STATUT_A_VALIDER = PackingStatut::A_VALIDER->value;
     public const STATUT_VALIDE = PackingStatut::VALIDE->value;
@@ -27,6 +28,7 @@ class Packing extends Model
     public const STATUT_DEFAUT = self::STATUT_VALIDE;
 
     protected $fillable = [
+        'usine_id',
         'prestataire_id',
         'date',
         'nb_rouleaux',
