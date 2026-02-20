@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class Produit extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'nom',
@@ -20,6 +21,7 @@ class Produit extends Model
         'prix_vente',
         'prix_achat',
         'qte_stock',
+        'seuil_alerte_stock',
         'cout',
         'type',
         'statut',
@@ -40,6 +42,7 @@ class Produit extends Model
         'prix_achat'               => 'integer',
         'cout'                     => 'integer',
         'qte_stock'                => 'integer',
+        'seuil_alerte_stock'       => 'integer',
         'type'                     => ProduitType::class,
         'statut'                   => ProduitStatut::class,
         'archived_at'              => 'datetime',
@@ -113,6 +116,11 @@ class Produit extends Model
     {
         $normalizedQte = $this->normalizeNonNegativeInteger($value, false);
         $this->attributes['qte_stock'] = is_int($normalizedQte) ? $normalizedQte : 0;
+    }
+
+    public function setSeuilAlerteStockAttribute($value): void
+    {
+        $this->attributes['seuil_alerte_stock'] = $this->normalizeNonNegativeInteger($value);
     }
 
     public function setImageUrlAttribute($value): void
@@ -291,11 +299,24 @@ class Produit extends Model
             return false;
         }
 
-        return Parametre::isStockFaible($this->qte_stock);
+        $seuil = $this->low_stock_threshold;
+
+        if ($seuil <= 0) {
+            return false;
+        }
+
+        return $this->qte_stock <= $seuil;
     }
 
+    /**
+     * Seuil effectif : personnalisé si renseigné, sinon paramètre global.
+     */
     public function getLowStockThresholdAttribute(): int
     {
+        if (!is_null($this->seuil_alerte_stock)) {
+            return $this->seuil_alerte_stock;
+        }
+
         return Parametre::getSeuilStockFaible();
     }
 

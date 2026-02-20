@@ -32,8 +32,9 @@ class StoreProduitRequest extends FormRequest
             'prix_achat' => $this->getPrixRules('prix_achat', $type),
 
             // Stock
-            'qte_stock' => $this->getStockRules($type),
-            'cout' => 'nullable|integer|min:0',
+            'qte_stock'          => $this->getStockRules($type),
+            'seuil_alerte_stock' => 'nullable|integer|min:0',
+            'cout'               => 'nullable|integer|min:0',
 
             // Optionnels
             'description' => 'nullable|string|max:5000',
@@ -201,7 +202,7 @@ class StoreProduitRequest extends FormRequest
             $data['description'] = $this->normalizeTextInput($this->input('description'));
         }
 
-        foreach (['prix_usine', 'prix_vente', 'prix_achat', 'qte_stock', 'cout'] as $field) {
+        foreach (['prix_usine', 'prix_vente', 'prix_achat', 'qte_stock', 'seuil_alerte_stock', 'cout'] as $field) {
             if ($this->has($field)) {
                 $data[$field] = $this->normalizeIntegerInput($this->input($field));
             }

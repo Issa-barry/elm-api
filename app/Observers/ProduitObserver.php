@@ -2,7 +2,6 @@
 
 namespace App\Observers;
 
-use App\Enums\ProduitStatut;
 use App\Enums\UserType;
 use App\Models\Parametre;
 use App\Models\Produit;
@@ -19,25 +18,30 @@ class ProduitObserver
             return;
         }
 
-        // 2. Vérifier si le produit vient de passer en rupture
-        $stockVientDeZero = $produit->wasChanged('qte_stock')
-            && $produit->qte_stock <= 0
-            && $produit->getOriginal('qte_stock') > 0;
-
-        $statutVientDeRupture = $produit->wasChanged('statut')
-            && $produit->statut === ProduitStatut::RUPTURE_STOCK
-            && $produit->getOriginal('statut') !== ProduitStatut::RUPTURE_STOCK->value;
-
-        if (!$stockVientDeZero && !$statutVientDeRupture) {
+        // 2. Le stock doit avoir changé
+        if (!$produit->wasChanged('qte_stock')) {
             return;
         }
 
-        // 3. Toggle global
+        $ancienStock    = (int) $produit->getOriginal('qte_stock');
+        $nouveauStock   = $produit->qte_stock;
+        $seuilEffectif  = $produit->low_stock_threshold;
+
+        // 3. Déterminer si le seuil est franchi à la baisse
+        //    - Si seuil = 0 : alerte uniquement à rupture (nouveau <= 0, ancien > 0)
+        //    - Si seuil > 0 : alerte dès que le stock passe de > seuil à <= seuil
+        $seuilFranchi = $ancienStock > $seuilEffectif && $nouveauStock <= $seuilEffectif;
+
+        if (!$seuilFranchi) {
+            return;
+        }
+
+        // 4. Toggle global
         if (!Parametre::isNotificationsStockActives()) {
             return;
         }
 
-        // 4. Anti-spam cooldown
+        // 5. Anti-spam cooldown
         $cooldown = Parametre::getNotificationsStockCooldownMinutes();
         if ($produit->last_stockout_notified_at !== null
             && $produit->last_stockout_notified_at->diffInMinutes(now()) < $cooldown
@@ -45,7 +49,7 @@ class ProduitObserver
             return;
         }
 
-        // 5. Destinataires : staff avec rôle admin ou manager
+        // 6. Destinataires : staff avec rôle admin ou manager
         $destinataires = User::where('type', UserType::STAFF->value)
             ->role(['admin', 'manager'])
             ->get();
@@ -54,10 +58,13 @@ class ProduitObserver
             return;
         }
 
-        // 6. Envoi de la notification
-        Notification::send($destinataires, new ProduitRuptureStockNotification($produit));
+        // 7. Type d'alerte selon le stock final
+        $alertType = $nouveauStock <= 0 ? 'rupture_stock' : 'low_stock';
 
-        // 7. Mettre à jour last_stockout_notified_at sans déclencher l'observer à nouveau
+        // 8. Envoi de la notification
+        Notification::send($destinataires, new ProduitRuptureStockNotification($produit, $alertType));
+
+        // 9. Mettre à jour last_stockout_notified_at sans déclencher l'observer à nouveau
         $produit->updateQuietly(['last_stockout_notified_at' => now()]);
     }
 }
