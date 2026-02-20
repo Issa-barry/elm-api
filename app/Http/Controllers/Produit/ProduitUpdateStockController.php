@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Produit;
 use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Models\Parametre;
 use App\Models\Produit;
 use Illuminate\Http\Request;
 
@@ -58,29 +59,25 @@ class ProduitUpdateStockController extends Controller
 
             $produit->qte_stock = $nouvelleQuantite;
             $produit->save();
-
-            $fresh           = $produit->fresh();
-            $seuilEffectif   = $fresh->low_stock_threshold;
-            $isOutOfStock    = $fresh->qte_stock <= 0;
-            $isLowStock      = $fresh->is_low_stock;
-            $niveauAlerte    = $isOutOfStock ? 'out_of_stock' : ($isLowStock ? 'low_stock' : 'in_stock');
+            $seuilStockFaible = Parametre::getSeuilStockFaible();
+            $niveauAlerte = Parametre::getNiveauAlerteStock($produit->qte_stock);
 
             return $this->successResponse([
-                'produit'       => $fresh,
-                'ancien_stock'  => $ancienStock,
-                'nouveau_stock' => $fresh->qte_stock,
-                'difference'    => $fresh->qte_stock - $ancienStock,
+                'produit' => $produit->fresh(),
+                'ancien_stock' => $ancienStock,
+                'nouveau_stock' => $produit->qte_stock,
+                'difference' => $produit->qte_stock - $ancienStock,
                 'ancien_statut' => $ancienStatut->value,
-                'nouveau_statut'=> $fresh->statut->value,
-                'stock_alert'   => [
-                    'seuil_stock_faible' => $seuilEffectif,
-                    'niveau'             => $niveauAlerte,
-                    'is_low_stock'       => $isLowStock,
-                    'is_out_of_stock'    => $isOutOfStock,
-                    'message'            => match ($niveauAlerte) {
+                'nouveau_statut' => $produit->statut->value,
+                'stock_alert' => [
+                    'seuil_stock_faible' => $seuilStockFaible,
+                    'niveau' => $niveauAlerte,
+                    'is_low_stock' => Parametre::isStockFaible($produit->qte_stock),
+                    'is_out_of_stock' => $produit->qte_stock <= 0,
+                    'message' => match ($niveauAlerte) {
                         'out_of_stock' => 'Stock epuise. Reapprovisionnement requis.',
-                        'low_stock'    => "Stock faible (seuil: {$seuilEffectif}).",
-                        default        => null,
+                        'low_stock' => "Stock faible (seuil: {$seuilStockFaible}).",
+                        default => null,
                     },
                 ],
             ], 'Stock mis a jour avec succes');

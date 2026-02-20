@@ -34,11 +34,9 @@ class Parametre extends Model
        CLÉS PRÉDÉFINIES
        ========================= */
 
-    public const CLE_PRIX_ROULEAU_DEFAUT                 = 'prix_rouleau_defaut';
-    public const CLE_PRODUIT_ROULEAU_ID                  = 'produit_rouleau_id';
-    public const CLE_SEUIL_STOCK_FAIBLE                  = 'seuil_stock_faible';
-    public const CLE_NOTIFICATIONS_STOCK_ACTIVES          = 'notifications_stock_actives';
-    public const CLE_NOTIFICATIONS_STOCK_COOLDOWN_MINUTES = 'notifications_stock_cooldown_minutes';
+    public const CLE_PRIX_ROULEAU_DEFAUT = 'prix_rouleau_defaut';
+    public const CLE_PRODUIT_ROULEAU_ID = 'produit_rouleau_id';
+    public const CLE_SEUIL_STOCK_FAIBLE = 'seuil_stock_faible';
 
     protected $table = 'parametres';
 
@@ -158,16 +156,6 @@ class Parametre extends Model
         }
 
         return $stock <= self::getSeuilStockFaible();
-    }
-
-    public static function isNotificationsStockActives(): bool
-    {
-        return (bool) self::get(self::CLE_NOTIFICATIONS_STOCK_ACTIVES, true);
-    }
-
-    public static function getNotificationsStockCooldownMinutes(): int
-    {
-        return max(0, (int) self::get(self::CLE_NOTIFICATIONS_STOCK_COOLDOWN_MINUTES, 60));
     }
 
     public static function getNiveauAlerteStock(int $stock): string

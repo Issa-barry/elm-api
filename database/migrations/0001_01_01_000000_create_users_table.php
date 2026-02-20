@@ -12,10 +12,8 @@ return new class extends Migration
             $table->id();
 
             // Identité
-            $table->string('civilite', 10)->nullable()->comment('M, Mme, Mlle');
             $table->string('nom');
             $table->string('prenom');
-            $table->date('date_naissance')->nullable();
 
             // Contact
             $table->string('phone')->unique();
@@ -28,36 +26,17 @@ return new class extends Migration
             $table->string('code_phone_pays', 5);
             $table->string('ville');
             $table->string('quartier');
-            $table->string('adresse')->nullable();
 
             // Référence (auto-généré)
             $table->string('reference')->unique();
-
-            // Type de compte
-            $table->string('type', 20)->default('staff')->comment('Nature du compte : staff, client, prestataire, investisseur');
-            $table->index('type');
-
-            // Préférences
-            $table->string('language', 5)->default('fr');
 
             // Auth
             $table->string('password');
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
 
-            // Pièce d'identité (KYC)
-            $table->string('piece_type', 30)->nullable()->comment('cni, passeport, permis, carte_sejour');
-            $table->string('piece_numero', 100)->nullable();
-            $table->date('piece_delivree_le')->nullable();
-            $table->date('piece_expire_le')->nullable();
-            $table->string('piece_pays', 5)->nullable()->comment('Code ISO pays émetteur');
-            $table->string('piece_fichier')->nullable()->comment('Recto - path/url');
-            $table->string('piece_fichier_verso')->nullable()->comment('Verso - path/url');
-
-            // Tracking / Onboarding
-            $table->timestamp('activated_at')->nullable();
+            // Tracking
             $table->timestamp('last_login_at')->nullable();
-            $table->timestamp('last_seen_at')->nullable();
             $table->string('last_login_ip')->nullable();
 
             $table->timestamps();

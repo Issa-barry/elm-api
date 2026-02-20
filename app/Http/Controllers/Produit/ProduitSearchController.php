@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Produit;
 
-use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
@@ -40,18 +39,8 @@ class ProduitSearchController extends Controller
                 $query->where('type', $request->type);
             }
 
-            // in_stock est un accesseur calculé, pas une colonne SQL
             if ($request->has('in_stock')) {
-                $inStock = $request->boolean('in_stock');
-                if ($inStock) {
-                    $query->where(function ($q) {
-                        $q->where('qte_stock', '>', 0)
-                          ->orWhere('type', ProduitType::SERVICE);
-                    });
-                } else {
-                    $query->where('qte_stock', '<=', 0)
-                          ->where('type', '!=', ProduitType::SERVICE->value);
-                }
+                $query->where('in_stock', $request->boolean('in_stock'));
             }
 
             // Plage de prix

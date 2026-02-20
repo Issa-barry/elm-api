@@ -13,8 +13,6 @@ use App\Http\Controllers\Produit\ProduitStatisticsController;
 use App\Http\Controllers\Produit\ProduitArchiveController;
 use App\Http\Controllers\Produit\ProduitUnarchiveController;
 use App\Http\Controllers\Produit\ProduitArchivedListController;
-use App\Http\Controllers\Produit\ProduitUploadImageController;
-use App\Http\Controllers\Produit\ProduitDeleteImageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +21,7 @@ use App\Http\Controllers\Produit\ProduitDeleteImageController;
 |
 | Types: materiel, service, fabricable, achat_vente
 | Statuts: brouillon, actif, inactif, archive, rupture_stock
-| 
+|
 */
 
 Route::prefix('produits')->group(function () {
@@ -43,10 +41,6 @@ Route::prefix('produits')->group(function () {
     Route::patch('/{id}/status', ProduitChangeStatusController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
     Route::patch('/{id}/archive', ProduitArchiveController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
     Route::patch('/{id}/unarchive', ProduitUnarchiveController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
-
-    // Image
-    Route::post('/{id}/image', ProduitUploadImageController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
-    Route::delete('/{id}/image', ProduitDeleteImageController::class)->where('id', '[0-9]+')->middleware('permission:produits.update');
 
     // Suppression
     Route::delete('/{id}', ProduitDestroyController::class)->where('id', '[0-9]+')->middleware('permission:produits.delete');

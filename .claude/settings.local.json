@@ -14,15 +14,7 @@
       "Bash(php:*)",
       "Bash(ls:*)",
       "Bash(/c/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe:*)",
-      "Bash(/c/laragon/bin/php/php-8.4.3-nts-Win32-vs17-x64/php.exe artisan db:seed:*)",
-      "Bash(/c/laragon/bin/php/php-8.4.4-nts-Win32-vs17-x64/php.exe artisan route:clear:*)",
-      "Bash(/c/laragon/bin/php/php-8.4.4-nts-Win32-vs17-x64/php.exe artisan route:list:*)",
-      "Bash(C:/laragon/bin/php/php-8.4.6-nts-Win32-vs17-x64/php.exe artisan test:*)",
-      "Bash(dir:*)",
-      "Bash(cmd /c \"dir c:\\\\laragon\\\\www\\\\elm-api /b\")",
-      "Bash(powershell -command:*)",
-      "Bash(composer require:*)",
-      "Bash(/c/laragon/bin/php/php8.3.14/php.exe artisan migrate:*)"
+      "Bash(/c/laragon/bin/php/php-8.4.3-nts-Win32-vs17-x64/php.exe artisan db:seed:*)"
     ]
   }
 }

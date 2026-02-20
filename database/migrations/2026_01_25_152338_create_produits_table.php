@@ -35,11 +35,6 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->text('image_url')->nullable();
 
-            // Produit critique (déclenche notif rupture de stock)
-            $table->boolean('is_critique')->default(false)->index();
-            // Anti-spam : date du dernier envoi de notif rupture
-            $table->timestamp('last_stockout_notified_at')->nullable();
-
             // Tracking utilisateur
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
