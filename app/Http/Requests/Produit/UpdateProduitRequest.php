@@ -41,8 +41,9 @@ class UpdateProduitRequest extends FormRequest
             'cout' => 'nullable|integer|min:0',
 
             // Optionnels
-            'description' => 'nullable|string|max:5000',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'description'  => 'nullable|string|max:5000',
+            'image'        => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'is_critique'  => 'sometimes|boolean',
         ];
     }
 

@@ -69,5 +69,27 @@ class RoleAndPermissionSeeder extends Seeder
             'parametres.read',
         ];
         $employe->syncPermissions($employePermissions);
+
+        // COMPTABLE : gestion financière (factures, versements) + lecture opérationnelle
+        $comptable = Role::firstOrCreate(['name' => 'comptable']);
+        $comptable->syncPermissions([
+            'produits.read',
+            'prestataires.read',
+            'clients.read',
+            'packings.read',
+            'facture-packings.create', 'facture-packings.read', 'facture-packings.update', 'facture-packings.delete',
+            'versements.create', 'versements.read', 'versements.delete',
+        ]);
+
+        // COMMERCIALE : gestion commerciale (clients, packings, factures en lecture)
+        $commerciale = Role::firstOrCreate(['name' => 'commerciale']);
+        $commerciale->syncPermissions([
+            'produits.read',
+            'prestataires.read',
+            'clients.create', 'clients.read', 'clients.update', 'clients.delete',
+            'packings.create', 'packings.read', 'packings.update', 'packings.delete',
+            'facture-packings.read',
+            'versements.read',
+        ]);
     }
 }
