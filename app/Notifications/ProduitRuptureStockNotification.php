@@ -15,7 +15,22 @@ class ProduitRuptureStockNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:4200'), '/');
+        $produitUrl  = "{$frontendUrl}/produits/produits-edit/{$this->produit->id}";
+
+        return (new MailMessage)
+            ->subject("Rupture de stock — {$this->produit->nom}")
+            ->greeting("Bonjour {$notifiable->prenom},")
+            ->line("Le produit **{$this->produit->nom}** (réf. {$this->produit->code}) est en rupture de stock.")
+            ->line("Stock actuel : **{$this->produit->qte_stock}**")
+            ->action('Voir le produit', $produitUrl)
+            ->line('Veuillez réapprovisionner ce produit dès que possible.')
+            ->salutation('— ' . config('app.name'));
     }
 
     public function toArray(object $notifiable): array
@@ -31,16 +46,4 @@ class ProduitRuptureStockNotification extends Notification
             'date'       => now()->toISOString(),
         ];
     }
-
-    /**
-     * Optionnel : activer mail en ajoutant 'mail' dans via() et en décommentant.
-     */
-    // public function toMail(object $notifiable): MailMessage
-    // {
-    //     return (new MailMessage)
-    //         ->subject("⚠️ Rupture de stock — {$this->produit->nom}")
-    //         ->line("Le produit **{$this->produit->nom}** (réf. {$this->produit->code}) est en rupture de stock.")
-    //         ->line("Stock actuel : {$this->produit->qte_stock}")
-    //         ->action('Voir le produit', url("/produits/{$this->produit->id}"));
-    // }
 }
