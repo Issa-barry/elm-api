@@ -32,13 +32,12 @@ class StoreProduitRequest extends FormRequest
             'prix_achat' => $this->getPrixRules('prix_achat', $type),
 
             // Stock
-            'qte_stock'          => $this->getStockRules($type),
-            'seuil_alerte_stock' => 'nullable|integer|min:0',
-            'cout'               => 'nullable|integer|min:0',
+            'qte_stock' => $this->getStockRules($type),
+            'cout' => 'nullable|integer|min:0',
 
             // Optionnels
             'description' => 'nullable|string|max:5000',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image_url' => 'nullable|string|max:500',
         ];
     }
 
@@ -141,11 +140,6 @@ class StoreProduitRequest extends FormRequest
 
             // Description
             'description.max' => 'La description ne peut pas dépasser 5000 caractères.',
-
-            // Image
-            'image.image' => 'Le fichier doit être une image.',
-            'image.mimes' => 'L\'image doit être au format jpg, jpeg, png ou webp.',
-            'image.max' => 'L\'image ne doit pas dépasser 5 Mo.',
         ];
     }
 
@@ -202,7 +196,11 @@ class StoreProduitRequest extends FormRequest
             $data['description'] = $this->normalizeTextInput($this->input('description'));
         }
 
-        foreach (['prix_usine', 'prix_vente', 'prix_achat', 'qte_stock', 'seuil_alerte_stock', 'cout'] as $field) {
+        if ($this->has('image_url')) {
+            $data['image_url'] = $this->normalizeTextInput($this->input('image_url'), false);
+        }
+
+        foreach (['prix_usine', 'prix_vente', 'prix_achat', 'qte_stock', 'cout'] as $field) {
             if ($this->has($field)) {
                 $data[$field] = $this->normalizeIntegerInput($this->input($field));
             }

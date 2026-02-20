@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\StoreProduitRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use Illuminate\Support\Facades\Storage;
 
 class ProduitStoreController extends Controller
 {
@@ -37,12 +36,6 @@ class ProduitStoreController extends Controller
             }
 
             $produit = Produit::create($data);
-
-            // Upload image si présente
-            if ($request->hasFile('image')) {
-                $path = $request->file('image')->store("produits/{$produit->id}", 'public');
-                $produit->update(['image_url' => Storage::disk('public')->url($path)]);
-            }
 
             $produit->load(['creator:id,nom,prenom']);
 

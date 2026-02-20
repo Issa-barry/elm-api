@@ -31,13 +31,12 @@ class ProduitStatisticsController extends Controller
                     ->where('type', '!=', ProduitType::SERVICE)
                     ->count(),
                 'seuil_stock_faible' => $seuilStockFaible,
-                // Compte les produits en stock faible en respectant le seuil personnalisé
-                // (COALESCE : seuil_alerte_stock si renseigné, sinon paramètre global)
-                'produits_stock_faible' => Produit::where('qte_stock', '>', 0)
-                    ->where('type', '!=', ProduitType::SERVICE)
-                    ->whereRaw('COALESCE(seuil_alerte_stock, ?) > 0', [$seuilStockFaible])
-                    ->whereRaw('qte_stock <= COALESCE(seuil_alerte_stock, ?)', [$seuilStockFaible])
-                    ->count(),
+                'produits_stock_faible' => $seuilStockFaible > 0
+                    ? Produit::where('qte_stock', '>', 0)
+                        ->where('qte_stock', '<=', $seuilStockFaible)
+                        ->where('type', '!=', ProduitType::SERVICE)
+                        ->count()
+                    : 0,
                 'valeur_stock_total' => Produit::sum(DB::raw('prix_vente * qte_stock')),
                 'valeur_achat_total' => Produit::sum(DB::raw('prix_achat * qte_stock')),
                 'valeur_usine_total' => Produit::sum(DB::raw('prix_usine * qte_stock')),

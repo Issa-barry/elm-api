@@ -14,7 +14,6 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Spatie\Permission\Exceptions\UnauthorizedException;
 use App\Http\Middleware\Cors;
-use App\Http\Middleware\EnsureUserType;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -36,7 +35,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'user.type' => EnsureUserType::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

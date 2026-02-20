@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\UpdateProduitRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use Illuminate\Support\Facades\Storage;
 
 class ProduitUpdateController extends Controller
 {
@@ -22,18 +21,6 @@ class ProduitUpdateController extends Controller
             }
 
             $data = $request->validated();
-
-            // Upload image si présente
-            if ($request->hasFile('image')) {
-                // Supprimer l'ancienne image
-                if ($produit->image_url) {
-                    $oldPath = str_replace(url('storage') . '/', '', $produit->image_url);
-                    Storage::disk('public')->delete($oldPath);
-                }
-
-                $path = $request->file('image')->store("produits/{$produit->id}", 'public');
-                $data['image_url'] = Storage::disk('public')->url($path);
-            }
 
             $produit->update($data);
 
