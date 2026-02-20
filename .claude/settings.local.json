@@ -21,7 +21,8 @@
       "Bash(dir:*)",
       "Bash(cmd /c \"dir c:\\\\laragon\\\\www\\\\elm-api /b\")",
       "Bash(powershell -command:*)",
-      "Bash(composer require:*)"
+      "Bash(composer require:*)",
+      "Bash(/c/laragon/bin/php/php8.3.14/php.exe artisan migrate:*)"
     ]
   }
 }
