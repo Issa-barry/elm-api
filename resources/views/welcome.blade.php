@@ -270,7 +270,7 @@
                 </div>
             </main>
                 <h1 class="mt-6 ml-4 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl lg:text-5xl">
-                 Version 5.2 (KYC + image produit) | 18/02/2026
+                 Version 6.0 (création de compte) | 18/02/2026
             </h1>
 
         </div>
