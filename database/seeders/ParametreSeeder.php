@@ -32,6 +32,21 @@ class ParametreSeeder extends Seeder
                 'groupe' => Parametre::GROUPE_GENERAL,
                 'description' => 'Seuil a partir duquel le stock est considere comme faible (0 = desactive)',
             ],
+            // Notifications rupture stock
+            [
+                'cle'         => Parametre::CLE_NOTIFICATIONS_STOCK_ACTIVES,
+                'valeur'      => '1',
+                'type'        => Parametre::TYPE_BOOLEAN,
+                'groupe'      => Parametre::GROUPE_GENERAL,
+                'description' => 'Activer les notifications de rupture de stock pour les produits critiques',
+            ],
+            [
+                'cle'         => Parametre::CLE_NOTIFICATIONS_STOCK_COOLDOWN_MINUTES,
+                'valeur'      => '60',
+                'type'        => Parametre::TYPE_INTEGER,
+                'groupe'      => Parametre::GROUPE_GENERAL,
+                'description' => 'Delai minimum (en minutes) entre deux notifications de rupture pour un meme produit',
+            ],
         ];
 
         foreach ($parametres as $parametre) {

@@ -9,14 +9,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('employe')->after('reference');
+            $table->foreignId('default_usine_id')
+                ->nullable()
+                ->after('language')
+                ->constrained('usines')
+                ->nullOnDelete()
+                ->comment('Usine affichée par défaut (raccourci vers user_usines.is_default)');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('role');
+            $table->dropForeign(['default_usine_id']);
+            $table->dropColumn('default_usine_id');
         });
     }
 };

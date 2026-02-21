@@ -4,6 +4,7 @@ namespace App\Http\Requests\Prestataire;
 
 use App\Enums\PrestataireType;
 use App\Models\Prestataire;
+use App\Services\UsineContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -77,6 +78,15 @@ class UpdatePrestataireRequest extends FormRequest
     public function rules(): array
     {
         $prestataireId = (int) $this->route('id');
+        $usineId = app(UsineContext::class)->getCurrentUsineId();
+
+        $phoneUnique = Rule::unique('prestataires', 'phone')->ignore($prestataireId);
+        $emailUnique = Rule::unique('prestataires', 'email')->ignore($prestataireId);
+
+        if ($usineId) {
+            $phoneUnique = $phoneUnique->where('usine_id', $usineId);
+            $emailUnique = $emailUnique->where('usine_id', $usineId);
+        }
 
         return [
             'nom' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -87,14 +97,14 @@ class UpdatePrestataireRequest extends FormRequest
                 'required',
                 'string',
                 'regex:/^\+[1-9][0-9]{7,14}$/',
-                Rule::unique('prestataires', 'phone')->ignore($prestataireId),
+                $phoneUnique,
             ],
             'email' => [
                 'sometimes',
                 'nullable',
                 'email:rfc,dns',
                 'max:255',
-                Rule::unique('prestataires', 'email')->ignore($prestataireId),
+                $emailUnique,
             ],
             'pays' => ['sometimes', 'required', 'string', 'max:100'],
             'code_pays' => ['sometimes', 'required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
