@@ -46,24 +46,22 @@ class PackingStoreController extends Controller
             $stockAlert = null;
 
             if ($produitRouleau) {
-                $seuilEffectif = $produitRouleau->low_stock_threshold;
-                $isOutOfStock  = $produitRouleau->qte_stock <= 0;
-                $isLowStock    = $produitRouleau->is_low_stock;
-                $niveauAlerte  = $isOutOfStock ? 'out_of_stock' : ($isLowStock ? 'low_stock' : 'in_stock');
+                $seuilStockFaible = Parametre::getSeuilStockFaible();
+                $niveauAlerte = Parametre::getNiveauAlerteStock($produitRouleau->qte_stock);
 
                 $message = match ($niveauAlerte) {
                     'out_of_stock' => 'Stock de rouleaux epuise. Reapprovisionnement requis.',
-                    'low_stock'    => "Stock de rouleaux faible (seuil: {$seuilEffectif}).",
-                    default        => null,
+                    'low_stock' => "Stock de rouleaux faible (seuil: {$seuilStockFaible}).",
+                    default => null,
                 };
 
                 $stockAlert = [
-                    'stock_actuel'      => $produitRouleau->qte_stock,
-                    'seuil_stock_faible'=> $seuilEffectif,
-                    'niveau'            => $niveauAlerte,
-                    'is_low_stock'      => $isLowStock,
-                    'is_out_of_stock'   => $isOutOfStock,
-                    'message'           => $message,
+                    'stock_actuel' => $produitRouleau->qte_stock,
+                    'seuil_stock_faible' => $seuilStockFaible,
+                    'niveau' => $niveauAlerte,
+                    'is_low_stock' => Parametre::isStockFaible($produitRouleau->qte_stock),
+                    'is_out_of_stock' => $produitRouleau->qte_stock <= 0,
+                    'message' => $message,
                 ];
             }
 

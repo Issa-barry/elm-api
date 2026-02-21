@@ -20,9 +20,4 @@ Route::prefix('v1')->group(function () {
         require __DIR__.'/api/notifications.php';
         require __DIR__.'/api/usines.php';
     });
-
-    // Routes mobile (futur — client & prestataire)
-    // Route::middleware(['auth:sanctum', 'user.type:client,prestataire'])->prefix('mobile')->group(function () {
-    //     // require __DIR__.'/api/mobile.php';
-    // });
 });

@@ -19,8 +19,6 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             ParametreSeeder::class,
             ProduitRouleauSeeder::class,
-            PrestataireMachinisteSeeder::class,
-            StaffUserSeeder::class,
         ]);
     }
 }

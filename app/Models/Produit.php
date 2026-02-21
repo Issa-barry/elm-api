@@ -23,15 +23,12 @@ class Produit extends Model
         'prix_vente',
         'prix_achat',
         'qte_stock',
-        'seuil_alerte_stock',
         'cout',
         'type',
         'statut',
         'archived_at',
         'description',
         'image_url',
-        'is_critique',
-        'last_stockout_notified_at',
         'created_by',
         'updated_by',
         'deleted_by',
@@ -39,17 +36,14 @@ class Produit extends Model
     ];
 
     protected $casts = [
-        'prix_usine'               => 'integer',
-        'prix_vente'               => 'integer',
-        'prix_achat'               => 'integer',
-        'cout'                     => 'integer',
-        'qte_stock'                => 'integer',
-        'seuil_alerte_stock'       => 'integer',
-        'type'                     => ProduitType::class,
-        'statut'                   => ProduitStatut::class,
-        'archived_at'              => 'datetime',
-        'is_critique'              => 'boolean',
-        'last_stockout_notified_at'=> 'datetime',
+        'prix_usine' => 'integer',
+        'prix_vente' => 'integer',
+        'prix_achat' => 'integer',
+        'cout' => 'integer',
+        'qte_stock' => 'integer',
+        'type' => ProduitType::class,
+        'statut' => ProduitStatut::class,
+        'archived_at' => 'datetime',
     ];
 
     protected $appends = ['in_stock', 'is_archived', 'is_low_stock', 'is_out_of_stock', 'low_stock_threshold'];
@@ -118,11 +112,6 @@ class Produit extends Model
     {
         $normalizedQte = $this->normalizeNonNegativeInteger($value, false);
         $this->attributes['qte_stock'] = is_int($normalizedQte) ? $normalizedQte : 0;
-    }
-
-    public function setSeuilAlerteStockAttribute($value): void
-    {
-        $this->attributes['seuil_alerte_stock'] = $this->normalizeNonNegativeInteger($value);
     }
 
     public function setImageUrlAttribute($value): void
@@ -301,24 +290,11 @@ class Produit extends Model
             return false;
         }
 
-        $seuil = $this->low_stock_threshold;
-
-        if ($seuil <= 0) {
-            return false;
-        }
-
-        return $this->qte_stock <= $seuil;
+        return Parametre::isStockFaible($this->qte_stock);
     }
 
-    /**
-     * Seuil effectif : personnalisé si renseigné, sinon paramètre global.
-     */
     public function getLowStockThresholdAttribute(): int
     {
-        if (!is_null($this->seuil_alerte_stock)) {
-            return $this->seuil_alerte_stock;
-        }
-
         return Parametre::getSeuilStockFaible();
     }
 

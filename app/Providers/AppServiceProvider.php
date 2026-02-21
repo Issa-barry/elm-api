@@ -15,8 +15,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(UsineContext::class);
     }
 
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
-        Produit::observe(ProduitObserver::class);
+        //
     }
 }
