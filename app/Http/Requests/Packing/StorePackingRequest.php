@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Packing;
 
 use App\Enums\PackingStatut;
-use App\Models\Packing;
 use App\Models\Parametre;
 use App\Services\UsineContext;
 use Illuminate\Contracts\Validation\Validator;
@@ -56,25 +55,28 @@ class StorePackingRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $targetStatut = $this->input('statut', Packing::STATUT_DEFAUT);
-            if ($targetStatut !== PackingStatut::VALIDE->value) {
-                return;
-            }
-
             $nbRouleaux = (int) $this->input('nb_rouleaux', 0);
+
             if ($nbRouleaux <= 0) {
                 return;
             }
 
             $produit = Parametre::getProduitRouleau();
+
+            // Produit rouleau non configuré dans les paramètres
             if (!$produit) {
+                $validator->errors()->add(
+                    'nb_rouleaux',
+                    'Le produit rouleau n\'est pas configuré. Contactez un administrateur.'
+                );
                 return;
             }
 
+            // Stock insuffisant — bloque toute création quel que soit le statut
             if ($produit->qte_stock < $nbRouleaux) {
                 $validator->errors()->add(
                     'nb_rouleaux',
-                    "Stock insuffisant. Stock disponible : {$produit->qte_stock} rouleaux."
+                    "Stock rouleau insuffisant, packing impossible. Stock disponible : {$produit->qte_stock} rouleaux."
                 );
             }
         });
@@ -83,22 +85,22 @@ class StorePackingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'prestataire_id.required' => 'Le prestataire est obligatoire.',
-            'prestataire_id.integer' => 'Le prestataire est invalide.',
-            'prestataire_id.exists' => 'Le prestataire selectionne est introuvable.',
-            'date.required' => 'La date est obligatoire.',
-            'date.date' => 'La date est invalide.',
-            'nb_rouleaux.required' => 'Le nombre de rouleaux est obligatoire.',
-            'nb_rouleaux.integer' => 'Le nombre de rouleaux doit etre un entier.',
-            'nb_rouleaux.min' => 'Le nombre de rouleaux ne peut pas etre negatif.',
+            'prestataire_id.required'   => 'Le prestataire est obligatoire.',
+            'prestataire_id.integer'    => 'Le prestataire est invalide.',
+            'prestataire_id.exists'     => 'Le prestataire selectionne est introuvable.',
+            'date.required'             => 'La date est obligatoire.',
+            'date.date'                 => 'La date est invalide.',
+            'nb_rouleaux.required'      => 'Le nombre de rouleaux est obligatoire.',
+            'nb_rouleaux.integer'       => 'Le nombre de rouleaux doit etre un entier.',
+            'nb_rouleaux.min'           => 'Le nombre de rouleaux ne peut pas etre negatif.',
             'prix_par_rouleau.required' => 'Le prix par rouleau est obligatoire.',
-            'prix_par_rouleau.integer' => 'Le prix par rouleau doit etre un entier.',
-            'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas etre negatif.',
-            'statut.enum' => 'Le statut doit etre : a_valider, valide ou annule.',
-            'facture_id.integer' => 'La facture est invalide.',
-            'facture_id.exists' => 'La facture fournie est introuvable.',
-            'notes.string' => 'Les notes doivent etre une chaine de caracteres.',
-            'montant.prohibited' => 'Le montant est calcule automatiquement par le serveur.',
+            'prix_par_rouleau.integer'  => 'Le prix par rouleau doit etre un entier.',
+            'prix_par_rouleau.min'      => 'Le prix par rouleau ne peut pas etre negatif.',
+            'statut.enum'               => 'Le statut doit etre : a_valider, valide ou annule.',
+            'facture_id.integer'        => 'La facture est invalide.',
+            'facture_id.exists'         => 'La facture fournie est introuvable.',
+            'notes.string'              => 'Les notes doivent etre une chaine de caracteres.',
+            'montant.prohibited'        => 'Le montant est calcule automatiquement par le serveur.',
         ];
     }
 
@@ -107,7 +109,7 @@ class StorePackingRequest extends FormRequest
         throw new HttpResponseException(response()->json([
             'success' => false,
             'message' => 'Les donnees fournies sont invalides.',
-            'errors' => $validator->errors(),
+            'errors'  => $validator->errors(),
         ], 422));
     }
 }

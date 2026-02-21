@@ -16,6 +16,11 @@ class UserIndexController extends Controller
         try {
             $query = User::with('roles');
 
+            // Filtre par type de compte
+            if ($request->has('type')) {
+                $query->where('type', $request->type);
+            }
+
             // Filtre par statut actif
             if ($request->has('is_active')) {
                 $query->where('is_active', $request->boolean('is_active'));

@@ -31,8 +31,9 @@ class ProduitRouleauSeeder extends Seeder
             $produit->code = $this->generateNumericProductCode();
         }
 
-        $produit->prix_achat = $produit->prix_achat ?? 500;
-        $produit->statut = $produit->qte_stock > 0 ? ProduitStatut::ACTIF : ProduitStatut::RUPTURE_STOCK;
+        $produit->prix_achat  = $produit->prix_achat ?? 500;
+        $produit->is_critique = true;
+        $produit->statut      = $produit->qte_stock > 0 ? ProduitStatut::ACTIF : ProduitStatut::RUPTURE_STOCK;
         $produit->save();
 
         Parametre::updateOrCreate(

@@ -8,7 +8,7 @@ enum ProduitStatut: string
     case ACTIF = 'actif';
     case INACTIF = 'inactif';
     case ARCHIVE = 'archive';
-    case RUPTURE_STOCK = 'rupture_stock';
+    case RUPTURE_STOCK = 'rupture_stock'; 
 
     /**
      * Libellé en français
