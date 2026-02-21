@@ -19,6 +19,10 @@ Route::prefix('v1')->group(function () {
         require __DIR__.'/api/parametres.php';
         require __DIR__.'/api/notifications.php';
         require __DIR__.'/api/usines.php';
+        require __DIR__.'/api/proprietaires.php';
+        require __DIR__.'/api/livreurs.php';
+        require __DIR__.'/api/vehicules.php';
+        require __DIR__.'/api/livraisons.php';
     });
 
     // Routes mobile (futur — client & prestataire)

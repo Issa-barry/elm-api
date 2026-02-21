@@ -19,14 +19,22 @@ class RoleAndPermissionSeeder extends Seeder
 
         // Permissions CRUD par module (style Strapi)
         $modules = [
-            'users'            => ['create', 'read', 'update', 'delete'],
-            'produits'         => ['create', 'read', 'update', 'delete'],
-            'prestataires'     => ['create', 'read', 'update', 'delete'],
-            'clients'          => ['create', 'read', 'update', 'delete'],
-            'packings'         => ['create', 'read', 'update', 'delete'],
-            'facture-packings' => ['create', 'read', 'update', 'delete'],
-            'versements'       => ['create', 'read', 'delete'],
-            'parametres'       => ['read', 'update'],
+            'users'                 => ['create', 'read', 'update', 'delete'],
+            'produits'              => ['create', 'read', 'update', 'delete'],
+            'prestataires'          => ['create', 'read', 'update', 'delete'],
+            'clients'               => ['create', 'read', 'update', 'delete'],
+            'packings'              => ['create', 'read', 'update', 'delete'],
+            'facture-packings'      => ['create', 'read', 'update', 'delete'],
+            'versements'            => ['create', 'read', 'delete'],
+            'parametres'            => ['read', 'update'],
+            // Module livraison
+            'proprietaires'         => ['create', 'read', 'update', 'delete'],
+            'livreurs'              => ['create', 'read', 'update', 'delete'],
+            'vehicules'             => ['create', 'read', 'update', 'delete'],
+            'sorties'               => ['create', 'read', 'update'],
+            'factures-livraisons'   => ['create', 'read'],
+            'encaissements'         => ['create', 'read'],
+            'commissions'           => ['create', 'read'],
         ];
 
         // Creer toutes les permissions
@@ -44,7 +52,10 @@ class RoleAndPermissionSeeder extends Seeder
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $managerPermissions = [];
 
-        $operationalModules = ['produits', 'prestataires', 'clients', 'packings', 'facture-packings', 'versements'];
+        $operationalModules = [
+            'produits', 'prestataires', 'clients', 'packings', 'facture-packings', 'versements',
+            'proprietaires', 'livreurs', 'vehicules', 'sorties', 'factures-livraisons', 'encaissements', 'commissions',
+        ];
         foreach ($operationalModules as $module) {
             foreach ($modules[$module] as $action) {
                 $managerPermissions[] = "{$module}.{$action}";
@@ -79,6 +90,14 @@ class RoleAndPermissionSeeder extends Seeder
             'packings.read',
             'facture-packings.create', 'facture-packings.read', 'facture-packings.update', 'facture-packings.delete',
             'versements.create', 'versements.read', 'versements.delete',
+            // Livraison financier
+            'proprietaires.read',
+            'livreurs.read',
+            'vehicules.read',
+            'sorties.read',
+            'factures-livraisons.create', 'factures-livraisons.read',
+            'encaissements.create', 'encaissements.read',
+            'commissions.create', 'commissions.read',
         ]);
 
         // COMMERCIALE : gestion commerciale (clients, packings, factures en lecture)
