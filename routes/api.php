@@ -1,4 +1,4 @@
-  <?php
+<?php
 
 use Illuminate\Support\Facades\Route;
 
@@ -8,7 +8,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Routes backoffice (staff uniquement)
-    Route::middleware(['auth:sanctum', 'user.type:staff'])->group(function () {
+    Route::middleware(['auth:sanctum', 'user.type:staff', 'usine.context'])->group(function () {
         require __DIR__.'/api/roles.php';
         require __DIR__.'/api/produits.php';
         require __DIR__.'/api/users.php';
@@ -18,6 +18,7 @@ Route::prefix('v1')->group(function () {
         require __DIR__.'/api/facture-packings.php';
         require __DIR__.'/api/parametres.php';
         require __DIR__.'/api/notifications.php';
+        require __DIR__.'/api/usines.php';
     });
 
     // Routes mobile (futur — client & prestataire)

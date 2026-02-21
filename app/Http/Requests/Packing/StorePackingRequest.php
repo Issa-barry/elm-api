@@ -4,6 +4,7 @@ namespace App\Http\Requests\Packing;
 
 use App\Enums\PackingStatut;
 use App\Models\Parametre;
+use App\Services\UsineContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -18,13 +19,25 @@ class StorePackingRequest extends FormRequest
 
     public function rules(): array
     {
+        $usineId = app(UsineContext::class)->getCurrentUsineId();
+
+        // prestataire_id doit appartenir à la même usine (protection cross-usine)
+        $prestataireRule = $usineId
+            ? Rule::exists('prestataires', 'id')->where('usine_id', $usineId)
+            : Rule::exists('prestataires', 'id');
+
+        // facture_id doit appartenir à la même usine (protection cross-usine)
+        $factureRule = $usineId
+            ? Rule::exists('facture_packings', 'id')->where('usine_id', $usineId)
+            : Rule::exists('facture_packings', 'id');
+
         return [
-            'prestataire_id'   => ['required', 'integer', Rule::exists('prestataires', 'id')],
+            'prestataire_id'   => ['required', 'integer', $prestataireRule],
             'date'             => ['required', 'date'],
             'nb_rouleaux'      => ['required', 'integer', 'min:0'],
             'prix_par_rouleau' => ['required', 'integer', 'min:0'],
             'statut'           => ['nullable', Rule::enum(PackingStatut::class)],
-            'facture_id'       => ['nullable', 'integer', Rule::exists('facture_packings', 'id')],
+            'facture_id'       => ['nullable', 'integer', $factureRule],
             'notes'            => ['nullable', 'string'],
             'montant'          => ['prohibited'],
         ];

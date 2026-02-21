@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasUsineScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class FacturePacking extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUsineScope;
 
     /* =========================
        STATUTS
@@ -50,6 +51,7 @@ class FacturePacking extends Model
     protected $table = 'facture_packings';
 
     protected $fillable = [
+        'usine_id',
         'reference',
         'prestataire_id',
         'date',
@@ -123,6 +125,11 @@ class FacturePacking extends Model
     /* =========================
        RELATIONS
        ========================= */
+
+    public function usine(): BelongsTo
+    {
+        return $this->belongsTo(Usine::class);
+    }
 
     public function prestataire(): BelongsTo
     {

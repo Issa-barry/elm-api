@@ -15,6 +15,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Spatie\Permission\Exceptions\UnauthorizedException;
 use App\Http\Middleware\Cors;
 use App\Http\Middleware\EnsureUserType;
+use App\Http\Middleware\ResolveUsineContext;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -31,12 +32,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Ne pas rediriger les requêtes API non authentifiées vers une route 'login'
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/login');
 
-        // Middleware Spatie Permission
+        // Middleware Spatie Permission + Usine
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role'             => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'       => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'user.type' => EnsureUserType::class,
+            'user.type'        => EnsureUserType::class,
+            'usine.context'    => ResolveUsineContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

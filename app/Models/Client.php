@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasUsineScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Client extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUsineScope;
 
     protected $fillable = [
+        'usine_id',
         'nom',
         'prenom',
         'raison_sociale',
@@ -88,6 +91,15 @@ class Client extends Model
                 );
             }
         });
+    }
+
+    /* =========================
+       RELATIONS
+       ========================= */
+
+    public function usine(): BelongsTo
+    {
+        return $this->belongsTo(Usine::class);
     }
 
     /* =========================

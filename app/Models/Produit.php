@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
+use App\Models\Traits\HasUsineScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,9 +13,10 @@ use Illuminate\Support\Facades\Auth;
 
 class Produit extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUsineScope;
 
     protected $fillable = [
+        'usine_id',
         'nom',
         'code',
         'prix_usine',
@@ -339,6 +341,11 @@ class Produit extends Model
     // ========================================
     // RELATIONS
     // ========================================
+
+    public function usine(): BelongsTo
+    {
+        return $this->belongsTo(Usine::class);
+    }
 
     public function creator(): BelongsTo
     {

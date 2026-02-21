@@ -4,6 +4,7 @@ namespace App\Http\Requests\Prestataire;
 
 use App\Enums\PrestataireType;
 use App\Models\Prestataire;
+use App\Services\UsineContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -34,12 +35,23 @@ class StorePrestataireRequest extends FormRequest
 
     public function rules(): array
     {
+        $usineId = app(UsineContext::class)->getCurrentUsineId();
+
+        // unique scopé par usine : un même numéro peut exister dans deux usines différentes
+        $phoneUnique = $usineId
+            ? Rule::unique('prestataires', 'phone')->where('usine_id', $usineId)
+            : Rule::unique('prestataires', 'phone');
+
+        $emailUnique = $usineId
+            ? Rule::unique('prestataires', 'email')->where('usine_id', $usineId)
+            : Rule::unique('prestataires', 'email');
+
         return [
             'nom' => ['nullable', 'string', 'max:255', 'required_without:raison_sociale'],
             'prenom' => ['nullable', 'string', 'max:255', 'required_without:raison_sociale'],
             'raison_sociale' => ['nullable', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'regex:/^\+[1-9][0-9]{7,14}$/', 'unique:prestataires,phone'],
-            'email' => ['nullable', 'email:rfc,dns', 'max:255', 'unique:prestataires,email'],
+            'phone' => ['required', 'string', 'regex:/^\+[1-9][0-9]{7,14}$/', $phoneUnique],
+            'email' => ['nullable', 'email:rfc,dns', 'max:255', $emailUnique],
             'pays' => ['required', 'string', 'max:100'],
             'code_pays' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
             'code_phone_pays' => ['required', 'string', 'regex:/^\+[1-9][0-9]{0,3}$/'],

@@ -22,7 +22,13 @@
       "Bash(cmd /c \"dir c:\\\\laragon\\\\www\\\\elm-api /b\")",
       "Bash(powershell -command:*)",
       "Bash(composer require:*)",
-      "Bash(/c/laragon/bin/php/php8.3.14/php.exe artisan migrate:*)"
+      "Bash(/c/laragon/bin/php/php8.3.14/php.exe artisan migrate:*)",
+      "Bash(/c/laragon/bin/php/php8.2.27/php.exe artisan:*)",
+      "Bash(PHP=\"/c/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe\")",
+      "Bash(\"$PHP\" --version)",
+      "Bash(PHP=/c/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe:*)",
+      "Bash(\"$PHP\" artisan migrate --force)",
+      "Bash(\"$PHP\" artisan test tests/Feature/Usine/ --no-coverage)"
     ]
   }
 }
