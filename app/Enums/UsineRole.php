@@ -8,7 +8,7 @@ enum UsineRole: string
     case OWNER_SIEGE = 'owner_siege';
 
     /** Administrateur siège (lecture consolidée + gestion usines) */
-    case ADMIN_SIEGE = 'admin_siege';
+    case ADMIN_SIEGE = 'admin_siege'; 
 
     /** Manager opérationnel d'une usine spécifique */
     case MANAGER = 'manager';
