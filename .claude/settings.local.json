@@ -28,7 +28,8 @@
       "Bash(\"$PHP\" --version)",
       "Bash(PHP=/c/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe:*)",
       "Bash(\"$PHP\" artisan migrate --force)",
-      "Bash(\"$PHP\" artisan test tests/Feature/Usine/ --no-coverage)"
+      "Bash(\"$PHP\" artisan test tests/Feature/Usine/ --no-coverage)",
+      "Bash(grep:*)"
     ]
   }
 }

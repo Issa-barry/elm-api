@@ -7,6 +7,7 @@ use App\Http\Controllers\Users\UserShowController;
 use App\Http\Controllers\Users\UserUpdateController;
 use App\Http\Controllers\Users\UserDestroyController;
 use App\Http\Controllers\Users\UserToggleStatusController;
+use App\Http\Controllers\Users\UserCheckPhoneController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,6 +19,9 @@ use App\Http\Controllers\Users\UserToggleStatusController;
 */
 
 Route::prefix('users')->group(function () {
+    // Vérification disponibilité téléphone (étape 1 création)
+    Route::post('/check-phone', UserCheckPhoneController::class)->middleware('permission:users.create');
+
     // Création
     Route::post('/', UserStoreController::class)->middleware('permission:users.create');
 

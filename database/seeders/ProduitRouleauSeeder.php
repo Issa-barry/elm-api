@@ -6,22 +6,37 @@ use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Models\Parametre;
 use App\Models\Produit;
+use App\Models\Usine;
 use Illuminate\Database\Seeder;
 
 class ProduitRouleauSeeder extends Seeder
 {
     public function run(): void
     {
-        $produit = Produit::withTrashed()
+        // Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
+        // auto-remplir usine_id. On rattache le produit à l'usine opérationnelle
+        // de référence (ELM-USN-01), créée par la backfill migration 200004.
+        $usine = Usine::where('code', 'ELM-USN-01')->first()
+            ?? Usine::where('type', 'usine')->first();
+
+        if (!$usine) {
+            $this->command->warn('ProduitRouleauSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
+            return;
+        }
+
+        $produit = Produit::withoutGlobalScopes()
+            ->withTrashed()
             ->where('nom', 'Rouleau de packing')
             ->where('type', ProduitType::MATERIEL)
+            ->where('usine_id', $usine->id)
             ->first();
 
         if (!$produit) {
             $produit = new Produit([
-                'nom' => 'Rouleau de packing',
-                'type' => ProduitType::MATERIEL,
+                'nom'      => 'Rouleau de packing',
+                'type'     => ProduitType::MATERIEL,
                 'qte_stock' => 0,
+                'usine_id' => $usine->id,
             ]);
         } elseif ($produit->trashed()) {
             $produit->restore();

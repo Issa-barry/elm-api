@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\PrestataireType;
 use App\Models\Prestataire;
+use App\Models\Usine;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -11,6 +12,17 @@ class PrestataireMachinisteSeeder extends Seeder
 {
     public function run(): void
     {
+        // Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
+        // auto-remplir usine_id. On rattache les machinistes à l'usine opérationnelle
+        // de référence (ELM-USN-01), créée par la backfill migration 200004.
+        $usine = Usine::where('code', 'ELM-USN-01')->first()
+            ?? Usine::where('type', 'usine')->first();
+
+        if (!$usine) {
+            $this->command->warn('PrestataireMachinisteSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
+            return;
+        }
+
         $machinistes = [
             [
                 'nom'              => 'SY',
@@ -37,10 +49,12 @@ class PrestataireMachinisteSeeder extends Seeder
         ];
 
         foreach ($machinistes as $data) {
-            $existe = Prestataire::withTrashed()
+            $existe = Prestataire::withoutGlobalScopes()
+                ->withTrashed()
                 ->where('nom', mb_strtoupper($data['nom'], 'UTF-8'))
                 ->where('prenom', mb_convert_case($data['prenom'], MB_CASE_TITLE, 'UTF-8'))
                 ->where('type', PrestataireType::MACHINISTE->value)
+                ->where('usine_id', $usine->id)
                 ->first();
 
             if ($existe) {
@@ -66,6 +80,7 @@ class PrestataireMachinisteSeeder extends Seeder
                 'notes'           => $data['notes'],
                 'is_active'       => true,
                 'reference'       => $this->generateReference(),
+                'usine_id'        => $usine->id,
             ]);
         }
     }
