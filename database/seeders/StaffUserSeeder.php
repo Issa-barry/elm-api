@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Usine;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -30,6 +31,8 @@ class StaffUserSeeder extends Seeder
             ],
         ];
 
+        $usine = Usine::where('code', 'ELM-USN-01')->first();
+
         foreach ($staff as $data) {
             $user = User::firstOrCreate(
                 ['phone' => $data['phone']],
@@ -48,8 +51,13 @@ class StaffUserSeeder extends Seeder
                 ]
             );
 
-            if (!$user->hasRole($data['role'])) {
+            if (! $user->hasRole($data['role'])) {
                 $user->assignRole($data['role']);
+            }
+
+            if ($usine && ! $user->usines()->where('usines.id', $usine->id)->exists()) {
+                $user->usines()->attach($usine->id, ['role' => 'staff', 'is_default' => true]);
+                $user->update(['default_usine_id' => $usine->id]);
             }
         }
     }

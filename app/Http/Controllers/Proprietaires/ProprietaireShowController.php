@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Proprietaires;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProprietaireResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Proprietaire;
 
@@ -18,6 +19,6 @@ class ProprietaireShowController extends Controller
             return $this->notFoundResponse('Propriétaire non trouvé');
         }
 
-        return $this->successResponse($proprietaire);
+        return $this->successResponse(ProprietaireResource::make($proprietaire));
     }
 }

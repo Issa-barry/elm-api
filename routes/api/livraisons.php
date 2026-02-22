@@ -1,26 +1,66 @@
 <?php
 
 use App\Http\Controllers\Livraisons\CommissionCalculController;
+use App\Http\Controllers\Livraisons\CommissionFactureCalculController;
 use App\Http\Controllers\Livraisons\DeductionCommissionStoreController;
+use App\Http\Controllers\Livraisons\DeductionFactureStoreController;
 use App\Http\Controllers\Livraisons\EncaissementIndexController;
 use App\Http\Controllers\Livraisons\EncaissementStoreController;
 use App\Http\Controllers\Livraisons\FactureLivraisonIndexController;
 use App\Http\Controllers\Livraisons\FactureLivraisonShowController;
 use App\Http\Controllers\Livraisons\FactureLivraisonStoreController;
+use App\Http\Controllers\Livraisons\FactureSimplifieeIndexController;
+use App\Http\Controllers\Livraisons\FactureSimplifieeShowController;
+use App\Http\Controllers\Livraisons\FactureSimplifieeStoreController;
+use App\Http\Controllers\Livraisons\PaiementCommissionFactureStoreController;
 use App\Http\Controllers\Livraisons\PaiementCommissionStoreController;
 use App\Http\Controllers\Livraisons\SortieVehiculeClotureController;
 use App\Http\Controllers\Livraisons\SortieVehiculeIndexController;
 use App\Http\Controllers\Livraisons\SortieVehiculeRetourController;
 use App\Http\Controllers\Livraisons\SortieVehiculeShowController;
 use App\Http\Controllers\Livraisons\SortieVehiculeStoreController;
+use App\Http\Controllers\Livraisons\VehiculeOneShotController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Routes Livraisons
 |--------------------------------------------------------------------------
-| Sorties véhicules, factures, encaissements, commissions
+| Workflow simplifié : one-shot, factures directes, commissions par facture
+| Workflow classique : sorties véhicules, factures, encaissements (conservé)
 */
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WORKFLOW SIMPLIFIÉ
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Création one-shot : véhicule + propriétaire + livreur ─────────────────
+Route::post('/livraisons/one-shot', VehiculeOneShotController::class)
+    ->middleware('permission:vehicules.create');
+
+// ── Factures de livraison (liées directement au véhicule) ─────────────────
+Route::prefix('livraisons/factures')->group(function () {
+    Route::get('/', FactureSimplifieeIndexController::class)->middleware('permission:factures-livraisons.read');
+    Route::post('/', FactureSimplifieeStoreController::class)->middleware('permission:factures-livraisons.create');
+    Route::get('/{id}', FactureSimplifieeShowController::class)->where('id', '[0-9]+')->middleware('permission:factures-livraisons.read');
+
+    // Déductions par facture
+    Route::post('/{factureId}/deductions', DeductionFactureStoreController::class)
+        ->where('factureId', '[0-9]+')
+        ->middleware('permission:commissions.create');
+
+    // Commission : calcul et paiement
+    Route::get('/{factureId}/commissions/calcul', CommissionFactureCalculController::class)
+        ->where('factureId', '[0-9]+')
+        ->middleware('permission:commissions.read');
+    Route::post('/{factureId}/commissions/paiement', PaiementCommissionFactureStoreController::class)
+        ->where('factureId', '[0-9]+')
+        ->middleware('permission:commissions.create');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WORKFLOW CLASSIQUE (conservé pour rétrocompatibilité)
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ── Sorties véhicules ────────────────────────────────────────────────────
 Route::prefix('sorties-vehicules')->group(function () {

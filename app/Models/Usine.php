@@ -22,6 +22,9 @@ class Usine extends Model
         'type',
         'statut',
         'localisation',
+        'pays',
+        'ville',
+        'quartier',
         'description',
         'parent_id',
     ];

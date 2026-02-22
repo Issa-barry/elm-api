@@ -15,6 +15,7 @@ class PaiementCommission extends Model
 
     protected $fillable = [
         'sortie_vehicule_id',
+        'facture_livraison_id',
         'commission_brute_totale',
         'part_proprietaire_brute',
         'part_livreur_brute',
@@ -40,5 +41,10 @@ class PaiementCommission extends Model
     public function sortie(): BelongsTo
     {
         return $this->belongsTo(SortieVehicule::class, 'sortie_vehicule_id');
+    }
+
+    public function factureLivraison(): BelongsTo
+    {
+        return $this->belongsTo(FactureLivraison::class, 'facture_livraison_id');
     }
 }

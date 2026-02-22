@@ -35,6 +35,7 @@ class RoleAndPermissionSeeder extends Seeder
             'factures-livraisons'   => ['create', 'read'],
             'encaissements'         => ['create', 'read'],
             'commissions'           => ['create', 'read'],
+            'usines'                => ['create', 'read', 'update', 'delete'],
         ];
 
         // Creer toutes les permissions
@@ -64,6 +65,7 @@ class RoleAndPermissionSeeder extends Seeder
 
         $managerPermissions[] = 'users.read';
         $managerPermissions[] = 'parametres.read';
+        $managerPermissions[] = 'usines.read';
 
         $manager->syncPermissions($managerPermissions);
 

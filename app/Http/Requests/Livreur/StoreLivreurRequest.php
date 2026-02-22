@@ -19,9 +19,13 @@ class StoreLivreurRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nom'      => ['required', 'string', 'max:100'],
-            'prenom'   => ['required', 'string', 'max:100'],
-            'phone'    => ['required', 'string', 'max:20', Rule::unique('livreurs', 'phone')],
+            'nom'       => ['required', 'string', 'max:100'],
+            'prenom'    => ['required', 'string', 'max:100'],
+            'phone'     => ['required', 'string', 'max:20', Rule::unique('livreurs', 'phone')],
+            'email'     => ['nullable', 'email:rfc', 'max:255', Rule::unique('livreurs', 'email')],
+            'pays'      => ['nullable', 'string', 'max:100'],
+            'ville'     => ['nullable', 'string', 'max:100'],
+            'quartier'  => ['nullable', 'string', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
@@ -29,10 +33,12 @@ class StoreLivreurRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nom.required'   => 'Le nom est obligatoire.',
+            'nom.required'    => 'Le nom est obligatoire.',
             'prenom.required' => 'Le prénom est obligatoire.',
-            'phone.required' => 'Le numéro de téléphone est obligatoire.',
-            'phone.unique'   => 'Ce numéro de téléphone est déjà utilisé.',
+            'phone.required'  => 'Le numéro de téléphone est obligatoire.',
+            'phone.unique'    => 'Ce numéro de téléphone est déjà utilisé.',
+            'email.email'     => 'L\'adresse email doit être valide.',
+            'email.unique'    => 'Cette adresse email est déjà utilisée.',
         ];
     }
 }

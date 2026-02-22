@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('factures_livraisons', function (Blueprint $table) {
             $table->id();
             $table->foreignId('usine_id')->constrained('usines');
-            $table->foreignId('sortie_vehicule_id')->unique()->constrained('sorties_vehicules');
+            $table->foreignId('sortie_vehicule_id')->nullable()->unique()->constrained('sorties_vehicules');
             $table->string('reference', 60)->unique();
             $table->decimal('montant_brut', 14, 2);
             $table->decimal('montant_net', 14, 2);

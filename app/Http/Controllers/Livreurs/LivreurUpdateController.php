@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Livreurs;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Livreur\UpdateLivreurRequest;
+use App\Http\Resources\LivreurResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Livreur;
 
@@ -21,6 +22,9 @@ class LivreurUpdateController extends Controller
 
         $livreur->update($request->validated());
 
-        return $this->successResponse($livreur->fresh(), 'Livreur mis à jour');
+        return $this->successResponse(
+            LivreurResource::make($livreur->fresh()),
+            'Livreur mis à jour'
+        );
     }
 }

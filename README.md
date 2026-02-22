@@ -1,5 +1,6 @@
 
 ### 1) Deploiement initiale CONCEPTION
+php artisan migrate:fresh --seed
 
 cd ~/domains/usine-eau-api.fr/public_html
 
@@ -104,6 +105,214 @@ Le numéro est normalisé (suppression espaces, tirets, etc.) avant vérificatio
 
 > Middleware commun : `auth:sanctum` + `user.type:staff` + `usine.context`
 > Permission `photo` : upload via `multipart/form-data`
+
+---
+
+## WORKFLOW SIMPLIFIÉ (recommandé)
+
+Le workflow simplifié supprime la gestion des sorties véhicules. Tout se crée en une page.
+
+### Flux simplifié
+
+```
+POST /v1/livraisons/one-shot                              → créer véhicule + propriétaire + livreur (one-shot)
+POST /v1/livraisons/factures                              → créer une facture liée au véhicule
+POST /v1/encaissements-livraisons                         → encaisser (contrôle dépassement)
+POST /v1/livraisons/factures/{id}/deductions              → ajouter une déduction avant paiement commission
+GET  /v1/livraisons/factures/{id}/commissions/calcul      → calculer la commission brut/net
+POST /v1/livraisons/factures/{id}/commissions/paiement    → payer la commission (facture doit être "payee")
+```
+
+### One-shot : création véhicule + propriétaire + livreur
+
+**POST** `/api/v1/livraisons/one-shot`
+**Permission :** `vehicules.create`
+**Content-Type :** `multipart/form-data`
+
+Si le propriétaire ou le livreur existe déjà (même `phone`), l'enregistrement est réutilisé — pas de doublon.
+
+**Payload :**
+```
+vehicule[nom_vehicule]             = "Camion Alpha"
+vehicule[immatriculation]          = "GN-1234-A"
+vehicule[type_vehicule]            = camion|moto|tricycle|pick_up|autre
+vehicule[capacite_packs]           = 200
+vehicule[mode_commission]          = forfait|pourcentage
+vehicule[valeur_commission]        = 1000
+vehicule[pourcentage_proprietaire] = 60
+vehicule[pourcentage_livreur]      = 40
+proprietaire[nom]                  = "DIALLO"
+proprietaire[prenom]               = "Mamadou"
+proprietaire[phone]                = "+224620000001"
+proprietaire[pays]                 = "Guinée"
+proprietaire[ville]                = "Conakry"
+proprietaire[quartier]             = "Matam"
+livreur[nom]                       = "BALDE"
+livreur[prenom]                    = "Alpha"
+livreur[phone]                     = "+224621000001"
+photo                              = <fichier image jpg/jpeg/png/webp, max 3 Mo>
+```
+
+**Réponse 201 :**
+```json
+{
+  "data": {
+    "vehicule":     { "id": 1, "nom_vehicule": "Camion Alpha", "photo_url": "...", "proprietaire": {...}, "livreurPrincipal": {...} },
+    "proprietaire": { "id": 1, "nom": "DIALLO", "prenom": "Mamadou", "phone": "+224620000001" },
+    "livreur":      { "id": 1, "nom": "BALDE", "prenom": "Alpha", "phone": "+224621000001" }
+  }
+}
+```
+
+**Règles :**
+- `pourcentage_proprietaire + pourcentage_livreur = 100`
+- `immatriculation` unique par usine
+- `phone` propriétaire/livreur normalisé avant recherche (suppression espaces, tirets, etc.)
+
+### Facture de livraison (workflow simplifié)
+
+**POST** `/api/v1/livraisons/factures`
+**Permission :** `factures-livraisons.create`
+
+Snapshots de commission capturés automatiquement depuis le véhicule à la création.
+
+**Payload :**
+```json
+{
+  "vehicule_id":  1,
+  "packs_charges": 150,
+  "montant_brut":  75000,
+  "montant_net":   75000
+}
+```
+
+**Réponse 201 :**
+```json
+{
+  "data": {
+    "id": 1,
+    "reference": "FAC-LIV-20260221-0001",
+    "vehicule_id": 1,
+    "packs_charges": 150,
+    "montant_brut": "75000.00",
+    "montant_net": "75000.00",
+    "statut_facture": "emise",
+    "snapshot_mode_commission": "forfait",
+    "snapshot_valeur_commission": "1000.00",
+    "snapshot_pourcentage_proprietaire": "60.00",
+    "snapshot_pourcentage_livreur": "40.00",
+    "vehicule": { "id": 1, "nom_vehicule": "Camion Alpha" }
+  }
+}
+```
+
+### Encaissements (identique aux deux workflows)
+
+**POST** `/api/v1/encaissements-livraisons`
+**Permission :** `encaissements.create`
+
+```json
+{
+  "facture_livraison_id": 1,
+  "montant": 40000,
+  "date_encaissement": "2026-02-21",
+  "mode_paiement": "especes"
+}
+```
+
+Statut facture mis à jour automatiquement : `emise` → `partiellement_payee` → `payee`
+
+### Déductions de commission (par facture)
+
+**POST** `/api/v1/livraisons/factures/{id}/deductions`
+**Permission :** `commissions.create`
+
+```json
+{
+  "cible":          "proprietaire",
+  "type_deduction": "carburant",
+  "montant":        5000,
+  "commentaire":    "Plein aller-retour"
+}
+```
+
+### Calcul commission (par facture)
+
+**GET** `/api/v1/livraisons/factures/{id}/commissions/calcul`
+**Permission :** `commissions.read`
+
+Calcul depuis les snapshots de la facture (jamais depuis le véhicule actuel).
+
+**Réponse 200 :**
+```json
+{
+  "data": {
+    "packs_charges":           150,
+    "mode_commission":         "forfait",
+    "commission_brute_totale": 150000,
+    "part_proprietaire_brute": 90000,
+    "part_livreur_brute":      60000,
+    "deductions_proprietaire": 5000,
+    "deductions_livreur":      0,
+    "part_proprietaire_nette": 85000,
+    "part_livreur_nette":      60000
+  }
+}
+```
+
+### Paiement commission (par facture)
+
+**POST** `/api/v1/livraisons/factures/{id}/commissions/paiement`
+**Permission :** `commissions.create`
+
+**Règle :** la facture doit être au statut `payee` (422 sinon). Un seul paiement par facture (409 si doublon).
+
+**Payload :**
+```json
+{ "date_paiement": "2026-02-21" }
+```
+
+**Réponse 201 :**
+```json
+{
+  "data": {
+    "statut":                  "paye",
+    "commission_brute_totale": "150000.00",
+    "part_proprietaire_nette": "85000.00",
+    "part_livreur_nette":      "60000.00"
+  }
+}
+```
+
+### Routes simplifiées — tableau récapitulatif
+
+| Méthode | Route | Permission | Description |
+|---------|-------|-----------|-------------|
+| POST | `/v1/livraisons/one-shot` | `vehicules.create` | Créer véhicule + propriétaire + livreur |
+| GET | `/v1/livraisons/factures` | `factures-livraisons.read` | Liste des factures simplifiées |
+| POST | `/v1/livraisons/factures` | `factures-livraisons.create` | Créer une facture |
+| GET | `/v1/livraisons/factures/{id}` | `factures-livraisons.read` | Détail d'une facture |
+| POST | `/v1/livraisons/factures/{id}/deductions` | `commissions.create` | Ajouter une déduction |
+| GET | `/v1/livraisons/factures/{id}/commissions/calcul` | `commissions.read` | Calculer la commission |
+| POST | `/v1/livraisons/factures/{id}/commissions/paiement` | `commissions.create` | Payer la commission |
+
+### Règles métier — workflow simplifié
+
+| Règle | Vérification |
+|-------|-------------|
+| `pourcentage_proprio + pourcentage_livreur = 100` | FormRequest one-shot |
+| Immatriculation unique par usine | FormRequest one-shot |
+| Photo obligatoire à la création | FormRequest one-shot |
+| Réutilisation proprietaire/livreur par `phone` | Controller VehiculeOneShot |
+| Snapshots commission figés à la création facture | Controller FactureSimplifieeStore |
+| Encaissements cumulés ≤ `montant_net` | Controller EncaissementStore |
+| Commission = facture `payee` seulement | Controller PaiementCommissionFactureStore |
+| Un seul paiement commission par facture | Controller PaiementCommissionFactureStore (409) |
+| Déductions bloquées si commission déjà payée | Controller DeductionFactureStore (409) |
+
+---
+
+## WORKFLOW CLASSIQUE (conservé pour rétrocompatibilité)
 
 ### Flux complet (départ → facture → encaissement → commission)
 

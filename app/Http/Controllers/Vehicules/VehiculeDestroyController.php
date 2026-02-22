@@ -19,7 +19,9 @@ class VehiculeDestroyController extends Controller
             return $this->notFoundResponse('Véhicule non trouvé');
         }
 
-        Storage::disk('public')->delete($vehicule->photo_path);
+        if (!empty($vehicule->photo_path)) {
+            Storage::disk('public')->delete($vehicule->photo_path);
+        }
         $vehicule->delete();
 
         return $this->successResponse(null, 'Véhicule supprimé');

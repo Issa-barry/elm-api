@@ -20,6 +20,8 @@ class Vehicule extends Model
     protected $fillable = [
         'usine_id',
         'nom_vehicule',
+        'marque',
+        'modele',
         'immatriculation',
         'type_vehicule',
         'capacite_packs',
@@ -48,8 +50,12 @@ class Vehicule extends Model
         ];
     }
 
-    public function getPhotoUrlAttribute(): string
+    public function getPhotoUrlAttribute(): ?string
     {
+        if (empty($this->photo_path)) {
+            return null;
+        }
+
         return Storage::disk('public')->url($this->photo_path);
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Livreurs;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Livreur\StoreLivreurRequest;
+use App\Http\Resources\LivreurResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Livreur;
 
@@ -15,6 +16,9 @@ class LivreurStoreController extends Controller
     {
         $livreur = Livreur::create($request->validated());
 
-        return $this->createdResponse($livreur, 'Livreur créé avec succès');
+        return $this->createdResponse(
+            LivreurResource::make($livreur),
+            'Livreur créé avec succès'
+        );
     }
 }

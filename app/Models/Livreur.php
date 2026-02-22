@@ -15,6 +15,10 @@ class Livreur extends Model
         'nom',
         'prenom',
         'phone',
+        'email',
+        'pays',
+        'ville',
+        'quartier',
         'is_active',
     ];
 
@@ -24,6 +28,8 @@ class Livreur extends Model
             'is_active' => 'boolean',
         ];
     }
+
+    // ── Mutateurs : formatage automatique à l'écriture ───────────────────
 
     public function setNomAttribute($value): void
     {
@@ -35,10 +41,32 @@ class Livreur extends Model
         $this->attributes['prenom'] = mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8');
     }
 
+    public function setEmailAttribute($value): void
+    {
+        $this->attributes['email'] = $value !== null ? mb_strtolower(trim($value), 'UTF-8') : null;
+    }
+
     public function setPhoneAttribute($value): void
     {
-        $this->attributes['phone'] = preg_replace('/[^0-9+]/', '', $value);
+        $this->attributes['phone'] = preg_replace('/[^0-9+]/', '', (string) $value);
     }
+
+    public function setPaysAttribute($value): void
+    {
+        $this->attributes['pays'] = $value !== null ? mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8') : null;
+    }
+
+    public function setVilleAttribute($value): void
+    {
+        $this->attributes['ville'] = $value !== null ? mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8') : null;
+    }
+
+    public function setQuartierAttribute($value): void
+    {
+        $this->attributes['quartier'] = $value !== null ? mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8') : null;
+    }
+
+    // ── Relations ─────────────────────────────────────────────────────────
 
     public function vehiculesPrincipaux(): HasMany
     {

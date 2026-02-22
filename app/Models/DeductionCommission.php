@@ -16,6 +16,7 @@ class DeductionCommission extends Model
 
     protected $fillable = [
         'sortie_vehicule_id',
+        'facture_livraison_id',
         'cible',
         'type_deduction',
         'montant',
@@ -34,5 +35,10 @@ class DeductionCommission extends Model
     public function sortie(): BelongsTo
     {
         return $this->belongsTo(SortieVehicule::class, 'sortie_vehicule_id');
+    }
+
+    public function factureLivraison(): BelongsTo
+    {
+        return $this->belongsTo(FactureLivraison::class, 'facture_livraison_id');
     }
 }

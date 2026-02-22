@@ -29,6 +29,8 @@ class Proprietaire extends Model
         ];
     }
 
+    // ── Mutateurs : formatage automatique à l'écriture ───────────────────
+
     public function setNomAttribute($value): void
     {
         $this->attributes['nom'] = mb_strtoupper(trim($value), 'UTF-8');
@@ -39,10 +41,32 @@ class Proprietaire extends Model
         $this->attributes['prenom'] = mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8');
     }
 
+    public function setEmailAttribute($value): void
+    {
+        $this->attributes['email'] = $value !== null ? mb_strtolower(trim($value), 'UTF-8') : null;
+    }
+
     public function setPhoneAttribute($value): void
     {
-        $this->attributes['phone'] = preg_replace('/[^0-9+]/', '', $value);
+        $this->attributes['phone'] = preg_replace('/[^0-9+]/', '', (string) $value);
     }
+
+    public function setPaysAttribute($value): void
+    {
+        $this->attributes['pays'] = $value !== null ? mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8') : null;
+    }
+
+    public function setVilleAttribute($value): void
+    {
+        $this->attributes['ville'] = $value !== null ? mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8') : null;
+    }
+
+    public function setQuartierAttribute($value): void
+    {
+        $this->attributes['quartier'] = $value !== null ? mb_convert_case(trim($value), MB_CASE_TITLE, 'UTF-8') : null;
+    }
+
+    // ── Relations ─────────────────────────────────────────────────────────
 
     public function vehicules(): HasMany
     {

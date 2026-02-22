@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Proprietaires;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Proprietaire\UpdateProprietaireRequest;
+use App\Http\Resources\ProprietaireResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Proprietaire;
 
@@ -21,6 +22,9 @@ class ProprietaireUpdateController extends Controller
 
         $proprietaire->update($request->validated());
 
-        return $this->successResponse($proprietaire->fresh(), 'Propriétaire mis à jour');
+        return $this->successResponse(
+            ProprietaireResource::make($proprietaire->fresh()),
+            'Propriétaire mis à jour'
+        );
     }
 }

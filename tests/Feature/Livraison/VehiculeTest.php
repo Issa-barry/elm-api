@@ -3,11 +3,9 @@
 namespace Tests\Feature\Livraison;
 
 use App\Enums\UsineType;
-use App\Models\Livreur;
 use App\Models\Proprietaire;
 use App\Models\Usine;
 use App\Models\User;
-use App\Models\Vehicule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +17,7 @@ class VehiculeTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User  $staff;
+    private User $staff;
     private Usine $usine;
 
     protected function setUp(): void
@@ -33,7 +31,7 @@ class VehiculeTest extends TestCase
         Permission::findOrCreate('vehicules.delete', 'web');
 
         $this->usine = Usine::create([
-            'nom'    => 'Usine Véhicule Test',
+            'nom'    => 'Usine Vehicule Test',
             'code'   => 'VEH-TEST',
             'type'   => UsineType::USINE->value,
             'statut' => 'active',
@@ -66,9 +64,6 @@ class VehiculeTest extends TestCase
         ], $overrides);
     }
 
-    // ─────────────────────────────────────────────────────
-    //  Création avec photo OK → 201
-    // ─────────────────────────────────────────────────────
     public function test_creation_vehicule_avec_photo_ok(): void
     {
         Sanctum::actingAs($this->staff);
@@ -86,10 +81,7 @@ class VehiculeTest extends TestCase
         $this->assertStringContainsString('/storage/', $response->json('data.photo_url'));
     }
 
-    // ─────────────────────────────────────────────────────
-    //  Création sans photo → 422
-    // ─────────────────────────────────────────────────────
-    public function test_creation_vehicule_sans_photo_retourne_422(): void
+    public function test_creation_vehicule_sans_photo_ok(): void
     {
         Sanctum::actingAs($this->staff);
 
@@ -99,13 +91,48 @@ class VehiculeTest extends TestCase
         $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
             ->postJson('/api/v1/vehicules', $payload);
 
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['photo']);
+        $response->assertCreated()
+            ->assertJsonPath('data.photo_path', null)
+            ->assertJsonPath('data.photo_url', null);
     }
 
-    // ─────────────────────────────────────────────────────
-    //  Pourcentages invalides (ne somment pas à 100) → 422
-    // ─────────────────────────────────────────────────────
+    public function test_creation_vehicule_sans_capacite_utilise_default_selon_type(): void
+    {
+        Sanctum::actingAs($this->staff);
+
+        $payload = $this->payload([
+            'type_vehicule' => 'vanne',
+        ]);
+        unset($payload['capacite_packs']);
+
+        $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
+            ->postJson('/api/v1/vehicules', $payload);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.type_vehicule', 'vanne')
+            ->assertJsonPath('data.capacite_packs', 150);
+    }
+
+    public function test_update_type_vehicule_applique_capacite_par_defaut_si_absente(): void
+    {
+        Sanctum::actingAs($this->staff);
+
+        $header = ['X-Usine-Id' => (string) $this->usine->id];
+
+        $createResponse = $this->withHeaders($header)->postJson('/api/v1/vehicules', $this->payload());
+        $createResponse->assertCreated();
+
+        $id = $createResponse->json('data.id');
+
+        $updateResponse = $this->withHeaders($header)->postJson("/api/v1/vehicules/{$id}", [
+            'type_vehicule' => 'tricyle',
+        ]);
+
+        $updateResponse->assertOk()
+            ->assertJsonPath('data.type_vehicule', 'tricycle')
+            ->assertJsonPath('data.capacite_packs', 70);
+    }
+
     public function test_pourcentages_invalides_retourne_422(): void
     {
         Sanctum::actingAs($this->staff);
@@ -113,16 +140,13 @@ class VehiculeTest extends TestCase
         $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
             ->postJson('/api/v1/vehicules', $this->payload([
                 'pourcentage_proprietaire' => 50,
-                'pourcentage_livreur'      => 30, // 50+30 ≠ 100
+                'pourcentage_livreur'      => 30,
             ]));
 
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['pourcentage_livreur']);
     }
 
-    // ─────────────────────────────────────────────────────
-    //  Immatriculation unique par usine
-    // ─────────────────────────────────────────────────────
     public function test_immatriculation_unique_par_usine(): void
     {
         Sanctum::actingAs($this->staff);
@@ -133,9 +157,6 @@ class VehiculeTest extends TestCase
         $this->withHeaders($header)->postJson('/api/v1/vehicules', $this->payload(['immatriculation' => 'GN-0001-X']))->assertUnprocessable();
     }
 
-    // ─────────────────────────────────────────────────────
-    //  Remplacement photo → ancien fichier supprimé
-    // ─────────────────────────────────────────────────────
     public function test_remplacement_photo_vehicule(): void
     {
         Sanctum::actingAs($this->staff);
@@ -158,9 +179,6 @@ class VehiculeTest extends TestCase
         Storage::disk('public')->assertMissing($oldPhotoPath);
     }
 
-    // ─────────────────────────────────────────────────────
-    //  401 non authentifié
-    // ─────────────────────────────────────────────────────
     public function test_non_authentifie_retourne_401(): void
     {
         $response = $this->postJson('/api/v1/vehicules', $this->payload());

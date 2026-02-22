@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vehicules;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\VehiculeResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Vehicule;
 use Illuminate\Http\Request;
@@ -18,6 +19,9 @@ class VehiculeIndexController extends Controller
             ->orderBy('nom_vehicule')
             ->paginate(20);
 
-        return $this->successResponse($vehicules, 'Liste des véhicules');
+        return $this->successResponse(
+            $vehicules->through(fn ($v) => VehiculeResource::make($v)),
+            'Liste des véhicules'
+        );
     }
 }

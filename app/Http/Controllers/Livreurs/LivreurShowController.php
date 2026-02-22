@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Livreurs;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\LivreurResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Livreur;
 
@@ -18,6 +19,6 @@ class LivreurShowController extends Controller
             return $this->notFoundResponse('Livreur non trouvé');
         }
 
-        return $this->successResponse($livreur);
+        return $this->successResponse(LivreurResource::make($livreur));
     }
 }
