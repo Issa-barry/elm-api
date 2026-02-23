@@ -12,9 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('factures_livraisons', function (Blueprint $table) {
-            // Lien direct vers le véhicule (workflow simplifié)
-            $table->unsignedBigInteger('vehicule_id')->nullable()->after('sortie_vehicule_id');
+        Schema::table('factures_ventes', function (Blueprint $table) {
+            // Lien direct vers le véhicule
+            $table->unsignedBigInteger('vehicule_id')->nullable()->after('usine_id');
 
             // Nombre de packs chargés pour ce chargement
             $table->unsignedInteger('packs_charges')->nullable()->after('vehicule_id');
@@ -29,7 +29,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('factures_livraisons', function (Blueprint $table) {
+        Schema::table('factures_ventes', function (Blueprint $table) {
             $table->dropColumn([
                 'vehicule_id',
                 'packs_charges',

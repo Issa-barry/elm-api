@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             ProduitRouleauSeeder::class,
             PrestataireMachinisteSeeder::class,
             StaffUserSeeder::class,
+            VehiculeSeeder::class,
         ]);
     }
 }
