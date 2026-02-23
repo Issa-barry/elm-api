@@ -36,6 +36,8 @@ class RoleAndPermissionSeeder extends Seeder
             'encaissements'         => ['create', 'read'],
             'commissions'           => ['create', 'read'],
             'usines'                => ['create', 'read', 'update', 'delete'],
+            // Module ventes
+            'commandes'             => ['create', 'read', 'update', 'delete'],
         ];
 
         // Creer toutes les permissions
@@ -56,6 +58,7 @@ class RoleAndPermissionSeeder extends Seeder
         $operationalModules = [
             'produits', 'prestataires', 'clients', 'packings', 'facture-packings', 'versements',
             'proprietaires', 'livreurs', 'vehicules', 'sorties', 'factures-livraisons', 'encaissements', 'commissions',
+            'commandes',
         ];
         foreach ($operationalModules as $module) {
             foreach ($modules[$module] as $action) {
@@ -100,6 +103,8 @@ class RoleAndPermissionSeeder extends Seeder
             'factures-livraisons.create', 'factures-livraisons.read',
             'encaissements.create', 'encaissements.read',
             'commissions.create', 'commissions.read',
+            // Ventes financier
+            'commandes.read',
         ]);
 
         // COMMERCIALE : gestion commerciale (clients, packings, factures en lecture)
@@ -111,6 +116,10 @@ class RoleAndPermissionSeeder extends Seeder
             'packings.create', 'packings.read', 'packings.update', 'packings.delete',
             'facture-packings.read',
             'versements.read',
+            // Ventes
+            'commandes.create', 'commandes.read',
+            'vehicules.create', // one-shot
+            'encaissements.read',
         ]);
     }
 }

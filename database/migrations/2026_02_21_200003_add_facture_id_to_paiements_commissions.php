@@ -13,14 +13,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('paiements_commissions', function (Blueprint $table) {
-            $table->unsignedBigInteger('facture_livraison_id')->nullable()->unique()->after('sortie_vehicule_id');
+            $table->unsignedBigInteger('facture_vente_id')->nullable()->unique()->after('sortie_vehicule_id');
         });
     }
 
     public function down(): void
     {
         Schema::table('paiements_commissions', function (Blueprint $table) {
-            $table->dropColumn('facture_livraison_id');
+            $table->dropColumn('facture_vente_id');
         });
     }
 };

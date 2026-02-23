@@ -73,8 +73,4 @@ class Livreur extends Model
         return $this->hasMany(Vehicule::class, 'livreur_principal_id');
     }
 
-    public function sorties(): HasMany
-    {
-        return $this->hasMany(SortieVehicule::class, 'livreur_id_effectif');
-    }
 }

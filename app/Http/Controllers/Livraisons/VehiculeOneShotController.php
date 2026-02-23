@@ -66,10 +66,6 @@ class VehiculeOneShotController extends Controller
                     $request->input('vehicule.pris_en_charge_par_usine', false),
                     FILTER_VALIDATE_BOOLEAN
                 ),
-                'mode_commission'          => $request->input('vehicule.mode_commission'),
-                'valeur_commission'        => (float) $request->input('vehicule.valeur_commission'),
-                'pourcentage_proprietaire' => (float) $request->input('vehicule.pourcentage_proprietaire'),
-                'pourcentage_livreur'      => (float) $request->input('vehicule.pourcentage_livreur'),
                 'photo_path'               => $photoPath,
                 'is_active'                => true,
             ]);

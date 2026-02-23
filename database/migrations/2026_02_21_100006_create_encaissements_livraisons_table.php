@@ -8,9 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('encaissements_livraisons', function (Blueprint $table) {
+        Schema::create('encaissements_ventes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('facture_livraison_id')->constrained('factures_livraisons');
+            $table->foreignId('facture_vente_id')->constrained('factures_ventes');
             $table->decimal('montant', 14, 2);
             $table->date('date_encaissement');
             $table->string('mode_paiement', 30); // especes|mobile_money|virement|cheque
@@ -21,6 +21,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('encaissements_livraisons');
+        Schema::dropIfExists('encaissements_ventes');
     }
 };

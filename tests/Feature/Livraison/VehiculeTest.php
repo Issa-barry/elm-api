@@ -56,10 +56,6 @@ class VehiculeTest extends TestCase
             'capacite_packs'           => 200,
             'proprietaire_id'          => $proprietaire->id,
             'pris_en_charge_par_usine' => false,
-            'mode_commission'          => 'forfait',
-            'valeur_commission'        => 500,
-            'pourcentage_proprietaire' => 60,
-            'pourcentage_livreur'      => 40,
             'photo'                    => UploadedFile::fake()->image('vehicule.jpg', 800, 600),
         ], $overrides);
     }
@@ -131,20 +127,6 @@ class VehiculeTest extends TestCase
         $updateResponse->assertOk()
             ->assertJsonPath('data.type_vehicule', 'tricycle')
             ->assertJsonPath('data.capacite_packs', 70);
-    }
-
-    public function test_pourcentages_invalides_retourne_422(): void
-    {
-        Sanctum::actingAs($this->staff);
-
-        $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
-            ->postJson('/api/v1/vehicules', $this->payload([
-                'pourcentage_proprietaire' => 50,
-                'pourcentage_livreur'      => 30,
-            ]));
-
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['pourcentage_livreur']);
     }
 
     public function test_immatriculation_unique_par_usine(): void
