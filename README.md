@@ -1,8 +1,16 @@
 
+cd ~/domains/usine-eau-api.fr/public_html
+composer2 update
+php artisan migrate:fresh --seed
+php artisan optimize:clear
+php artisan storage:link
+php artisan optimize
+
+
 ### 1) Deploiement initiale CONCEPTION
 php artisan migrate:fresh --seed
 
-cd ~/domains/usine-eau-api.fr/public_html
+
 
 composer2 update
 
