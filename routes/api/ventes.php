@@ -6,11 +6,14 @@ use App\Http\Controllers\Ventes\CommandeVenteIndexController;
 use App\Http\Controllers\Ventes\CommandeVenteShowController;
 use App\Http\Controllers\Ventes\CommandeVenteStoreController;
 use App\Http\Controllers\Ventes\CommandeVenteUpdateController;
+use App\Http\Controllers\Ventes\CommissionVenteIndexController;
+use App\Http\Controllers\Ventes\CommissionVenteShowController;
 use App\Http\Controllers\Ventes\EncaissementVenteIndexController;
 use App\Http\Controllers\Ventes\EncaissementVenteStoreController;
 use App\Http\Controllers\Ventes\FactureVenteAnnulerController;
 use App\Http\Controllers\Ventes\FactureVenteIndexController;
 use App\Http\Controllers\Ventes\FactureVenteShowController;
+use App\Http\Controllers\Ventes\VersementCommissionStoreController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -62,4 +65,16 @@ Route::prefix('ventes/encaissements')->group(function () {
         ->middleware('permission:encaissements.read');
     Route::post('/', EncaissementVenteStoreController::class)
         ->middleware('permission:encaissements.create');
+});
+
+// ── Commissions de vente ───────────────────────────────────────────────────
+Route::prefix('ventes/commissions')->group(function () {
+    Route::get('/', CommissionVenteIndexController::class)
+        ->middleware('permission:commissions.read');
+    Route::get('/{id}', CommissionVenteShowController::class)
+        ->where('id', '[0-9]+')
+        ->middleware('permission:commissions.read');
+    Route::post('/{id}/versements/{type}', VersementCommissionStoreController::class)
+        ->where('id', '[0-9]+')
+        ->middleware('permission:commissions.verser');
 });

@@ -70,10 +70,10 @@ class VehiculeSeeder extends Seeder
             ->withTrashed()
             ->firstOrNew([
                 'usine_id' => $usine->id,
-                'immatriculation' => 'ELM-VEH-001',
+                'immatriculation' => 'RC-802-WK',
             ]);
         $vehicule->fill([
-            'nom_vehicule' => 'Camion ELM 01',
+            'nom_vehicule' => 'Camion Nen dow',
             'marque' => 'Iveco',
             'modele' => 'Eurocargo',
             'type_vehicule' => TypeVehicule::CAMION->value,
@@ -81,6 +81,8 @@ class VehiculeSeeder extends Seeder
             'proprietaire_id' => $proprietaire->id,
             'livreur_principal_id' => $livreur->id,
             'pris_en_charge_par_usine' => false,
+            'taux_commission_livreur' => 60.00,
+            'commission_active' => true,
             'photo_path' => 'vehicules/default.jpg',
             'is_active' => true,
         ]);

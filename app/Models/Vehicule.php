@@ -26,6 +26,8 @@ class Vehicule extends Model
         'proprietaire_id',
         'livreur_principal_id',
         'pris_en_charge_par_usine',
+        'taux_commission_livreur',
+        'commission_active',
         'photo_path',
         'is_active',
     ];
@@ -33,10 +35,12 @@ class Vehicule extends Model
     protected function casts(): array
     {
         return [
-            'is_active'               => 'boolean',
+            'is_active'                => 'boolean',
             'pris_en_charge_par_usine' => 'boolean',
-            'type_vehicule'           => TypeVehicule::class,
-            'capacite_packs'          => 'integer',
+            'commission_active'        => 'boolean',
+            'type_vehicule'            => TypeVehicule::class,
+            'capacite_packs'           => 'integer',
+            'taux_commission_livreur'  => 'decimal:2',
         ];
     }
 

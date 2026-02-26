@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\ModeCommission;
 use App\Enums\TypeVehicule;
 use App\Enums\UsineType;
 use App\Models\Livreur;
@@ -21,23 +20,21 @@ class VehiculeFactory extends Factory
     public function definition(): array
     {
         return [
-            'usine_id'                  => fn () => Usine::withoutGlobalScopes()->firstOrCreate(
+            'usine_id'                 => fn () => Usine::withoutGlobalScopes()->firstOrCreate(
                 ['code' => 'TEST-DEFAULT'],
                 ['nom' => 'Usine Test Default', 'type' => UsineType::USINE->value, 'statut' => 'active']
             )->id,
-            'nom_vehicule'              => fake()->words(2, true),
-            'immatriculation'           => strtoupper(fake()->unique()->bothify('??-####-?')),
-            'type_vehicule'             => TypeVehicule::CAMION->value,
-            'capacite_packs'            => fake()->numberBetween(50, 500),
-            'proprietaire_id'           => Proprietaire::factory(),
-            'livreur_principal_id'      => null,
-            'pris_en_charge_par_usine'  => false,
-            'mode_commission'           => ModeCommission::FORFAIT->value,
-            'valeur_commission'         => fake()->randomFloat(2, 100, 1000),
-            'pourcentage_proprietaire'  => 60.00,
-            'pourcentage_livreur'       => 40.00,
-            'photo_path'                => 'vehicules/default.jpg',
-            'is_active'                 => true,
+            'nom_vehicule'             => fake()->words(2, true),
+            'immatriculation'          => strtoupper(fake()->unique()->bothify('??-####-?')),
+            'type_vehicule'            => TypeVehicule::CAMION->value,
+            'capacite_packs'           => fake()->numberBetween(50, 500),
+            'proprietaire_id'          => Proprietaire::factory(),
+            'livreur_principal_id'     => null,
+            'pris_en_charge_par_usine' => false,
+            'taux_commission_livreur'  => 60.00,
+            'commission_active'        => true,
+            'photo_path'               => 'vehicules/default.jpg',
+            'is_active'                => true,
         ];
     }
 
@@ -46,11 +43,13 @@ class VehiculeFactory extends Factory
         return $this->state(['livreur_principal_id' => $livreurId]);
     }
 
-    public function pourcentage(float $proprio, float $livreur): static
+    public function tauxCommission(float $tauxLivreur): static
     {
-        return $this->state([
-            'pourcentage_proprietaire' => $proprio,
-            'pourcentage_livreur'      => $livreur,
-        ]);
+        return $this->state(['taux_commission_livreur' => $tauxLivreur]);
+    }
+
+    public function sansCommission(): static
+    {
+        return $this->state(['commission_active' => false]);
     }
 }

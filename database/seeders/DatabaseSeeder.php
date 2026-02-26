@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             ParametreSeeder::class,
             ProduitRouleauSeeder::class,
+            ProduitPackSeeder::class,
             PrestataireMachinisteSeeder::class,
             StaffUserSeeder::class,
             VehiculeSeeder::class,

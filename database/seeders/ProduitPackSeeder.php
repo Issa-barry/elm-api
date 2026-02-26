@@ -4,38 +4,33 @@ namespace Database\Seeders;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Models\Parametre;
 use App\Models\Produit;
 use App\Models\Usine;
 use Illuminate\Database\Seeder;
 
-class ProduitRouleauSeeder extends Seeder
+class ProduitPackSeeder extends Seeder
 {
     public function run(): void
     {
-        // Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
-        // auto-remplir usine_id. On rattache le produit à l'usine opérationnelle
-        // de référence (ELM-USN-01), créée par la backfill migration 200004.
         $usine = Usine::where('code', 'ELM-USN-01')->first()
             ?? Usine::where('type', 'usine')->first();
 
         if (!$usine) {
-            $this->command->warn('ProduitRouleauSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
+            $this->command->warn('ProduitPackSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
             return;
         }
 
         $produit = Produit::withoutGlobalScopes()
             ->withTrashed()
-            ->where('nom', 'Rouleau de packing')
-            ->where('type', ProduitType::MATERIEL)
+            ->where('nom', 'Pack de 30')
+            ->where('type', ProduitType::FABRICABLE)
             ->where('usine_id', $usine->id)
             ->first();
 
         if (!$produit) {
             $produit = new Produit([
-                'nom'      => 'Rouleau de packing',
-                'type'     => ProduitType::MATERIEL,
-                'qte_stock' => 0,
+                'nom'      => 'Pack de 30',
+                'type'     => ProduitType::FABRICABLE,
                 'usine_id' => $usine->id,
             ]);
         } elseif ($produit->trashed()) {
@@ -46,21 +41,12 @@ class ProduitRouleauSeeder extends Seeder
             $produit->code = $this->generateNumericProductCode();
         }
 
-        $produit->prix_achat  = $produit->prix_achat ?? 500;
-        $produit->qte_stock   = max($produit->qte_stock, 1000);
+        $produit->prix_usine  = 4500;
+        $produit->prix_vente  = 5000;
+        $produit->qte_stock   = 1000;
         $produit->is_critique = true;
         $produit->statut      = ProduitStatut::ACTIF;
         $produit->save();
-
-        Parametre::updateOrCreate(
-            ['cle' => Parametre::CLE_PRODUIT_ROULEAU_ID],
-            [
-                'valeur' => (string) $produit->id,
-                'type' => Parametre::TYPE_INTEGER,
-                'groupe' => Parametre::GROUPE_PACKING,
-                'description' => 'ID du produit rouleau utilise pour le packing (gestion du stock)',
-            ]
-        );
     }
 
     private function isValidNumericCode(?string $code): bool

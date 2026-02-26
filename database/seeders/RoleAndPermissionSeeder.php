@@ -34,7 +34,7 @@ class RoleAndPermissionSeeder extends Seeder
             'sorties'               => ['create', 'read', 'update'],
             'factures-livraisons'   => ['create', 'read'],
             'encaissements'         => ['create', 'read'],
-            'commissions'           => ['create', 'read'],
+            'commissions'           => ['create', 'read', 'verser'],
             'usines'                => ['create', 'read', 'update', 'delete'],
             // Module ventes
             'commandes'             => ['create', 'read', 'update', 'delete'],
@@ -102,7 +102,7 @@ class RoleAndPermissionSeeder extends Seeder
             'sorties.read',
             'factures-livraisons.create', 'factures-livraisons.read',
             'encaissements.create', 'encaissements.read',
-            'commissions.create', 'commissions.read',
+            'commissions.create', 'commissions.read', 'commissions.verser',
             // Ventes financier
             'commandes.read',
         ]);

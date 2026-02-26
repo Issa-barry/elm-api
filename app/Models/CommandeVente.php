@@ -64,4 +64,9 @@ class CommandeVente extends Model
     {
         return $this->hasOne(FactureVente::class, 'commande_vente_id');
     }
+
+    public function commission(): HasOne
+    {
+        return $this->hasOne(CommissionVente::class, 'commande_vente_id');
+    }
 }
