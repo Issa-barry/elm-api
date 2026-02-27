@@ -14,12 +14,11 @@ class LivreurIndexController extends Controller
 
     public function __invoke(Request $request)
     {
+        $statut = $request->input('statut'); // 'actif' | 'inactif' | null = tous
+
         $livreurs = Livreur::query()
-            ->when(
-                $request->boolean('inactifs'),
-                fn ($q) => $q->where('is_active', false),
-                fn ($q) => $q->where('is_active', true)
-            )
+            ->when($statut === 'actif',   fn ($q) => $q->where('is_active', true))
+            ->when($statut === 'inactif', fn ($q) => $q->where('is_active', false))
             ->orderBy('nom')
             ->paginate(20);
 

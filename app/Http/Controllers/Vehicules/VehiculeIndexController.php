@@ -14,8 +14,11 @@ class VehiculeIndexController extends Controller
 
     public function __invoke(Request $request)
     {
+        $statut = $request->input('statut'); // 'actif' | 'inactif' | null = tous
+
         $vehicules = Vehicule::with(['proprietaire', 'livreurPrincipal'])
-            ->when(!$request->boolean('inactifs'), fn ($q) => $q->where('is_active', true))
+            ->when($statut === 'actif',   fn ($q) => $q->where('is_active', true))
+            ->when($statut === 'inactif', fn ($q) => $q->where('is_active', false))
             ->orderBy('nom_vehicule')
             ->paginate(20);
 
