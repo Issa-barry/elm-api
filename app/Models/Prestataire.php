@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
 class Prestataire extends Model
 {
@@ -94,11 +93,9 @@ class Prestataire extends Model
 
     protected static function generateReference(): string
     {
-        do {
-            $reference = 'PREST-' . now()->format('Ymd') . '-' . Str::upper((string) Str::ulid());
-        } while (self::withTrashed()->where('reference', $reference)->exists());
+        $lastId = self::withTrashed()->max('id') ?? 0;
 
-        return $reference;
+        return 'PREST-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function setNomAttribute($value): void

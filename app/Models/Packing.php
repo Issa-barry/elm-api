@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class Packing extends Model
@@ -91,9 +90,8 @@ class Packing extends Model
 
     protected static function generateReference(): string
     {
-        do {
-            $reference = 'PACK-' . now()->format('Ymd') . '-' . Str::upper((string) Str::ulid());
-        } while (self::withTrashed()->where('reference', $reference)->exists());
+        $lastId    = self::withTrashed()->max('id') ?? 0;
+        $reference = 'PACK-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
 
         return $reference;
     }

@@ -39,6 +39,23 @@ class StoreVehiculeRequest extends FormRequest
             }
         }
 
+        // Formatage de la qualité des données
+        if ($this->has('nom_vehicule') && $this->input('nom_vehicule') !== null) {
+            $dataToMerge['nom_vehicule'] = mb_convert_case(mb_strtolower($this->input('nom_vehicule')), MB_CASE_TITLE, 'UTF-8');
+        }
+
+        if ($this->has('marque') && $this->input('marque') !== null) {
+            $dataToMerge['marque'] = mb_convert_case(mb_strtolower($this->input('marque')), MB_CASE_TITLE, 'UTF-8');
+        }
+
+        if ($this->has('modele') && $this->input('modele') !== null) {
+            $dataToMerge['modele'] = mb_convert_case(mb_strtolower($this->input('modele')), MB_CASE_TITLE, 'UTF-8');
+        }
+
+        if ($this->has('immatriculation') && $this->input('immatriculation') !== null) {
+            $dataToMerge['immatriculation'] = mb_strtoupper(trim($this->input('immatriculation')), 'UTF-8');
+        }
+
         if (!empty($dataToMerge)) {
             $this->merge($dataToMerge);
         }
