@@ -38,7 +38,18 @@ class StoreProduitRequest extends FormRequest
 
             // Optionnels
             'description' => 'nullable|string|max:5000',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'is_global'   => 'nullable|boolean',
+
+            // Affectations usines initiales
+            'usines'              => 'nullable|array',
+            'usines.*.usine_id'   => 'required_with:usines|integer|exists:usines,id',
+            'usines.*.is_active'  => 'nullable|boolean',
+            'usines.*.prix_usine' => 'nullable|integer|min:0',
+            'usines.*.prix_achat' => 'nullable|integer|min:0',
+            'usines.*.prix_vente' => 'nullable|integer|min:0',
+            'usines.*.cout'       => 'nullable|integer|min:0',
+            'usines.*.tva'        => 'nullable|integer|min:0|max:100',
         ];
     }
 

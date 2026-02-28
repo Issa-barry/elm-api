@@ -8,7 +8,6 @@ enum ProduitStatut: string
     case ACTIF = 'actif';
     case INACTIF = 'inactif';
     case ARCHIVE = 'archive';
-    case RUPTURE_STOCK = 'rupture_stock'; 
 
     /**
      * Libellé en français
@@ -17,10 +16,9 @@ enum ProduitStatut: string
     {
         return match ($this) {
             self::BROUILLON => 'Brouillon',
-            self::ACTIF => 'Actif',
-            self::INACTIF => 'Inactif',
-            self::ARCHIVE => 'Archivé',
-            self::RUPTURE_STOCK => 'Rupture de stock',
+            self::ACTIF     => 'Actif',
+            self::INACTIF   => 'Inactif',
+            self::ARCHIVE   => 'Archivé',
         };
     }
 
@@ -39,10 +37,9 @@ enum ProduitStatut: string
     {
         return match ($this) {
             self::BROUILLON => [self::ACTIF, self::INACTIF, self::ARCHIVE],
-            self::ACTIF => [self::INACTIF, self::ARCHIVE, self::RUPTURE_STOCK],
-            self::INACTIF => [self::ACTIF, self::ARCHIVE],
-            self::ARCHIVE => [self::ACTIF, self::INACTIF],
-            self::RUPTURE_STOCK => [self::ACTIF, self::INACTIF, self::ARCHIVE],
+            self::ACTIF     => [self::INACTIF, self::ARCHIVE],
+            self::INACTIF   => [self::ACTIF, self::ARCHIVE],
+            self::ARCHIVE   => [self::ACTIF, self::INACTIF],
         };
     }
 

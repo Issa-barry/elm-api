@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Ajoute automatiquement :
  *  1) Un global scope qui filtre les requêtes par usine_id si un contexte est défini.
+ *     Exception : les produits globaux (is_global = true) sont toujours visibles.
  *  2) Un listener `creating` qui auto-remplit usine_id à la création.
  *
  * Comportement :
  *  - Siège sans X-Usine-Id  → UsineContext::hasContext() === false → pas de filtre → vue consolidée
- *  - Siège avec X-Usine-Id  → filtre sur cette usine
+ *  - Siège avec X-Usine-Id  → filtre sur cette usine (+ produits globaux si la table a is_global)
  *  - Non-siège              → toujours filtré sur son usine par défaut (middleware impose le contexte)
  */
 trait HasUsineScope
@@ -27,13 +28,28 @@ trait HasUsineScope
             $ctx = app(UsineContext::class);
 
             if ($ctx->hasContext()) {
-                $table = (new static())->getTable();
-                $builder->where("{$table}.usine_id", $ctx->getCurrentUsineId());
+                $table   = (new static())->getTable();
+                $columns = \Schema::getColumnListing($table);
+
+                if (in_array('is_global', $columns)) {
+                    // Produits globaux visibles par toutes les usines
+                    $builder->where(function (Builder $q) use ($table, $ctx) {
+                        $q->where("{$table}.is_global", true)
+                          ->orWhere("{$table}.usine_id", $ctx->getCurrentUsineId());
+                    });
+                } else {
+                    $builder->where("{$table}.usine_id", $ctx->getCurrentUsineId());
+                }
             }
         });
 
         // ── Auto-remplissage usine_id à la création ───────────────────────
         static::creating(function ($model) {
+            // Ne pas auto-remplir pour les produits globaux (usine_id = null intentionnel)
+            if (isset($model->is_global) && $model->is_global) {
+                return;
+            }
+
             if (empty($model->usine_id)) {
                 /** @var UsineContext $ctx */
                 $ctx = app(UsineContext::class);

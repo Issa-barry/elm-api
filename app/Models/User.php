@@ -149,13 +149,13 @@ class User extends Authenticatable
     {
         static::creating(function ($user) {
             if (empty($user->reference)) {
-                $lastId = self::withTrashed()->max('id') ?? 0;
-                $user->reference = 'USR-' . now()->format('Ymd') . '-' . str_pad(
-                    $lastId + 1,
-                    4,
-                    '0',
-                    STR_PAD_LEFT
-                );
+                do {
+                    $letters = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 2));
+                    $digits  = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+                    $ref     = $letters . $digits;
+                } while (self::withTrashed()->where('reference', $ref)->exists());
+
+                $user->reference = $ref;
             }
         });
     }

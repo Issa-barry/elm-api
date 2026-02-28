@@ -17,7 +17,7 @@ class ProduitIndexController extends Controller
     {
         try {
             $query = Produit::nonArchives()
-                ->with(['creator:id,nom,prenom', 'updater:id,nom,prenom']);
+                ->with(['creator:id,nom,prenom', 'updater:id,nom,prenom', 'stockCourant']);
 
             // Filtre par statut
             if ($request->has('statut')) {
@@ -35,17 +35,17 @@ class ProduitIndexController extends Controller
                 }
             }
 
-            // Filtre en stock (calculé)
+            // Filtre en stock (via table stocks)
             if ($request->has('in_stock')) {
                 $inStock = $request->boolean('in_stock');
                 if ($inStock) {
                     $query->where(function ($q) {
-                        $q->where('qte_stock', '>', 0)
-                          ->orWhere('type', ProduitType::SERVICE);
+                        $q->where('type', ProduitType::SERVICE)
+                          ->orWhereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '>', 0));
                     });
                 } else {
-                    $query->where('qte_stock', '<=', 0)
-                          ->where('type', '!=', ProduitType::SERVICE);
+                    $query->where('type', '!=', ProduitType::SERVICE)
+                          ->whereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '<=', 0));
                 }
             }
 
@@ -54,10 +54,10 @@ class ProduitIndexController extends Controller
                 $query->disponibles();
             }
 
-            // Tri
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
-            $allowedSorts = ['nom', 'code', 'prix_vente', 'prix_achat', 'qte_stock', 'created_at', 'updated_at'];
+            // Tri (qte_stock retiré : colonne sur stocks, pas produits)
+            $sortBy       = $request->get('sort_by', 'created_at');
+            $sortOrder    = $request->get('sort_order', 'desc');
+            $allowedSorts = ['nom', 'code', 'prix_vente', 'prix_achat', 'created_at', 'updated_at'];
             if (in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
             }

@@ -4,12 +4,15 @@ namespace Tests\Feature\Produit;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
+use App\Enums\UsineType;
 use App\Enums\UserType;
 use App\Models\Parametre;
 use App\Models\Produit;
+use App\Models\Stock;
+use App\Models\Usine;
 use App\Models\User;
 use App\Notifications\ProduitRuptureStockNotification;
-use App\Observers\ProduitObserver;
+use App\Services\UsineContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -22,6 +25,14 @@ class StockAlertThresholdTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Créer l'usine TEST-DEFAULT et positionner le contexte usine
+        // (la factory Produit y attache ses produits et stocks)
+        $usine = Usine::firstOrCreate(
+            ['code' => 'TEST-DEFAULT'],
+            ['nom' => 'Usine Test Default', 'type' => UsineType::USINE->value, 'statut' => 'active']
+        );
+        app(UsineContext::class)->setCurrentUsineId($usine->id);
 
         // Roles nécessaires pour le ciblage des destinataires
         Role::findOrCreate('admin', 'web');
@@ -73,9 +84,10 @@ class StockAlertThresholdTest extends TestCase
         // Produit critique avec seuil personnalisé = 20, stock initial = 25
         $produit = Produit::factory()->critique()->withSeuil(20)->withStock(25)->create();
 
-        // Le stock passe de 25 à 15 (en dessous du seuil 20)
-        $produit->qte_stock = 15;
-        $produit->save();
+        // Le stock passe de 25 à 15 (en dessous du seuil 20) — doit déclencher StockObserver
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 15;
+        $stock->save();
 
         Notification::assertSentTo(
             User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
@@ -102,8 +114,9 @@ class StockAlertThresholdTest extends TestCase
         $produit = Produit::factory()->critique()->withSeuil(20)->withStock(10)->create();
 
         // Le stock baisse encore (reste sous le seuil), pas de franchissement
-        $produit->qte_stock = 8;
-        $produit->save();
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 8;
+        $stock->save();
 
         Notification::assertNothingSent();
     }
@@ -123,8 +136,9 @@ class StockAlertThresholdTest extends TestCase
         $this->assertEquals(10, $produit->low_stock_threshold);
 
         // Stock passe de 15 à 8 (franchit le seuil global 10)
-        $produit->qte_stock = 8;
-        $produit->save();
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 8;
+        $stock->save();
 
         Notification::assertSentTo(
             User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
@@ -150,8 +164,9 @@ class StockAlertThresholdTest extends TestCase
         $produit = Produit::factory()->critique()->withSeuil(0)->withStock(5)->create();
 
         // Stock passe à 3 — ne doit PAS déclencher (seuil=0, donc seulement à 0)
-        $produit->qte_stock = 3;
-        $produit->save();
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 3;
+        $stock->save();
 
         Notification::assertNothingSent();
     }
@@ -165,8 +180,9 @@ class StockAlertThresholdTest extends TestCase
         $produit = Produit::factory()->critique()->withSeuil(0)->withStock(5)->create();
 
         // Stock tombe à 0 => rupture_stock
-        $produit->qte_stock = 0;
-        $produit->save();
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 0;
+        $stock->save();
 
         Notification::assertSentTo(
             User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
@@ -191,8 +207,9 @@ class StockAlertThresholdTest extends TestCase
         $produit = Produit::factory()->critique()->withSeuil(5)->withStock(20)->create();
 
         // Stock tombe à 0 (franchit le seuil ET rupture)
-        $produit->qte_stock = 0;
-        $produit->save();
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 0;
+        $stock->save();
 
         Notification::assertSentTo(
             User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
@@ -218,8 +235,9 @@ class StockAlertThresholdTest extends TestCase
             'is_critique' => false,
         ]);
 
-        $produit->qte_stock = 0;
-        $produit->save();
+        $stock = Stock::where('produit_id', $produit->id)->where('usine_id', $produit->usine_id)->first();
+        $stock->qte_stock = 0;
+        $stock->save();
 
         Notification::assertNothingSent();
     }

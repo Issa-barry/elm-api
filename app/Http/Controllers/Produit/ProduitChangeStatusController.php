@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Produit;
 
 use App\Enums\ProduitStatut;
-use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class ProduitChangeStatusController extends Controller
@@ -23,15 +23,19 @@ class ProduitChangeStatusController extends Controller
                 return $this->notFoundResponse('Produit non trouvé');
             }
 
+            if ($produit->is_global && !Auth::user()?->hasAnyRole(['admin', 'manager'])) {
+                return $this->errorResponse('Seuls les administrateurs peuvent modifier le statut d\'un produit global.', null, 403);
+            }
+
             $request->validate([
                 'statut' => ['required', Rule::enum(ProduitStatut::class)],
             ], [
                 'statut.required' => 'Le statut est obligatoire.',
-                'statut.Illuminate\Validation\Rules\Enum' => 'Le statut doit être : brouillon, actif, inactif, archive ou rupture_stock.',
+                'statut.Illuminate\Validation\Rules\Enum' => 'Le statut doit être : brouillon, actif, inactif ou archive.',
             ]);
 
             $nouveauStatut = ProduitStatut::from($request->statut);
-            $ancienStatut = $produit->statut;
+            $ancienStatut  = $produit->statut;
 
             // Vérifier la transition
             if (!$ancienStatut->canTransitionTo($nouveauStatut)) {
@@ -43,17 +47,6 @@ class ProduitChangeStatusController extends Controller
                             $ancienStatut->allowedTransitions()
                         )
                     ],
-                    400
-                );
-            }
-
-            // Vérifier cohérence stock/statut
-            if ($nouveauStatut === ProduitStatut::ACTIF
-                && $produit->qte_stock <= 0
-                && $produit->type !== ProduitType::SERVICE) {
-                return $this->errorResponse(
-                    'Impossible de passer en actif : le stock est à zéro. Le produit sera en rupture de stock.',
-                    null,
                     400
                 );
             }
