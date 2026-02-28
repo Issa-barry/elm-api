@@ -71,6 +71,8 @@ class FacturePacking extends Model
         'montant_verse',
         'montant_restant',
         'mode_paiement_label',
+        'total_rouleaux',
+        'prix_par_rouleau',
     ];
 
     protected function casts(): array
@@ -183,6 +185,16 @@ class FacturePacking extends Model
     public function getModePaiementLabelAttribute(): string
     {
         return self::MODES_PAIEMENT[$this->mode_paiement] ?? $this->mode_paiement ?? '';
+    }
+
+    public function getTotalRouleauxAttribute(): int
+    {
+        return (int) $this->packings->sum('nb_rouleaux');
+    }
+
+    public function getPrixParRouleauAttribute(): int
+    {
+        return (int) ($this->packings->first()?->prix_par_rouleau ?? 0);
     }
 
     /* =========================

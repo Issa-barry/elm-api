@@ -12,7 +12,7 @@ class ProduitPackSeeder extends Seeder
 {
     public function run(): void
     {
-        $usine = Usine::where('code', 'ELM-USN-01')->first()
+        $usine = Usine::where('nom', 'Usine de kaka')->first()
             ?? Usine::where('type', 'usine')->first();
 
         if (!$usine) {

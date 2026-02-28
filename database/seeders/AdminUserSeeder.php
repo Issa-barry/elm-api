@@ -29,9 +29,9 @@ class AdminUserSeeder extends Seeder
 
         $admin->assignRole('admin');
 
-        // Rattacher l'admin aux usines fondatrices
-        $siege = Usine::where('code', 'ELM-SIEGE')->first();
-        $usine = Usine::where('code', 'ELM-USN-01')->first();
+        // Rattacher l'admin aux deux usines
+        $siege = Usine::where('nom', 'Usine de Matoto')->first();
+        $usine = Usine::where('nom', 'Usine de kaka')->first();
 
         if ($siege && ! $admin->usines()->where('usines.id', $siege->id)->exists()) {
             $admin->usines()->attach($siege->id, ['role' => 'owner_siege', 'is_default' => false]);
