@@ -77,6 +77,20 @@ class Packing extends Model
             $this->statut = self::STATUT_DEFAUT;
         }
 
+        if ((int) $this->nb_rouleaux > 0) {
+            $produitRouleauValeur = Parametre::query()
+                ->where('cle', Parametre::CLE_PRODUIT_ROULEAU_ID)
+                ->whereNotNull('valeur')
+                ->where('valeur', '!=', '')
+                ->value('valeur');
+
+            if (!$produitRouleauValeur) {
+                throw ValidationException::withMessages([
+                    'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id' avant de creer un packing.",
+                ]);
+            }
+        }
+
         $this->montant = $this->calculerMontant();
 
         if (Auth::check()) {
@@ -300,9 +314,15 @@ class Packing extends Model
 
     protected function decrementerStockRouleaux(): void
     {
-        $produitId = Parametre::getProduitRouleauId();
-        if (!$produitId || $this->nb_rouleaux <= 0) {
+        if ($this->nb_rouleaux <= 0) {
             return;
+        }
+
+        $produitId = Parametre::getProduitRouleauId();
+        if (!$produitId) {
+            throw ValidationException::withMessages([
+                'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id' avant de valider un packing.",
+            ]);
         }
 
         $produit = Produit::query()->lockForUpdate()->find($produitId);

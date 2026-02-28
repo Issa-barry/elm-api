@@ -14,7 +14,7 @@ class VehiculeSeeder extends Seeder
 {
     public function run(): void
     {
-        $usine = Usine::withTrashed()->where('code', 'ELM-USN-01')->first()
+        $usine = Usine::withTrashed()->where('nom', 'Usine de kaka')->first()
             ?? Usine::withTrashed()->where('type', UsineType::USINE->value)->first();
 
         if (! $usine) {

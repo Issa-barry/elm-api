@@ -15,8 +15,8 @@ class ProduitRouleauSeeder extends Seeder
     {
         // Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
         // auto-remplir usine_id. On rattache le produit à l'usine opérationnelle
-        // de référence (ELM-USN-01), créée par la backfill migration 200004.
-        $usine = Usine::where('code', 'ELM-USN-01')->first()
+        // "Usine de kaka" (ELM-USN-01), créée par la backfill migration 200004.
+        $usine = Usine::where('nom', 'Usine de kaka')->first()
             ?? Usine::where('type', 'usine')->first();
 
         if (!$usine) {
