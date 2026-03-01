@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasUsineScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Livreur extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUsineScope;
 
     protected $fillable = [
+        'usine_id',
         'nom',
         'prenom',
         'phone',
@@ -68,9 +71,13 @@ class Livreur extends Model
 
     // ── Relations ─────────────────────────────────────────────────────────
 
+    public function usine(): BelongsTo
+    {
+        return $this->belongsTo(Usine::class);
+    }
+
     public function vehiculesPrincipaux(): HasMany
     {
         return $this->hasMany(Vehicule::class, 'livreur_principal_id');
     }
-
 }

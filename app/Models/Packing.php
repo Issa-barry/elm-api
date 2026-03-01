@@ -325,18 +325,25 @@ class Packing extends Model
             ]);
         }
 
-        $produit = Produit::query()->lockForUpdate()->find($produitId);
-        if (!$produit) {
-            return;
-        }
+        // Verrouiller le stock (pas le produit) pour les opérations concurrentes
+        $stock = Stock::where('produit_id', $produitId)
+            ->where('usine_id', $this->usine_id)
+            ->lockForUpdate()
+            ->first();
 
-        if ($produit->qte_stock < $this->nb_rouleaux) {
+        if (!$stock) {
             throw ValidationException::withMessages([
-                'nb_rouleaux' => "Stock insuffisant. Stock disponible : {$produit->qte_stock} rouleaux.",
+                'nb_rouleaux' => "Stock rouleau non trouvé pour cette usine.",
             ]);
         }
 
-        $produit->ajusterStock(-$this->nb_rouleaux);
+        if ($stock->qte_stock < $this->nb_rouleaux) {
+            throw ValidationException::withMessages([
+                'nb_rouleaux' => "Stock insuffisant. Stock disponible : {$stock->qte_stock} rouleaux.",
+            ]);
+        }
+
+        $stock->ajuster(-$this->nb_rouleaux);
     }
 
     protected function restaurerStockRouleaux(): void
@@ -346,12 +353,16 @@ class Packing extends Model
             return;
         }
 
-        $produit = Produit::query()->lockForUpdate()->find($produitId);
-        if (!$produit) {
+        $stock = Stock::where('produit_id', $produitId)
+            ->where('usine_id', $this->usine_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$stock) {
             return;
         }
 
-        $produit->ajusterStock($this->nb_rouleaux);
+        $stock->ajuster($this->nb_rouleaux);
     }
 
     protected function syncFrom(self $packing): void

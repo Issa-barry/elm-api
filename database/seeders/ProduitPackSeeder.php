@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Models\Produit;
+use App\Models\Stock;
 use App\Models\Usine;
 use Illuminate\Database\Seeder;
 
@@ -12,26 +13,29 @@ class ProduitPackSeeder extends Seeder
 {
     public function run(): void
     {
-        $usine = Usine::where('nom', 'Usine de kaka')->first()
-            ?? Usine::where('type', 'usine')->first();
-
-        if (!$usine) {
-            $this->command->warn('ProduitPackSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
-            return;
-        }
-
+        // Produit global : usine_id = NULL, visible par toutes les usines
         $produit = Produit::withoutGlobalScopes()
             ->withTrashed()
             ->where('nom', 'Pack de 30')
             ->where('type', ProduitType::FABRICABLE)
-            ->where('usine_id', $usine->id)
+            ->where('is_global', true)
             ->first();
 
         if (!$produit) {
+            // Chercher l'ancien produit attaché à une usine (migration)
+            $produit = Produit::withoutGlobalScopes()
+                ->withTrashed()
+                ->where('nom', 'Pack de 30')
+                ->where('type', ProduitType::FABRICABLE)
+                ->first();
+        }
+
+        if (!$produit) {
             $produit = new Produit([
-                'nom'      => 'Pack de 30',
-                'type'     => ProduitType::FABRICABLE,
-                'usine_id' => $usine->id,
+                'nom'        => 'Pack de 30',
+                'type'       => ProduitType::FABRICABLE,
+                'is_global' => true,
+                'usine_id'   => null,
             ]);
         } elseif ($produit->trashed()) {
             $produit->restore();
@@ -41,12 +45,34 @@ class ProduitPackSeeder extends Seeder
             $produit->code = $this->generateNumericProductCode();
         }
 
+        $produit->is_global  = true;
+        $produit->usine_id    = null;
         $produit->prix_usine  = 4500;
         $produit->prix_vente  = 5000;
-        $produit->qte_stock   = 1000;
         $produit->is_critique = true;
         $produit->statut      = ProduitStatut::ACTIF;
         $produit->save();
+
+        // Créer une entrée stock pour chaque usine existante
+        $usines = Usine::withoutGlobalScopes()->get();
+        foreach ($usines as $usine) {
+            $existing = Stock::where('produit_id', $produit->id)
+                ->where('usine_id', $usine->id)
+                ->first();
+
+            if (!$existing) {
+                Stock::create([
+                    'produit_id' => $produit->id,
+                    'usine_id'   => $usine->id,
+                    'qte_stock'  => 1000,
+                ]);
+            } else {
+                if ($existing->qte_stock < 1000) {
+                    $existing->qte_stock = 1000;
+                    $existing->saveQuietly();
+                }
+            }
+        }
     }
 
     private function isValidNumericCode(?string $code): bool

@@ -6,6 +6,7 @@ use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Models\Parametre;
 use App\Models\Produit;
+use App\Models\Stock;
 use App\Models\Usine;
 use Illuminate\Database\Seeder;
 
@@ -13,30 +14,29 @@ class ProduitRouleauSeeder extends Seeder
 {
     public function run(): void
     {
-        // Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
-        // auto-remplir usine_id. On rattache le produit à l'usine opérationnelle
-        // "Usine de kaka" (ELM-USN-01), créée par la backfill migration 200004.
-        $usine = Usine::where('nom', 'Usine de kaka')->first()
-            ?? Usine::where('type', 'usine')->first();
-
-        if (!$usine) {
-            $this->command->warn('ProduitRouleauSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
-            return;
-        }
-
+        // Produit global : usine_id = NULL, visible par toutes les usines
         $produit = Produit::withoutGlobalScopes()
             ->withTrashed()
             ->where('nom', 'Rouleau de packing')
             ->where('type', ProduitType::MATERIEL)
-            ->where('usine_id', $usine->id)
+            ->where('is_global', true)
             ->first();
 
         if (!$produit) {
+            // Chercher l'ancien produit attaché à une usine (migration)
+            $produit = Produit::withoutGlobalScopes()
+                ->withTrashed()
+                ->where('nom', 'Rouleau de packing')
+                ->where('type', ProduitType::MATERIEL)
+                ->first();
+        }
+
+        if (!$produit) {
             $produit = new Produit([
-                'nom'      => 'Rouleau de packing',
-                'type'     => ProduitType::MATERIEL,
-                'qte_stock' => 0,
-                'usine_id' => $usine->id,
+                'nom'        => 'Rouleau de packing',
+                'type'       => ProduitType::MATERIEL,
+                'is_global' => true,
+                'usine_id'   => null,
             ]);
         } elseif ($produit->trashed()) {
             $produit->restore();
@@ -46,18 +46,41 @@ class ProduitRouleauSeeder extends Seeder
             $produit->code = $this->generateNumericProductCode();
         }
 
+        $produit->is_global  = true;
+        $produit->usine_id    = null;
         $produit->prix_achat  = $produit->prix_achat ?? 500;
-        $produit->qte_stock   = max($produit->qte_stock, 1000);
         $produit->is_critique = true;
         $produit->statut      = ProduitStatut::ACTIF;
         $produit->save();
 
+        // Créer une entrée stock pour chaque usine existante
+        $usines = Usine::withoutGlobalScopes()->get();
+        foreach ($usines as $usine) {
+            $existing = Stock::where('produit_id', $produit->id)
+                ->where('usine_id', $usine->id)
+                ->first();
+
+            if (!$existing) {
+                Stock::create([
+                    'produit_id' => $produit->id,
+                    'usine_id'   => $usine->id,
+                    'qte_stock'  => 1000,
+                ]);
+            } else {
+                // S'assurer qu'on a au moins 1000 en stock
+                if ($existing->qte_stock < 1000) {
+                    $existing->qte_stock = 1000;
+                    $existing->saveQuietly();
+                }
+            }
+        }
+
         Parametre::updateOrCreate(
             ['cle' => Parametre::CLE_PRODUIT_ROULEAU_ID],
             [
-                'valeur' => (string) $produit->id,
-                'type' => Parametre::TYPE_INTEGER,
-                'groupe' => Parametre::GROUPE_PACKING,
+                'valeur'      => (string) $produit->id,
+                'type'        => Parametre::TYPE_INTEGER,
+                'groupe'      => Parametre::GROUPE_PACKING,
                 'description' => 'ID du produit rouleau utilise pour le packing (gestion du stock)',
             ]
         );

@@ -15,7 +15,7 @@ class ProduitUpdateStockController extends Controller
     public function __invoke(Request $request, $id)
     {
         try {
-            $produit = Produit::find($id);
+            $produit = Produit::with('stockCourant')->find($id);
 
             if (!$produit) {
                 return $this->notFoundResponse('Produit non trouve');
@@ -30,20 +30,25 @@ class ProduitUpdateStockController extends Controller
                 );
             }
 
+            $stock = $produit->stockCourant;
+
+            if (!$stock) {
+                return $this->notFoundResponse('Stock non trouvé pour cette usine');
+            }
+
             $request->validate([
-                'quantite' => 'required|integer|min:0',
+                'quantite'  => 'required|integer|min:0',
                 'operation' => 'nullable|string|in:set,add,subtract',
             ], [
                 'quantite.required' => 'La quantite est obligatoire.',
-                'quantite.integer' => 'La quantite doit etre un nombre entier.',
-                'quantite.min' => 'La quantite ne peut pas etre negative.',
-                'operation.in' => 'L\'operation doit etre : set, add ou subtract.',
+                'quantite.integer'  => 'La quantite doit etre un nombre entier.',
+                'quantite.min'      => 'La quantite ne peut pas etre negative.',
+                'operation.in'      => 'L\'operation doit etre : set, add ou subtract.',
             ]);
 
-            $operation = $request->operation ?? 'set';
-            $quantite = (int) $request->quantite;
-            $ancienStock = $produit->qte_stock;
-            $ancienStatut = $produit->statut;
+            $operation   = $request->operation ?? 'set';
+            $quantite    = (int) $request->quantite;
+            $ancienStock = $stock->qte_stock;
 
             switch ($operation) {
                 case 'add':
@@ -56,22 +61,20 @@ class ProduitUpdateStockController extends Controller
                     $nouvelleQuantite = max(0, $quantite);
             }
 
-            $produit->qte_stock = $nouvelleQuantite;
-            $produit->save();
+            $stock->qte_stock = $nouvelleQuantite;
+            $stock->save();
 
-            $fresh           = $produit->fresh();
-            $seuilEffectif   = $fresh->low_stock_threshold;
-            $isOutOfStock    = $fresh->qte_stock <= 0;
-            $isLowStock      = $fresh->is_low_stock;
-            $niveauAlerte    = $isOutOfStock ? 'out_of_stock' : ($isLowStock ? 'low_stock' : 'in_stock');
+            $freshStock    = $stock->fresh();
+            $seuilEffectif = $freshStock->low_stock_threshold;
+            $isOutOfStock  = $freshStock->qte_stock <= 0;
+            $isLowStock    = $freshStock->is_low_stock;
+            $niveauAlerte  = $isOutOfStock ? 'out_of_stock' : ($isLowStock ? 'low_stock' : 'in_stock');
 
             return $this->successResponse([
-                'produit'       => $fresh,
+                'produit'       => $produit->fresh(['stockCourant']),
                 'ancien_stock'  => $ancienStock,
-                'nouveau_stock' => $fresh->qte_stock,
-                'difference'    => $fresh->qte_stock - $ancienStock,
-                'ancien_statut' => $ancienStatut->value,
-                'nouveau_statut'=> $fresh->statut->value,
+                'nouveau_stock' => $freshStock->qte_stock,
+                'difference'    => $freshStock->qte_stock - $ancienStock,
                 'stock_alert'   => [
                     'seuil_stock_faible' => $seuilEffectif,
                     'niveau'             => $niveauAlerte,

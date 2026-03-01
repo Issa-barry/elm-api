@@ -6,6 +6,7 @@ use App\Enums\ProduitStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class ProduitArchiveController extends Controller
@@ -19,6 +20,10 @@ class ProduitArchiveController extends Controller
 
             if (!$produit) {
                 return $this->notFoundResponse('Produit non trouvé');
+            }
+
+            if ($produit->is_global && !Auth::user()?->hasAnyRole(['admin', 'manager'])) {
+                return $this->errorResponse('Seuls les administrateurs peuvent archiver un produit global.', null, 403);
             }
 
             if ($produit->statut === ProduitStatut::ARCHIVE) {

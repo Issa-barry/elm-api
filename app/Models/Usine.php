@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Produit;
+use App\Models\Stock;
+use App\Models\ProduitUsine;
 
 class Usine extends Model
 {
@@ -46,6 +49,25 @@ class Usine extends Model
         static::creating(function (Usine $usine) {
             if (empty($usine->statut)) {
                 $usine->statut = UsineStatut::ACTIVE;
+            }
+        });
+
+        static::created(function (Usine $usine) {
+            // Auto-créer les entrées stock (qte=0) et config locale pour tous les produits globaux
+            $produitGlobaux = Produit::withoutGlobalScopes()
+                ->where('is_global', true)
+                ->get();
+
+            foreach ($produitGlobaux as $produit) {
+                Stock::firstOrCreate(
+                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                    ['qte_stock' => 0, 'seuil_alerte_stock' => null]
+                );
+
+                ProduitUsine::firstOrCreate(
+                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                    ['is_active' => false]
+                );
             }
         });
     }

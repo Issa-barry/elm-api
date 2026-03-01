@@ -8,6 +8,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\StoreProduitRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
+use App\Models\ProduitUsine;
+use App\Models\Stock;
+use App\Models\Usine;
+use App\Services\UsineContext;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProduitStoreController extends Controller
@@ -17,36 +22,104 @@ class ProduitStoreController extends Controller
     public function __invoke(StoreProduitRequest $request)
     {
         try {
-            $data = $request->validated();
+            return DB::transaction(function () use ($request) {
+                $data = $request->validated();
 
-            // Générer code si non fourni
-            if (empty($data['code'])) {
-                $data['code'] = $this->generateNumericProductCode();
-            }
+                // Extraire les données stock et les affectations usines
+                $stockQte    = (int) ($data['qte_stock'] ?? 0);
+                $stockSeuil  = isset($data['seuil_alerte_stock']) ? (int) $data['seuil_alerte_stock'] : null;
+                $affectations = $data['usines'] ?? [];
+                unset($data['qte_stock'], $data['seuil_alerte_stock'], $data['usines']);
 
-            // Statut par défaut selon le stock et le type
-            if (empty($data['statut'])) {
-                $type = ProduitType::from($data['type']);
-                $qteStock = $data['qte_stock'] ?? 0;
-
-                if ($type === ProduitType::SERVICE || $qteStock > 0) {
-                    $data['statut'] = ProduitStatut::ACTIF->value;
-                } else {
-                    $data['statut'] = ProduitStatut::BROUILLON->value;
+                // Générer code si non fourni
+                if (empty($data['code'])) {
+                    $data['code'] = $this->generateNumericProductCode();
                 }
-            }
 
-            $produit = Produit::create($data);
+                // Statut par défaut selon le stock et le type
+                if (empty($data['statut'])) {
+                    $type = ProduitType::from($data['type']);
 
-            // Upload image si présente
-            if ($request->hasFile('image')) {
-                $path = $request->file('image')->store("produits/{$produit->id}", 'public');
-                $produit->update(['image_url' => Storage::disk('public')->url($path)]);
-            }
+                    if ($type === ProduitType::SERVICE || $stockQte > 0) {
+                        $data['statut'] = ProduitStatut::ACTIF->value;
+                    } else {
+                        $data['statut'] = ProduitStatut::BROUILLON->value;
+                    }
+                }
 
-            $produit->load(['creator:id,nom,prenom']);
+                $produit = Produit::create($data);
 
-            return $this->createdResponse($produit, 'Produit créé avec succès');
+                // ── Stock + config locale ────────────────────────────────────────
+                if ($produit->type !== ProduitType::SERVICE) {
+                    if ($produit->is_global) {
+                        // Produit global : créer stock + config locale pour toutes les usines
+                        Usine::withoutGlobalScopes()->get()
+                            ->each(function (Usine $usine) use ($produit, $stockQte, $stockSeuil) {
+                                Stock::firstOrCreate(
+                                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                                    ['qte_stock' => $stockQte, 'seuil_alerte_stock' => $stockSeuil]
+                                );
+                                ProduitUsine::firstOrCreate(
+                                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                                    ['is_active' => false]
+                                );
+                            });
+                    } else {
+                        // Produit non-global : stock + config locale pour l'usine courante
+                        $usineId = app(UsineContext::class)->getCurrentUsineId();
+                        if ($usineId) {
+                            Stock::create([
+                                'produit_id'         => $produit->id,
+                                'usine_id'           => $usineId,
+                                'qte_stock'          => $stockQte,
+                                'seuil_alerte_stock' => $stockSeuil,
+                            ]);
+                            ProduitUsine::firstOrCreate(
+                                ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                                ['is_active' => false]
+                            );
+                        }
+                    }
+                }
+
+                // ── Affectations initiales explicites (usines[]) ─────────────────
+                foreach ($affectations as $affectation) {
+                    $usineId = (int) $affectation['usine_id'];
+
+                    $config = ProduitUsine::firstOrCreate(
+                        ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                        ['is_active' => false]
+                    );
+
+                    // Appliquer les prix locaux si fournis
+                    $config->fill(array_filter([
+                        'is_active'  => $affectation['is_active']  ?? null,
+                        'prix_usine' => $affectation['prix_usine'] ?? null,
+                        'prix_achat' => $affectation['prix_achat'] ?? null,
+                        'prix_vente' => $affectation['prix_vente'] ?? null,
+                        'cout'       => $affectation['cout']       ?? null,
+                        'tva'        => $affectation['tva']        ?? null,
+                    ], fn ($v) => $v !== null))->save();
+
+                    // Garantir l'entrée stock si le produit est stockable
+                    if ($produit->type !== ProduitType::SERVICE) {
+                        Stock::firstOrCreate(
+                            ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                            ['qte_stock' => 0]
+                        );
+                    }
+                }
+
+                // ── Upload image ─────────────────────────────────────────────────
+                if ($request->hasFile('image')) {
+                    $path = $request->file('image')->store("produits/{$produit->id}", 'public');
+                    $produit->update(['image_url' => Storage::disk('public')->url($path)]);
+                }
+
+                $produit->load(['creator:id,nom,prenom', 'stockCourant', 'produitUsineCourant']);
+
+                return $this->createdResponse($produit, 'Produit créé avec succès');
+            });
         } catch (\Exception $e) {
             return $this->errorResponse('Erreur lors de la création du produit: ' . $e->getMessage());
         }

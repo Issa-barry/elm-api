@@ -45,6 +45,7 @@ class UpdateProduitRequest extends FormRequest
             'description'  => 'nullable|string|max:5000',
             'image'        => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'is_critique'  => 'sometimes|boolean',
+            'is_global'    => 'sometimes|boolean',
         ];
     }
 
@@ -130,7 +131,7 @@ class UpdateProduitRequest extends FormRequest
 
             // Type et Statut
             'type.Illuminate\Validation\Rules\Enum' => 'Le type doit être : materiel, service, fabricable ou achat_vente.',
-            'statut.Illuminate\Validation\Rules\Enum' => 'Le statut doit être : brouillon, actif, inactif, archive ou rupture_stock.',
+            'statut.Illuminate\Validation\Rules\Enum' => 'Le statut doit être : brouillon, actif, inactif ou archive.',
 
             // Prix
             'prix_usine.required' => 'Le prix usine est obligatoire pour ce type de produit.',
@@ -152,6 +153,9 @@ class UpdateProduitRequest extends FormRequest
             // Coût
             'cout.integer' => 'Le coût doit être un nombre entier (GNF).',
             'cout.min' => 'Le coût ne peut pas être négatif.',
+
+            // Global
+            'is_global.boolean' => 'Le champ global doit être vrai ou faux.',
 
             // Description
             'description.max' => 'La description ne peut pas dépasser 5000 caractères.',

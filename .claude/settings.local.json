@@ -34,7 +34,8 @@
       "Bash(for enum in CibleDeduction ModeCommission StatutFactureLivraison StatutPaiementCommission StatutSortie TypeDeduction)",
       "Bash(do)",
       "Bash(echo:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(xargs cat)"
     ]
   }
 }

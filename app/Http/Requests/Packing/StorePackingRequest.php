@@ -61,10 +61,10 @@ class StorePackingRequest extends FormRequest
                 return;
             }
 
-            $produit = Parametre::getProduitRouleau();
+            $produitId = Parametre::getProduitRouleauId();
 
             // Produit rouleau non configuré dans les paramètres
-            if (!$produit) {
+            if (!$produitId) {
                 $validator->errors()->add(
                     'nb_rouleaux',
                     'Le produit rouleau n\'est pas configuré. Contactez un administrateur.'
@@ -72,11 +72,18 @@ class StorePackingRequest extends FormRequest
                 return;
             }
 
+            // Récupérer le stock pour l'usine courante
+            $usineId       = app(UsineContext::class)->getCurrentUsineId();
+            $stock         = \App\Models\Stock::where('produit_id', $produitId)
+                ->where('usine_id', $usineId)
+                ->first();
+            $qteDisponible = $stock?->qte_stock ?? 0;
+
             // Stock insuffisant — bloque toute création quel que soit le statut
-            if ($produit->qte_stock < $nbRouleaux) {
+            if ($qteDisponible < $nbRouleaux) {
                 $validator->errors()->add(
                     'nb_rouleaux',
-                    "Stock rouleau insuffisant, packing impossible. Stock disponible : {$produit->qte_stock} rouleaux."
+                    "Stock rouleau insuffisant, packing impossible. Stock disponible : {$qteDisponible} rouleaux."
                 );
             }
         });

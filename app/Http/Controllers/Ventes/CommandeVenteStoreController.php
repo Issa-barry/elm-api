@@ -10,10 +10,13 @@ use App\Http\Requests\Vente\StoreCommandeVenteRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\CommandeVente;
 use App\Models\CommissionVente;
+use Illuminate\Validation\ValidationException;
 use App\Models\FactureVente;
 use App\Models\Produit;
+use App\Models\Stock;
 use App\Models\VersementCommission;
 use App\Models\Vehicule;
+use App\Services\UsineContext;
 use Illuminate\Support\Facades\DB;
 
 class CommandeVenteStoreController extends Controller
@@ -22,21 +25,36 @@ class CommandeVenteStoreController extends Controller
 
     public function __invoke(StoreCommandeVenteRequest $request)
     {
-        return DB::transaction(function () use ($request) {
-            $validated = $request->validated();
+        try {
+            return DB::transaction(function () use ($request) {
+            $validated  = $request->validated();
+            $usineId    = app(UsineContext::class)->getCurrentUsineId();
 
             // 1. Préparer les lignes avec snapshots de prix
             $lignesData   = [];
-            $produitsQtes = []; // [produit => qte] pour mise à jour stock atomique
+            $stocksQtes   = []; // [stock => qte] pour décrémenter après création commande
             $totalCommande = 0;
 
             foreach ($validated['lignes'] as $ligne) {
-                // lockForUpdate : évite les lectures simultanées du même stock
-                $produit = Produit::withoutGlobalScopes()->lockForUpdate()->find($ligne['produit_id']);
-                $qte     = (int) $ligne['qte'];
+                // Lire les infos produit (pas besoin de lockForUpdate sur le produit)
+                $produit    = Produit::withoutGlobalScopes()->find($ligne['produit_id']);
+                $qte        = (int) $ligne['qte'];
                 $prixUsine  = (int) $produit->prix_usine;
                 $prixVente  = (int) $produit->prix_vente;
                 $totalLigne = $prixVente * $qte;
+
+                // lockForUpdate sur le stock pour les opérations concurrentes
+                $stock = Stock::where('produit_id', $produit->id)
+                    ->where('usine_id', $usineId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Vérifier que le stock est suffisant
+                if ($stock->qte_stock < $qte) {
+                    throw ValidationException::withMessages([
+                        'lignes' => "Stock insuffisant pour \"{$produit->nom}\" — disponible : {$stock->qte_stock}, demandé : {$qte}.",
+                    ]);
+                }
 
                 $lignesData[] = [
                     'produit_id'          => $produit->id,
@@ -46,7 +64,7 @@ class CommandeVenteStoreController extends Controller
                     'total_ligne'         => $totalLigne,
                 ];
 
-                $produitsQtes[] = ['produit' => $produit, 'qte' => $qte];
+                $stocksQtes[]  = ['stock' => $stock, 'qte' => $qte];
                 $totalCommande += $totalLigne;
             }
 
@@ -62,8 +80,8 @@ class CommandeVenteStoreController extends Controller
             }
 
             // 3b. Décrémenter le stock de chaque produit
-            foreach ($produitsQtes as ['produit' => $produit, 'qte' => $qte]) {
-                $produit->ajusterStock(-$qte);
+            foreach ($stocksQtes as ['stock' => $stock, 'qte' => $qte]) {
+                $stock->ajuster(-$qte);
             }
 
             // 4. Créer automatiquement la facture liée
@@ -133,6 +151,11 @@ class CommandeVenteStoreController extends Controller
             $commande->load(['vehicule', 'lignes.produit', 'facture', 'commission.versements']);
 
             return $this->createdResponse($commande, 'Commande créée avec succès');
-        });
+            });
+        } catch (ValidationException $e) {
+            return $this->validationErrorResponse($e->errors(), 'Impossible de créer la commande.');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Erreur lors de la création de la commande', $e->getMessage());
+        }
     }
 }

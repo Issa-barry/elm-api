@@ -5,9 +5,13 @@ namespace App\Models;
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Models\Traits\HasUsineScope;
+use App\Services\UsineContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,13 +21,12 @@ class Produit extends Model
 
     protected $fillable = [
         'usine_id',
+        'is_global',
         'nom',
         'code',
         'prix_usine',
         'prix_vente',
         'prix_achat',
-        'qte_stock',
-        'seuil_alerte_stock',
         'cout',
         'type',
         'statut',
@@ -43,12 +46,11 @@ class Produit extends Model
         'prix_vente'               => 'integer',
         'prix_achat'               => 'integer',
         'cout'                     => 'integer',
-        'qte_stock'                => 'integer',
-        'seuil_alerte_stock'       => 'integer',
         'type'                     => ProduitType::class,
         'statut'                   => ProduitStatut::class,
         'archived_at'              => 'datetime',
         'is_critique'              => 'boolean',
+        'is_global'                => 'boolean',
         'last_stockout_notified_at'=> 'datetime',
     ];
 
@@ -67,9 +69,9 @@ class Produit extends Model
             return;
         }
 
-        $lowerNom = mb_strtolower($normalizedNom, 'UTF-8');
+        $lowerNom  = mb_strtolower($normalizedNom, 'UTF-8');
         $firstChar = mb_strtoupper(mb_substr($lowerNom, 0, 1, 'UTF-8'), 'UTF-8');
-        $rest = mb_substr($lowerNom, 1, null, 'UTF-8');
+        $rest      = mb_substr($lowerNom, 1, null, 'UTF-8');
 
         $this->attributes['nom'] = $firstChar . $rest;
     }
@@ -83,7 +85,6 @@ class Produit extends Model
             return;
         }
 
-        // Le code ne doit pas contenir d'espaces, meme internes.
         $normalizedCode = preg_replace('/\s+/u', '', $normalizedCode) ?? $normalizedCode;
 
         $this->attributes['code'] = mb_strtoupper($normalizedCode, 'UTF-8');
@@ -112,17 +113,6 @@ class Produit extends Model
     public function setCoutAttribute($value): void
     {
         $this->attributes['cout'] = $this->normalizeNonNegativeInteger($value);
-    }
-
-    public function setQteStockAttribute($value): void
-    {
-        $normalizedQte = $this->normalizeNonNegativeInteger($value, false);
-        $this->attributes['qte_stock'] = is_int($normalizedQte) ? $normalizedQte : 0;
-    }
-
-    public function setSeuilAlerteStockAttribute($value): void
-    {
-        $this->attributes['seuil_alerte_stock'] = $this->normalizeNonNegativeInteger($value);
     }
 
     public function setImageUrlAttribute($value): void
@@ -198,34 +188,18 @@ class Produit extends Model
 
     protected static function booted(): void
     {
-        // Auto-assigner created_by à la création
         static::creating(function (Produit $produit) {
             if (Auth::check() && !$produit->created_by) {
                 $produit->created_by = Auth::id();
             }
             $produit->updated_by = Auth::id();
-
-            // Service : qte_stock = 0 par défaut
-            if ($produit->type === ProduitType::SERVICE) {
-                $produit->qte_stock = 0;
-            }
-
-            // Auto-ajuster statut si stock = 0 et type avec stock
-            static::ajusterStatutStock($produit);
         });
 
-        // Auto-assigner updated_by à la mise à jour
         static::updating(function (Produit $produit) {
             if (Auth::check()) {
                 $produit->updated_by = Auth::id();
             }
 
-            // Service : forcer qte_stock = 0
-            if ($produit->type === ProduitType::SERVICE) {
-                $produit->qte_stock = 0;
-            }
-
-            // Gérer archivage
             if ($produit->isDirty('statut')) {
                 if ($produit->statut === ProduitStatut::ARCHIVE && !$produit->archived_at) {
                     $produit->archived_at = now();
@@ -235,11 +209,8 @@ class Produit extends Model
                     $produit->archived_by = null;
                 }
             }
-
-            static::ajusterStatutStock($produit);
         });
 
-        // Auto-assigner deleted_by à la suppression
         static::deleting(function (Produit $produit) {
             if (Auth::check()) {
                 $produit->deleted_by = Auth::id();
@@ -248,42 +219,33 @@ class Produit extends Model
         });
     }
 
-    /**
-     * Ajuste le statut selon le stock
-     */
-    protected static function ajusterStatutStock(Produit $produit): void
-    {
-        // Ne pas ajuster pour les services (pas de stock)
-        if ($produit->type === ProduitType::SERVICE) {
-            return;
-        }
-
-        // Si statut actif et stock = 0 => rupture_stock
-        if ($produit->statut === ProduitStatut::ACTIF && $produit->qte_stock <= 0) {
-            $produit->statut = ProduitStatut::RUPTURE_STOCK;
-        }
-
-        // Si rupture_stock et stock > 0 => retour actif
-        if ($produit->statut === ProduitStatut::RUPTURE_STOCK && $produit->qte_stock > 0) {
-            $produit->statut = ProduitStatut::ACTIF;
-        }
-    }
-
     // ========================================
     // ACCESSEURS CALCULÉS
     // ========================================
 
     /**
-     * Vérifie si le produit est en stock (calculé)
+     * Stock actuel pour l'usine courante (délégue à stockCourant).
      */
+    public function getQteStockAttribute(): int
+    {
+        return $this->stockCourant?->qte_stock ?? 0;
+    }
+
+    /**
+     * Seuil d'alerte pour l'usine courante.
+     */
+    public function getSeuilAlerteStockAttribute(): ?int
+    {
+        return $this->stockCourant?->seuil_alerte_stock;
+    }
+
     public function getInStockAttribute(): bool
     {
-        // Service : toujours disponible (pas de notion de stock)
         if ($this->type === ProduitType::SERVICE) {
             return true;
         }
 
-        return $this->qte_stock > 0;
+        return ($this->stockCourant?->qte_stock ?? 0) > 0;
     }
 
     public function getIsOutOfStockAttribute(): bool
@@ -292,7 +254,7 @@ class Produit extends Model
             return false;
         }
 
-        return $this->qte_stock <= 0;
+        return ($this->stockCourant?->qte_stock ?? 0) <= 0;
     }
 
     public function getIsLowStockAttribute(): bool
@@ -301,13 +263,14 @@ class Produit extends Model
             return false;
         }
 
-        $seuil = $this->low_stock_threshold;
-
-        if ($seuil <= 0) {
+        $stock = $this->stockCourant;
+        if (!$stock) {
             return false;
         }
 
-        return $this->qte_stock <= $seuil;
+        $seuil = $stock->low_stock_threshold;
+
+        return $seuil > 0 && $stock->qte_stock <= $seuil;
     }
 
     /**
@@ -315,24 +278,14 @@ class Produit extends Model
      */
     public function getLowStockThresholdAttribute(): int
     {
-        if (!is_null($this->seuil_alerte_stock)) {
-            return $this->seuil_alerte_stock;
-        }
-
-        return Parametre::getSeuilStockFaible();
+        return $this->stockCourant?->low_stock_threshold ?? Parametre::getSeuilStockFaible();
     }
 
-    /**
-     * Vérifie si le produit est archivé (calculé)
-     */
     public function getIsArchivedAttribute(): bool
     {
         return $this->statut === ProduitStatut::ARCHIVE;
     }
 
-    /**
-     * Vérifie si le produit est disponible à la vente
-     */
     public function getIsAvailableAttribute(): bool
     {
         return $this->statut === ProduitStatut::ACTIF && $this->in_stock;
@@ -367,75 +320,125 @@ class Produit extends Model
         return $this->belongsTo(User::class, 'archived_by');
     }
 
+    /**
+     * Tous les stocks de ce produit (toutes usines).
+     */
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(Stock::class);
+    }
+
+    /**
+     * Stock pour l'usine du contexte courant.
+     */
+    public function stockCourant(): HasOne
+    {
+        $usineId = app(UsineContext::class)->getCurrentUsineId();
+
+        return $this->hasOne(Stock::class)->where('usine_id', $usineId);
+    }
+
+    /**
+     * Toutes les configurations locales (produit_usines) pour ce produit.
+     */
+    public function produitUsines(): HasMany
+    {
+        return $this->hasMany(ProduitUsine::class);
+    }
+
+    /**
+     * Configuration locale pour l'usine du contexte courant.
+     */
+    public function produitUsineCourant(): HasOne
+    {
+        $usineId = app(UsineContext::class)->getCurrentUsineId();
+
+        return $this->hasOne(ProduitUsine::class)->where('usine_id', $usineId);
+    }
+
     // ========================================
     // SCOPES
     // ========================================
 
-    /**
-     * Produits actifs (disponibles à la vente)
-     */
     public function scopeActifs($query)
     {
         return $query->where('statut', ProduitStatut::ACTIF);
     }
 
     /**
-     * Produits en rupture de stock
+     * Produits en rupture de stock pour l'usine courante.
      */
     public function scopeRuptureStock($query)
     {
-        return $query->where('statut', ProduitStatut::RUPTURE_STOCK);
+        return $query->where('type', '!=', ProduitType::SERVICE)
+            ->whereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '<=', 0));
     }
 
-    /**
-     * Produits archivés
-     */
     public function scopeArchives($query)
     {
         return $query->where('statut', ProduitStatut::ARCHIVE);
     }
 
-    /**
-     * Produits non archivés
-     */
     public function scopeNonArchives($query)
     {
         return $query->where('statut', '!=', ProduitStatut::ARCHIVE);
     }
 
     /**
-     * Produits disponibles (actifs avec stock ou services)
+     * Produits disponibles backoffice : actifs avec stock > 0 (ou services).
      */
     public function scopeDisponibles($query)
     {
         return $query->where(function ($q) {
             $q->where('statut', ProduitStatut::ACTIF)
               ->where(function ($sub) {
-                  $sub->where('qte_stock', '>', 0)
-                      ->orWhere('type', ProduitType::SERVICE);
+                  $sub->where('type', ProduitType::SERVICE)
+                      ->orWhereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '>', 0));
               });
         });
     }
 
     /**
-     * Par type
+     * Produits visibles par une usine (ont une config produit_usines pour cette usine).
      */
+    public function scopeVisiblePourUsine(Builder $query, int $usineId): Builder
+    {
+        return $query->whereHas('produitUsines', fn ($q) => $q->where('usine_id', $usineId));
+    }
+
+    /**
+     * Produits activés dans une usine (config locale is_active = true ET statut global = actif).
+     */
+    public function scopeActifDansUsine(Builder $query, int $usineId): Builder
+    {
+        return $query->where('statut', ProduitStatut::ACTIF)
+            ->whereHas('produitUsines', fn ($q) => $q->where('usine_id', $usineId)->where('is_active', true));
+    }
+
+    /**
+     * Produits disponibles au POS d'une usine :
+     * actifs globalement + activés localement + en stock (sauf services).
+     */
+    public function scopeDisponiblesPOS(Builder $query, int $usineId): Builder
+    {
+        return $query->where('statut', ProduitStatut::ACTIF)
+            ->whereHas('produitUsines', fn ($q) => $q->where('usine_id', $usineId)->where('is_active', true))
+            ->where(function (Builder $q) use ($usineId) {
+                $q->where('type', ProduitType::SERVICE)
+                  ->orWhereHas('stocks', fn ($sq) => $sq->where('usine_id', $usineId)->where('qte_stock', '>', 0));
+            });
+    }
+
     public function scopeDeType($query, ProduitType $type)
     {
         return $query->where('type', $type);
     }
 
-    /**
-     * Par statut
-     */
     public function scopeDeStatut($query, ProduitStatut $statut)
     {
         return $query->where('statut', $statut);
     }
 
-    /**
-     * Brouillons
-     */
     public function scopeBrouillons($query)
     {
         return $query->where('statut', ProduitStatut::BROUILLON);
@@ -445,9 +448,6 @@ class Produit extends Model
     // MÉTHODES MÉTIER
     // ========================================
 
-    /**
-     * Change le statut du produit
-     */
     public function changerStatut(ProduitStatut $nouveauStatut): bool
     {
         if (!$this->statut->canTransitionTo($nouveauStatut)) {
@@ -458,17 +458,11 @@ class Produit extends Model
         return $this->save();
     }
 
-    /**
-     * Archive le produit
-     */
     public function archiver(): bool
     {
         return $this->changerStatut(ProduitStatut::ARCHIVE);
     }
 
-    /**
-     * Désarchive le produit
-     */
     public function desarchiver(ProduitStatut $nouveauStatut = ProduitStatut::INACTIF): bool
     {
         if ($this->statut !== ProduitStatut::ARCHIVE) {
@@ -479,22 +473,44 @@ class Produit extends Model
     }
 
     /**
-     * Met à jour le stock
+     * Ajuste le stock de l'usine courante via la table stocks.
      */
     public function ajusterStock(int $quantite): bool
     {
-        // Service : pas de stock
         if ($this->type === ProduitType::SERVICE) {
             return false;
         }
 
-        $this->qte_stock = max(0, $this->qte_stock + $quantite);
-        return $this->save();
+        $stock = $this->stockCourant;
+        if (!$stock) {
+            return false;
+        }
+
+        $stock->ajuster($quantite);
+        $this->setRelation('stockCourant', $stock->fresh());
+
+        return true;
     }
 
     /**
-     * Vérifie si les prix sont valides selon le type
+     * Retourne les prix effectifs pour une usine donnée.
+     * Si un prix local est défini dans produit_usines, il prend le dessus sur le prix global.
      */
+    public function prixEffectifDansUsine(?int $usineId): array
+    {
+        $local = $usineId
+            ? $this->produitUsines()->where('usine_id', $usineId)->first()
+            : null;
+
+        return [
+            'prix_usine' => $local?->prix_usine ?? $this->attributes['prix_usine'] ?? null,
+            'prix_achat' => $local?->prix_achat ?? $this->attributes['prix_achat'] ?? null,
+            'prix_vente' => $local?->prix_vente ?? $this->attributes['prix_vente'] ?? null,
+            'cout'       => $local?->cout       ?? $this->attributes['cout']       ?? null,
+            'tva'        => $local?->tva,
+        ];
+    }
+
     public function validatePricesForType(): array
     {
         $errors = [];
