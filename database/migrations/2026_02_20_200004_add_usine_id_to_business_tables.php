@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Schema;
  * Migration d'ajout de usine_id sur toutes les tables métier + backfill des données existantes.
  *
  * Stratégie de backfill :
- *   1. Créer l'usine SIEGE (ELM-SIEGE) et l'usine opérationnelle (ELM-USN-01).
- *   2. Rattacher toutes les données existantes à ELM-USN-01.
- *   3. Affecter tous les utilisateurs existants à ELM-USN-01 (role = manager, is_default = true).
- *   4. Renseigner users.default_usine_id = ELM-USN-01.
+ *   1. Créer l'usine siège "Usine de Matoto" (ELM-SIEGE) et l'usine opérationnelle "Usine de kaka" (ELM-USN-01).
+ *   2. Rattacher toutes les données existantes à "Usine de kaka" (ELM-USN-01).
+ *   3. Affecter tous les utilisateurs existants à "Usine de kaka" (role = manager, is_default = true).
+ *   4. Renseigner users.default_usine_id = id de "Usine de kaka".
  *
- * Note : le premier utilisateur (id le plus petit) est aussi affecté à ELM-SIEGE
+ * Note : le premier utilisateur (id le plus petit) est aussi affecté à "Usine de Matoto"
  * comme OWNER_SIEGE afin qu'un compte siège existe dès le départ.
  */
 return new class extends Migration
@@ -39,7 +39,7 @@ return new class extends Migration
         $now = now();
 
         $siegeId = DB::table('usines')->insertGetId([
-            'nom'         => 'ELM Siège',
+            'nom'         => 'Usine de Matoto',
             'code'        => 'ELM-SIEGE',
             'type'        => 'siege',
             'statut'      => 'active',
@@ -51,12 +51,12 @@ return new class extends Migration
         ]);
 
         $usineId = DB::table('usines')->insertGetId([
-            'nom'         => 'Usine Principale',
+            'nom'         => 'Usine de kaka',
             'code'        => 'ELM-USN-01',
             'type'        => 'usine',
             'statut'      => 'active',
             'localisation'=> null,
-            'description' => 'Usine opérationnelle principale',
+            'description' => 'Usine opérationnelle de kaka',
             'parent_id'   => $siegeId,
             'created_at'  => $now,
             'updated_at'  => $now,

@@ -6,22 +6,37 @@ use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Models\Parametre;
 use App\Models\Produit;
+use App\Models\Usine;
 use Illuminate\Database\Seeder;
 
 class ProduitRouleauSeeder extends Seeder
 {
     public function run(): void
     {
-        $produit = Produit::withTrashed()
+        // Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
+        // auto-remplir usine_id. On rattache le produit à l'usine opérationnelle
+        // "Usine de kaka" (ELM-USN-01), créée par la backfill migration 200004.
+        $usine = Usine::where('nom', 'Usine de kaka')->first()
+            ?? Usine::where('type', 'usine')->first();
+
+        if (!$usine) {
+            $this->command->warn('ProduitRouleauSeeder : aucune usine opérationnelle trouvée, seeder ignoré.');
+            return;
+        }
+
+        $produit = Produit::withoutGlobalScopes()
+            ->withTrashed()
             ->where('nom', 'Rouleau de packing')
             ->where('type', ProduitType::MATERIEL)
+            ->where('usine_id', $usine->id)
             ->first();
 
         if (!$produit) {
             $produit = new Produit([
-                'nom' => 'Rouleau de packing',
-                'type' => ProduitType::MATERIEL,
+                'nom'      => 'Rouleau de packing',
+                'type'     => ProduitType::MATERIEL,
                 'qte_stock' => 0,
+                'usine_id' => $usine->id,
             ]);
         } elseif ($produit->trashed()) {
             $produit->restore();
@@ -32,8 +47,9 @@ class ProduitRouleauSeeder extends Seeder
         }
 
         $produit->prix_achat  = $produit->prix_achat ?? 500;
+        $produit->qte_stock   = max($produit->qte_stock, 1000);
         $produit->is_critique = true;
-        $produit->statut      = $produit->qte_stock > 0 ? ProduitStatut::ACTIF : ProduitStatut::RUPTURE_STOCK;
+        $produit->statut      = ProduitStatut::ACTIF;
         $produit->save();
 
         Parametre::updateOrCreate(
