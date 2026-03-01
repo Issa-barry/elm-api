@@ -67,10 +67,7 @@ class ProduitUpdateController extends Controller
 
                 // Upload image si présente
                 if ($request->hasFile('image')) {
-                    if ($produit->image_url) {
-                        $oldPath = str_replace(url('storage') . '/', '', $produit->image_url);
-                        Storage::disk('public')->delete($oldPath);
-                    }
+                    Storage::disk('public')->deleteDirectory("produits/{$produit->id}");
                     $path = $request->file('image')->store("produits/{$produit->id}", 'public');
                     $data['image_url'] = Storage::disk('public')->url($path);
                 }

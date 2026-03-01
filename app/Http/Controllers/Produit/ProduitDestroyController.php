@@ -21,11 +21,8 @@ class ProduitDestroyController extends Controller
                 return $this->notFoundResponse('Produit non trouvé');
             }
 
-            // Supprimer l'image si elle existe
-            if ($produit->image_url) {
-                $path = str_replace(url('storage') . '/', '', $produit->image_url);
-                Storage::disk('public')->delete($path);
-            }
+            // Supprimer toutes les images du produit
+            Storage::disk('public')->deleteDirectory("produits/{$produit->id}");
 
             // Soft delete (conserve l'historique)
             $produit->delete();

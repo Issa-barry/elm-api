@@ -42,11 +42,8 @@ class ProduitUploadImageController extends Controller
                 'image.max'      => 'L\'image ne doit pas dépasser 5 Mo.',
             ]);
 
-            // Supprimer l'ancienne image
-            if ($produit->image_url) {
-                $oldPath = str_replace(Storage::disk('public')->url(''), '', $produit->image_url);
-                Storage::disk('public')->delete(ltrim($oldPath, '/'));
-            }
+            // Supprimer le dossier existant (clean before save)
+            Storage::disk('public')->deleteDirectory("produits/{$produit->id}");
 
             // Stocker sans compression (intervention/image non installé)
             $path = $request->file('image')->store("produits/{$produit->id}", 'public');
