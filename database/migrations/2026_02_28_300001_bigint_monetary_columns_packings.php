@@ -113,6 +113,10 @@ return new class extends Migration
 
     private function dropCheckConstraintIfExists(string $table, string $name): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         $exists = DB::table('information_schema.table_constraints')
             ->where('table_schema', DB::getDatabaseName())
             ->where('table_name', $table)
