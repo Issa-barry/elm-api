@@ -41,10 +41,9 @@ class StoreProduitRequest extends FormRequest
             'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'is_global'   => 'nullable|boolean',
 
-            // Affectations usines initiales
+            // Affectations usines initiales (is_active non accepté à la création — toujours false)
             'usines'              => 'nullable|array',
             'usines.*.usine_id'   => 'required_with:usines|integer|exists:usines,id',
-            'usines.*.is_active'  => 'nullable|boolean',
             'usines.*.prix_usine' => 'nullable|integer|min:0',
             'usines.*.prix_achat' => 'nullable|integer|min:0',
             'usines.*.prix_vente' => 'nullable|integer|min:0',
@@ -97,18 +96,13 @@ class StoreProduitRequest extends FormRequest
     }
 
     /**
-     * Règles de validation pour le stock selon le type
+     * Règles de validation pour le stock selon le type.
+     * qte_stock est optionnel à la création : le stock initial est toujours 0.
+     * La saisie du stock se fait plus tard, par usine, lors de l'activation.
      */
-    protected function getStockRules(string $type): array|string
+    protected function getStockRules(string $type): string
     {
-        $typeEnum = ProduitType::tryFrom($type);
-
-        // Service : stock non pertinent
-        if ($typeEnum === ProduitType::SERVICE) {
-            return 'nullable|integer|min:0';
-        }
-
-        return 'required|integer|min:0';
+        return 'nullable|integer|min:0';
     }
 
     public function messages(): array
@@ -126,7 +120,7 @@ class StoreProduitRequest extends FormRequest
             // Type et Statut
             'type.required' => 'Le type de produit est obligatoire.',
             'type.Illuminate\Validation\Rules\Enum' => 'Le type doit être : materiel, service, fabricable ou achat_vente.',
-            'statut.Illuminate\Validation\Rules\Enum' => 'Le statut doit être : brouillon, actif, inactif, archive ou rupture_stock.',
+            'statut.Illuminate\Validation\Rules\Enum' => 'Le statut doit être : brouillon, actif, inactif ou archive.',
 
             // Prix
             'prix_usine.required' => 'Le prix usine est obligatoire pour ce type de produit.',
@@ -141,8 +135,7 @@ class StoreProduitRequest extends FormRequest
             'prix_achat.integer' => 'Le prix d\'achat doit être un nombre entier (GNF).',
             'prix_achat.min' => 'Le prix d\'achat ne peut pas être négatif.',
 
-            // Stock
-            'qte_stock.required' => 'La quantité en stock est obligatoire.',
+            // Stock (optionnel à la création — sera saisi lors de l'activation par usine)
             'qte_stock.integer' => 'La quantité doit être un nombre entier.',
             'qte_stock.min' => 'La quantité ne peut pas être négative.',
 
@@ -217,10 +210,6 @@ class StoreProduitRequest extends FormRequest
             if ($this->has($field)) {
                 $data[$field] = $this->normalizeIntegerInput($this->input($field));
             }
-        }
-
-        if ($type === ProduitType::SERVICE->value) {
-            $data['qte_stock'] = 0;
         }
 
         $this->merge($data);

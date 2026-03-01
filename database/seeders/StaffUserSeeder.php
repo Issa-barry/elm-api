@@ -92,7 +92,7 @@ class StaffUserSeeder extends Seeder
                         'code_phone_pays'   => '+224',
                         'ville'             => 'Conakry',
                         'quartier'          => $data['quartier'],
-                        'reference'         => $this->generateUserReference(),
+                        'reference'         => User::generateUniqueReference(),
                         'password'          => $data['password'],
                         'email_verified_at' => now(),
                     ]
@@ -116,19 +116,5 @@ class StaffUserSeeder extends Seeder
 
             $this->command->info("StaffUserSeeder : " . count($staffList) . " utilisateur(s) traité(s) pour [{$usineNom}].");
         }
-    }
-
-    private function generateUserReference(): string
-    {
-        $prefix   = 'USR-' . now()->format('Ymd') . '-';
-        $sequence = (User::withTrashed()->max('id') ?? 0) + 1;
-
-        do {
-            $reference = $prefix . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
-            $exists    = User::withTrashed()->where('reference', $reference)->exists();
-            $sequence++;
-        } while ($exists);
-
-        return $reference;
     }
 }

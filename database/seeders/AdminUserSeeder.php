@@ -21,7 +21,7 @@ class AdminUserSeeder extends Seeder
                 'code_phone_pays' => '+224',
                 'ville' => 'Conakry',
                 'quartier' => 'Kaloum',
-                'reference' => $this->generateUserReference(),
+                'reference' => User::generateUniqueReference(),
                 'password' => 'Jeux@2019',
                 'email_verified_at' => now(),
             ]
@@ -41,19 +41,5 @@ class AdminUserSeeder extends Seeder
             $admin->usines()->attach($usine->id, ['role' => 'manager', 'is_default' => true]);
             $admin->update(['default_usine_id' => $usine->id]);
         }
-    }
-
-    private function generateUserReference(): string
-    {
-        $prefix = 'USR-' . now()->format('Ymd') . '-';
-        $sequence = (User::withTrashed()->max('id') ?? 0) + 1;
-
-        do {
-            $reference = $prefix . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
-            $exists = User::withTrashed()->where('reference', $reference)->exists();
-            $sequence++;
-        } while ($exists);
-
-        return $reference;
     }
 }

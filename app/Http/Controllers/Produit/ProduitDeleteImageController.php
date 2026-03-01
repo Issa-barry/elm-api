@@ -25,8 +25,7 @@ class ProduitDeleteImageController extends Controller
                 return $this->errorResponse('Ce produit n\'a pas d\'image', null, 404);
             }
 
-            $path = str_replace(Storage::disk('public')->url(''), '', $produit->image_url);
-            Storage::disk('public')->delete(ltrim($path, '/'));
+            Storage::disk('public')->deleteDirectory("produits/{$produit->id}");
 
             $produit->update(['image_url' => null]);
             $produit->load(['creator:id,nom,prenom', 'updater:id,nom,prenom']);

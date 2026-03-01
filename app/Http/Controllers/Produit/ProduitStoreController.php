@@ -25,9 +25,8 @@ class ProduitStoreController extends Controller
             return DB::transaction(function () use ($request) {
                 $data = $request->validated();
 
-                // Extraire les données stock et les affectations usines
-                $stockQte    = (int) ($data['qte_stock'] ?? 0);
-                $stockSeuil  = isset($data['seuil_alerte_stock']) ? (int) $data['seuil_alerte_stock'] : null;
+                // Extraire le seuil d'alerte et les affectations ; qte_stock ignoré (toujours 0 à la création)
+                $stockSeuil   = isset($data['seuil_alerte_stock']) ? (int) $data['seuil_alerte_stock'] : null;
                 $affectations = $data['usines'] ?? [];
                 unset($data['qte_stock'], $data['seuil_alerte_stock'], $data['usines']);
 
@@ -36,53 +35,50 @@ class ProduitStoreController extends Controller
                     $data['code'] = $this->generateNumericProductCode();
                 }
 
-                // Statut par défaut selon le stock et le type
+                // Statut par défaut : BROUILLON — activation explicite requise
                 if (empty($data['statut'])) {
-                    $type = ProduitType::from($data['type']);
-
-                    if ($type === ProduitType::SERVICE || $stockQte > 0) {
-                        $data['statut'] = ProduitStatut::ACTIF->value;
-                    } else {
-                        $data['statut'] = ProduitStatut::BROUILLON->value;
-                    }
+                    $data['statut'] = ProduitStatut::BROUILLON->value;
                 }
 
                 $produit = Produit::create($data);
 
-                // ── Stock + config locale ────────────────────────────────────────
-                if ($produit->type !== ProduitType::SERVICE) {
-                    if ($produit->is_global) {
-                        // Produit global : créer stock + config locale pour toutes les usines
-                        Usine::withoutGlobalScopes()->get()
-                            ->each(function (Usine $usine) use ($produit, $stockQte, $stockSeuil) {
+                // ── Config locale (produit_usines) + Stock (non-services uniquement) ──
+                // Tous les produits démarrent avec is_active = false dans chaque usine.
+                // Le stock initial est 0 ; il sera saisi lors de l'activation par usine.
+                if ($produit->is_global) {
+                    Usine::withoutGlobalScopes()->get()
+                        ->each(function (Usine $usine) use ($produit, $stockSeuil) {
+                            ProduitUsine::firstOrCreate(
+                                ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                                ['is_active' => false]
+                            );
+                            if ($produit->type !== ProduitType::SERVICE) {
                                 Stock::firstOrCreate(
                                     ['produit_id' => $produit->id, 'usine_id' => $usine->id],
-                                    ['qte_stock' => $stockQte, 'seuil_alerte_stock' => $stockSeuil]
+                                    ['qte_stock' => 0, 'seuil_alerte_stock' => $stockSeuil]
                                 );
-                                ProduitUsine::firstOrCreate(
-                                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
-                                    ['is_active' => false]
-                                );
-                            });
-                    } else {
-                        // Produit non-global : stock + config locale pour l'usine courante
-                        $usineId = app(UsineContext::class)->getCurrentUsineId();
-                        if ($usineId) {
+                            }
+                        });
+                } else {
+                    $usineId = app(UsineContext::class)->getCurrentUsineId();
+                    if ($usineId) {
+                        ProduitUsine::firstOrCreate(
+                            ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                            ['is_active' => false]
+                        );
+                        if ($produit->type !== ProduitType::SERVICE) {
                             Stock::create([
                                 'produit_id'         => $produit->id,
                                 'usine_id'           => $usineId,
-                                'qte_stock'          => $stockQte,
+                                'qte_stock'          => 0,
                                 'seuil_alerte_stock' => $stockSeuil,
                             ]);
-                            ProduitUsine::firstOrCreate(
-                                ['produit_id' => $produit->id, 'usine_id' => $usineId],
-                                ['is_active' => false]
-                            );
                         }
                     }
                 }
 
                 // ── Affectations initiales explicites (usines[]) ─────────────────
+                // is_active toujours false à la création ; les prix locaux sont acceptés.
                 foreach ($affectations as $affectation) {
                     $usineId = (int) $affectation['usine_id'];
 
@@ -91,9 +87,8 @@ class ProduitStoreController extends Controller
                         ['is_active' => false]
                     );
 
-                    // Appliquer les prix locaux si fournis
+                    // Appliquer les prix locaux si fournis (is_active ignoré)
                     $config->fill(array_filter([
-                        'is_active'  => $affectation['is_active']  ?? null,
                         'prix_usine' => $affectation['prix_usine'] ?? null,
                         'prix_achat' => $affectation['prix_achat'] ?? null,
                         'prix_vente' => $affectation['prix_vente'] ?? null,
@@ -101,7 +96,6 @@ class ProduitStoreController extends Controller
                         'tva'        => $affectation['tva']        ?? null,
                     ], fn ($v) => $v !== null))->save();
 
-                    // Garantir l'entrée stock si le produit est stockable
                     if ($produit->type !== ProduitType::SERVICE) {
                         Stock::firstOrCreate(
                             ['produit_id' => $produit->id, 'usine_id' => $usineId],
@@ -112,6 +106,7 @@ class ProduitStoreController extends Controller
 
                 // ── Upload image ─────────────────────────────────────────────────
                 if ($request->hasFile('image')) {
+                    Storage::disk('public')->deleteDirectory("produits/{$produit->id}");
                     $path = $request->file('image')->store("produits/{$produit->id}", 'public');
                     $produit->update(['image_url' => Storage::disk('public')->url($path)]);
                 }

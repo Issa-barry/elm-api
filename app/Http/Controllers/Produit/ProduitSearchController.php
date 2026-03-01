@@ -40,17 +40,20 @@ class ProduitSearchController extends Controller
                 $query->where('type', $request->type);
             }
 
-            // in_stock est un accesseur calculé, pas une colonne SQL
+            // in_stock : le stock est dans la table stocks (relation stockCourant)
             if ($request->has('in_stock')) {
                 $inStock = $request->boolean('in_stock');
                 if ($inStock) {
                     $query->where(function ($q) {
-                        $q->where('qte_stock', '>', 0)
-                          ->orWhere('type', ProduitType::SERVICE);
+                        $q->where('type', ProduitType::SERVICE)
+                          ->orWhereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '>', 0));
                     });
                 } else {
-                    $query->where('qte_stock', '<=', 0)
-                          ->where('type', '!=', ProduitType::SERVICE->value);
+                    $query->where('type', '!=', ProduitType::SERVICE->value)
+                          ->where(function ($q) {
+                              $q->whereDoesntHave('stockCourant')
+                                ->orWhereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '<=', 0));
+                          });
                 }
             }
 
@@ -63,13 +66,13 @@ class ProduitSearchController extends Controller
                 $query->where('prix_vente', '<=', $request->prix_max);
             }
 
-            // Plage de stock
+            // Plage de stock (via table stocks)
             if ($request->has('stock_min')) {
-                $query->where('qte_stock', '>=', $request->stock_min);
+                $query->whereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '>=', (int) $request->stock_min));
             }
 
             if ($request->has('stock_max')) {
-                $query->where('qte_stock', '<=', $request->stock_max);
+                $query->whereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '<=', (int) $request->stock_max));
             }
 
             $produits = $query->orderBy('created_at', 'desc')->get();
