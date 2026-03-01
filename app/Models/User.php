@@ -145,17 +145,22 @@ class User extends Authenticatable
        RÉFÉRENCE AUTO-GÉNÉRÉE
        ========================= */
 
+    public static function generateUniqueReference(): string
+    {
+        do {
+            $letters = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 2));
+            $digits  = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+            $ref     = 'U' . $letters . $digits;
+        } while (self::withTrashed()->where('reference', $ref)->exists());
+
+        return $ref;
+    }
+
     protected static function booted(): void
     {
         static::creating(function ($user) {
             if (empty($user->reference)) {
-                do {
-                    $letters = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 2));
-                    $digits  = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
-                    $ref     = $letters . $digits;
-                } while (self::withTrashed()->where('reference', $ref)->exists());
-
-                $user->reference = $ref;
+                $user->reference = static::generateUniqueReference();
             }
         });
     }

@@ -91,11 +91,15 @@ class Prestataire extends Model
         }
     }
 
-    protected static function generateReference(): string
+    public static function generateReference(): string
     {
-        $lastId = self::withTrashed()->max('id') ?? 0;
+        do {
+            $letters = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 2));
+            $digits  = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+            $ref     = 'P' . $letters . $digits;
+        } while (self::withTrashed()->where('reference', $ref)->exists());
 
-        return 'PREST-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
+        return $ref;
     }
 
     public function setNomAttribute($value): void

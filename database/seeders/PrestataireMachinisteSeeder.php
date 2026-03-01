@@ -6,7 +6,6 @@ use App\Enums\PrestataireType;
 use App\Models\Prestataire;
 use App\Models\Usine;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class PrestataireMachinisteSeeder extends Seeder
 {
@@ -139,21 +138,12 @@ class PrestataireMachinisteSeeder extends Seeder
                     'tarif_horaire'   => $data['tarif_horaire'],
                     'notes'           => $data['notes'],
                     'is_active'       => true,
-                    'reference'       => $this->generateReference(),
                     'usine_id'        => $usine->id,
+                    'reference'       => Prestataire::generateReference(),
                 ]);
             }
 
             $this->command->info("PrestataireMachinisteSeeder : " . count($prestataires) . " prestataire(s) traité(s) pour [{$usineNom}].");
         }
-    }
-
-    private function generateReference(): string
-    {
-        do {
-            $reference = 'PREST-' . now()->format('Ymd') . '-' . Str::upper((string) Str::ulid());
-        } while (Prestataire::withTrashed()->where('reference', $reference)->exists());
-
-        return $reference;
     }
 }
