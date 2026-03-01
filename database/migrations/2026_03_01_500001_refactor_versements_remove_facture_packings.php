@@ -42,17 +42,17 @@ return new class extends Migration
         //    avec le montant le plus élevé (LIMIT 1 ORDER BY montant DESC).
         // ----------------------------------------------------------------
         DB::statement("
-            UPDATE versements v
-            SET v.packing_id = (
+            UPDATE versements
+            SET packing_id = (
                 SELECT p.id
                 FROM packings p
-                WHERE p.facture_id = v.facture_packing_id
+                WHERE p.facture_id = versements.facture_packing_id
                   AND p.deleted_at IS NULL
                 ORDER BY p.montant DESC, p.id ASC
                 LIMIT 1
             )
-            WHERE v.facture_packing_id IS NOT NULL
-              AND v.deleted_at IS NULL
+            WHERE facture_packing_id IS NOT NULL
+              AND deleted_at IS NULL
         ");
 
         // ----------------------------------------------------------------
@@ -132,27 +132,29 @@ return new class extends Migration
             WHERE statut IN ('a_valider', 'valide', 'annule')
         ");
 
-        // Corriger le default du champ statut
-        DB::statement("ALTER TABLE packings ALTER COLUMN statut SET DEFAULT 'impayee'");
+        // Corriger le default du champ statut (MySQL/MariaDB uniquement)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE packings ALTER COLUMN statut SET DEFAULT 'impayee'");
+        }
 
         // ----------------------------------------------------------------
         // 10. Recalculer packings.statut depuis les versements backfillés
         //     (uniquement pour les packings non annulés)
         // ----------------------------------------------------------------
         DB::statement("
-            UPDATE packings pk
-            SET pk.statut = (
+            UPDATE packings
+            SET statut = (
                 SELECT CASE
-                    WHEN COALESCE(SUM(v.montant), 0) <= 0          THEN 'impayee'
-                    WHEN COALESCE(SUM(v.montant), 0) >= pk.montant THEN 'payee'
+                    WHEN COALESCE(SUM(v.montant), 0) <= 0               THEN 'impayee'
+                    WHEN COALESCE(SUM(v.montant), 0) >= packings.montant THEN 'payee'
                     ELSE 'partielle'
                 END
                 FROM versements v
-                WHERE v.packing_id = pk.id
+                WHERE v.packing_id = packings.id
                   AND v.deleted_at IS NULL
             )
-            WHERE pk.statut != 'annulee'
-              AND pk.deleted_at IS NULL
+            WHERE statut != 'annulee'
+              AND deleted_at IS NULL
         ");
     }
 

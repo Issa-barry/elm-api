@@ -56,8 +56,8 @@ return new class extends Migration
                 p.prix_achat,
                 p.prix_vente,
                 p.cout,
-                NOW(),
-                NOW()
+                CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP
             FROM produits p
             WHERE p.usine_id IS NOT NULL
               AND p.is_global = FALSE

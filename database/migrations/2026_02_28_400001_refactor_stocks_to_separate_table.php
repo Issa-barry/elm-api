@@ -52,7 +52,7 @@ return new class extends Migration
         // Les services n'ont pas de stock (qte_stock toujours 0, pas utile)
         DB::statement("
             INSERT INTO stocks (produit_id, usine_id, qte_stock, seuil_alerte_stock, created_at, updated_at)
-            SELECT id, usine_id, qte_stock, seuil_alerte_stock, NOW(), NOW()
+            SELECT id, usine_id, qte_stock, seuil_alerte_stock, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
             FROM produits
             WHERE usine_id IS NOT NULL
               AND type != 'service'
