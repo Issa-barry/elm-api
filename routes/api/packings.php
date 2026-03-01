@@ -1,13 +1,15 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Packing\PackingChangeStatutController;
+use App\Http\Controllers\Packing\PackingDestroyController;
 use App\Http\Controllers\Packing\PackingIndexController;
 use App\Http\Controllers\Packing\PackingShowController;
 use App\Http\Controllers\Packing\PackingStoreController;
 use App\Http\Controllers\Packing\PackingUpdateController;
-use App\Http\Controllers\Packing\PackingDestroyController;
-use App\Http\Controllers\Packing\PackingChangeStatutController;
-use App\Http\Controllers\Packing\PackingValiderController;
+use App\Http\Controllers\Packing\PackingVersementDestroyController;
+use App\Http\Controllers\Packing\PackingVersementIndexController;
+use App\Http\Controllers\Packing\PackingVersementStoreController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,6 +17,7 @@ use App\Http\Controllers\Packing\PackingValiderController;
 |--------------------------------------------------------------------------
 |
 | Gestion des packings (machinistes - rouleaux)
+| Le paiement est suivi directement via Versement sur Packing.
 |
 */
 
@@ -25,7 +28,6 @@ Route::prefix('packings')->group(function () {
 
     // Création
     Route::post('/', PackingStoreController::class)->middleware('permission:packings.create');
-    Route::post('/{id}/valider', PackingValiderController::class)->where('id', '[0-9]+')->middleware('permission:packings.create');
 
     // Mise à jour
     Route::put('/{id}', PackingUpdateController::class)->where('id', '[0-9]+')->middleware('permission:packings.update');
@@ -33,4 +35,11 @@ Route::prefix('packings')->group(function () {
 
     // Suppression
     Route::delete('/{id}', PackingDestroyController::class)->where('id', '[0-9]+')->middleware('permission:packings.delete');
+
+    // Versements (paiements directs sur le packing)
+    Route::get('/{id}/versements', PackingVersementIndexController::class)->where('id', '[0-9]+')->middleware('permission:packings.read');
+    Route::post('/{id}/versements', PackingVersementStoreController::class)->where('id', '[0-9]+')->middleware('permission:versements.create');
+    Route::delete('/{id}/versements/{versementId}', PackingVersementDestroyController::class)
+        ->where(['id' => '[0-9]+', 'versementId' => '[0-9]+'])
+        ->middleware('permission:versements.delete');
 });

@@ -4,14 +4,16 @@ namespace App\Enums;
 
 enum PackingStatut: string
 {
-    case A_VALIDER = 'a_valider';
-    case VALIDE = 'valide';
-    case ANNULE = 'annule';
+    case IMPAYEE = 'impayee';
+    case PARTIELLE = 'partielle';
+    case PAYEE = 'payee';
+    case ANNULEE = 'annulee';
 
     public const LABELS = [
-        self::A_VALIDER->value => 'A valider',
-        self::VALIDE->value => 'Valide',
-        self::ANNULE->value => 'Annule',
+        self::IMPAYEE->value => 'Impayee',
+        self::PARTIELLE->value => 'Partielle',
+        self::PAYEE->value => 'Payee',
+        self::ANNULEE->value => 'Annulee',
     ];
 
     public function label(): string
@@ -28,4 +30,5 @@ enum PackingStatut: string
     {
         return self::LABELS;
     }
+
 }

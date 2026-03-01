@@ -32,7 +32,7 @@ class Versement extends Model
     protected $fillable = [
         'usine_id',
         'reference',
-        'facture_packing_id',
+        'packing_id',
         'montant',
         'date_versement',
         'mode_paiement',
@@ -48,7 +48,8 @@ class Versement extends Model
     {
         return [
             'date_versement' => 'date:Y-m-d',
-            'montant' => 'integer',
+            'montant'        => 'integer',
+            'packing_id'     => 'integer',
         ];
     }
 
@@ -88,9 +89,9 @@ class Versement extends Model
        RELATIONS
        ========================= */
 
-    public function facturePacking(): BelongsTo
+    public function packing(): BelongsTo
     {
-        return $this->belongsTo(FacturePacking::class, 'facture_packing_id');
+        return $this->belongsTo(Packing::class);
     }
 
     public function creator(): BelongsTo

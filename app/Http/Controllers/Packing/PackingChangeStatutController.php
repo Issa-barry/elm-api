@@ -27,30 +27,36 @@ class PackingChangeStatutController extends Controller
                 'statut' => ['required', Rule::enum(PackingStatut::class)],
             ], [
                 'statut.required' => 'Le statut est obligatoire.',
-                'statut.enum' => 'Le statut doit etre : a_valider, valide ou annule.',
+                'statut.enum' => 'Le statut doit etre : impayee, partielle, payee ou annulee.',
             ]);
 
             $newStatut = $validated['statut'];
 
-            if ($newStatut === PackingStatut::VALIDE->value) {
-                $facture = $packing->valider();
-                $packing->refresh()->load(['prestataire', 'facture']);
-
-                return $this->successResponse([
-                    'packing' => $packing,
-                    'facture' => $facture?->fresh(['prestataire', 'packings']) ?? $packing->facture,
-                ], 'Packing valide avec succes');
+            if (in_array($newStatut, [PackingStatut::PARTIELLE->value, PackingStatut::PAYEE->value], true)) {
+                return $this->errorResponse(
+                    'Transition invalide',
+                    ['statut' => ['Les statuts partielle et payee sont calcules automatiquement via les versements.']],
+                    422
+                );
             }
 
-            if ($newStatut === PackingStatut::ANNULE->value) {
+            if ($newStatut === PackingStatut::IMPAYEE->value) {
+                if ($packing->statut === PackingStatut::ANNULEE) {
+                    $packing->reactiver();
+                }
+                $packing->refresh()->load(['prestataire', 'versements']);
+
+                return $this->successResponse($packing, 'Packing passe en impayee avec succes');
+            }
+
+            if ($newStatut === PackingStatut::ANNULEE->value) {
                 $packing->annuler();
-                $packing->refresh()->load(['prestataire', 'facture']);
+                $packing->refresh()->load(['prestataire', 'versements']);
 
                 return $this->successResponse($packing, 'Packing annule avec succes');
             }
 
-            $packing->update(['statut' => PackingStatut::A_VALIDER]);
-            $packing->refresh()->load(['prestataire', 'facture']);
+            $packing->refresh()->load(['prestataire', 'versements']);
 
             return $this->successResponse($packing, 'Statut du packing mis a jour avec succes');
         } catch (ValidationException $e) {

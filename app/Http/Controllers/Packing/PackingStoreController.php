@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Packing;
 
-use App\Enums\PackingStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Packing\StorePackingRequest;
 use App\Http\Traits\ApiResponse;
@@ -18,32 +17,28 @@ class PackingStoreController extends Controller
     public function __invoke(StorePackingRequest $request)
     {
         try {
-            $payload = $request->safe()->except(['montant']);
+            $payload      = $request->safe()->except(['montant']);
             $targetStatut = $payload['statut'] ?? Packing::STATUT_DEFAUT;
-            $doImmediateValidation = $targetStatut === PackingStatut::VALIDE->value;
+            $estActif     = $targetStatut !== Packing::STATUT_ANNULEE;
 
-            if ($doImmediateValidation) {
-                $payload['statut'] = PackingStatut::A_VALIDER->value;
+            if ($estActif) {
+                $payload['statut'] = Packing::STATUT_IMPAYEE;
             }
 
-            $result = DB::transaction(function () use ($payload, $doImmediateValidation) {
+            $packing = DB::transaction(function () use ($payload, $estActif) {
                 $packing = Packing::create($payload);
-                $facture = null;
 
-                if ($doImmediateValidation) {
-                    $facture = $packing->valider();
+                if ($estActif) {
+                    $packing->decrementerStockRouleaux();
                 }
 
-                $packing->refresh()->load(['prestataire', 'facture']);
+                $packing->refresh()->load(['prestataire', 'versements']);
 
-                return [
-                    'packing' => $packing,
-                    'facture' => $facture?->fresh(['prestataire', 'packings']) ?? $packing->facture,
-                ];
+                return $packing;
             });
 
             $produitRouleau = Parametre::getProduitRouleau()?->fresh();
-            $stockAlert = null;
+            $stockAlert     = null;
 
             if ($produitRouleau) {
                 $seuilEffectif = $produitRouleau->low_stock_threshold;
@@ -58,22 +53,19 @@ class PackingStoreController extends Controller
                 };
 
                 $stockAlert = [
-                    'stock_actuel'      => $produitRouleau->qte_stock,
-                    'seuil_stock_faible'=> $seuilEffectif,
-                    'niveau'            => $niveauAlerte,
-                    'is_low_stock'      => $isLowStock,
-                    'is_out_of_stock'   => $isOutOfStock,
-                    'message'           => $message,
+                    'stock_actuel'       => $produitRouleau->qte_stock,
+                    'seuil_stock_faible' => $seuilEffectif,
+                    'niveau'             => $niveauAlerte,
+                    'is_low_stock'       => $isLowStock,
+                    'is_out_of_stock'    => $isOutOfStock,
+                    'message'            => $message,
                 ];
             }
 
             return $this->createdResponse([
-                'packing' => $result['packing'],
-                'facture' => $result['facture'],
+                'packing'     => $packing,
                 'stock_alert' => $stockAlert,
-            ], $doImmediateValidation
-                ? 'Packing cree, valide et facture generee avec succes'
-                : 'Packing cree avec succes');
+            ], 'Packing cree avec succes');
         } catch (ValidationException $e) {
             return $this->validationErrorResponse($e->errors(), 'Les donnees fournies sont invalides.');
         } catch (\Throwable $e) {

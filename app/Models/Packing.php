@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,13 +19,13 @@ class Packing extends Model
 {
     use HasFactory, SoftDeletes, HasUsineScope;
 
-    public const STATUT_A_VALIDER = PackingStatut::A_VALIDER->value;
-    public const STATUT_VALIDE = PackingStatut::VALIDE->value;
-    public const STATUT_ANNULE = PackingStatut::ANNULE->value;
+    public const STATUT_IMPAYEE  = PackingStatut::IMPAYEE->value;
+    public const STATUT_PARTIELLE = PackingStatut::PARTIELLE->value;
+    public const STATUT_PAYEE    = PackingStatut::PAYEE->value;
+    public const STATUT_ANNULEE  = PackingStatut::ANNULEE->value;
 
-    public const STATUTS = PackingStatut::LABELS;
-
-    public const STATUT_DEFAUT = self::STATUT_VALIDE;
+    public const STATUTS      = PackingStatut::LABELS;
+    public const STATUT_DEFAUT = self::STATUT_IMPAYEE;
 
     protected $fillable = [
         'usine_id',
@@ -33,28 +34,32 @@ class Packing extends Model
         'nb_rouleaux',
         'prix_par_rouleau',
         'statut',
-        'facture_id',
         'notes',
     ];
 
     protected $appends = [
         'statut_label',
         'prestataire_nom',
+        'montant_verse',
+        'montant_restant',
     ];
 
     protected function casts(): array
     {
         return [
-            'date' => 'date:Y-m-d',
-            'nb_rouleaux' => 'integer',
-            'prix_par_rouleau' => 'integer',
-            'montant' => 'integer',
-            'facture_id' => 'integer',
-            'created_by' => 'integer',
-            'updated_by' => 'integer',
-            'statut' => PackingStatut::class,
+            'date'            => 'date:Y-m-d',
+            'nb_rouleaux'     => 'integer',
+            'prix_par_rouleau'=> 'integer',
+            'montant'         => 'integer',
+            'created_by'      => 'integer',
+            'updated_by'      => 'integer',
+            'statut'          => PackingStatut::class,
         ];
     }
+
+    /* =========================
+       BOOT
+       ========================= */
 
     protected static function booted(): void
     {
@@ -78,15 +83,15 @@ class Packing extends Model
         }
 
         if ((int) $this->nb_rouleaux > 0) {
-            $produitRouleauValeur = Parametre::query()
+            $configured = Parametre::query()
                 ->where('cle', Parametre::CLE_PRODUIT_ROULEAU_ID)
                 ->whereNotNull('valeur')
                 ->where('valeur', '!=', '')
                 ->value('valeur');
 
-            if (!$produitRouleauValeur) {
+            if (!$configured) {
                 throw ValidationException::withMessages([
-                    'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id' avant de creer un packing.",
+                    'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id'.",
                 ]);
             }
         }
@@ -97,23 +102,25 @@ class Packing extends Model
             if ($isCreating && !$this->created_by) {
                 $this->created_by = Auth::id();
             }
-
             $this->updated_by = Auth::id();
         }
     }
 
     protected static function generateReference(): string
     {
-        $lastId    = self::withTrashed()->max('id') ?? 0;
-        $reference = 'PACK-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
+        $lastId = self::withTrashed()->max('id') ?? 0;
 
-        return $reference;
+        return 'PACK-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function setNotesAttribute($value): void
     {
         $this->attributes['notes'] = $value ? trim($value) : null;
     }
+
+    /* =========================
+       RELATIONS
+       ========================= */
 
     public function prestataire(): BelongsTo
     {
@@ -130,10 +137,14 @@ class Packing extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function facture(): BelongsTo
+    public function versements(): HasMany
     {
-        return $this->belongsTo(FacturePacking::class, 'facture_id');
+        return $this->hasMany(Versement::class);
     }
+
+    /* =========================
+       ACCESSEURS
+       ========================= */
 
     public function getStatutLabelAttribute(): string
     {
@@ -149,7 +160,7 @@ class Packing extends Model
             }
         }
 
-        return PackingStatut::VALIDE->label();
+        return PackingStatut::IMPAYEE->label();
     }
 
     public function getPrestataireNomAttribute(): ?string
@@ -157,34 +168,38 @@ class Packing extends Model
         return $this->prestataire?->nom_complet;
     }
 
+    public function getMontantVerseAttribute(): int
+    {
+        return (int) $this->versements()->sum('montant');
+    }
+
+    public function getMontantRestantAttribute(): int
+    {
+        return max(0, $this->montant - $this->montant_verse);
+    }
+
+    /* =========================
+       SCOPES
+       ========================= */
+
     public function scopeAValider(Builder $query): Builder
     {
-        return $query->where('statut', self::STATUT_A_VALIDER);
+        return $query->where('statut', self::STATUT_IMPAYEE);
     }
 
     public function scopeValides(Builder $query): Builder
     {
-        return $query->where('statut', self::STATUT_VALIDE);
+        return $query->whereIn('statut', [self::STATUT_IMPAYEE, self::STATUT_PARTIELLE, self::STATUT_PAYEE]);
     }
 
     public function scopeAnnules(Builder $query): Builder
     {
-        return $query->where('statut', self::STATUT_ANNULE);
+        return $query->where('statut', self::STATUT_ANNULEE);
     }
 
     public function scopeNonAnnules(Builder $query): Builder
     {
-        return $query->whereIn('statut', [self::STATUT_A_VALIDER, self::STATUT_VALIDE]);
-    }
-
-    public function scopeFacturables(Builder $query): Builder
-    {
-        return $query->where('statut', self::STATUT_VALIDE)->whereNull('facture_id');
-    }
-
-    public function scopeSansFacture(Builder $query): Builder
-    {
-        return $query->whereNull('facture_id');
+        return $query->whereIn('statut', [self::STATUT_IMPAYEE, self::STATUT_PARTIELLE, self::STATUT_PAYEE]);
     }
 
     public function scopePourPrestataire(Builder $query, int $prestataireId): Builder
@@ -202,7 +217,7 @@ class Packing extends Model
         if ($date instanceof DateTimeInterface) {
             $targetDate = $date->format('Y-m-d');
         } elseif (is_string($date) && trim($date) !== '') {
-            $timestamp = strtotime($date);
+            $timestamp  = strtotime($date);
             $targetDate = $timestamp !== false ? date('Y-m-d', $timestamp) : now()->toDateString();
         } else {
             $targetDate = now()->toDateString();
@@ -225,8 +240,12 @@ class Packing extends Model
 
     public function scopeNonPayes(Builder $query): Builder
     {
-        return $query->whereNull('facture_id');
+        return $query->whereIn('statut', [self::STATUT_IMPAYEE, self::STATUT_PARTIELLE]);
     }
+
+    /* =========================
+       MÉTHODES MÉTIER
+       ========================= */
 
     public function calculerMontant(): int
     {
@@ -242,69 +261,60 @@ class Packing extends Model
         return $nbRouleaux * $prixParRouleau;
     }
 
-    public function valider(): ?FacturePacking
+    /**
+     * Recalcule et sauvegarde le statut du packing depuis ses versements.
+     * Retourne false si le packing est annulé (statut non modifiable).
+     */
+    public function mettreAJourStatut(): bool
     {
-        return DB::transaction(function () {
-            /** @var Packing $packing */
-            $packing = self::query()->lockForUpdate()->findOrFail($this->id);
+        if ($this->statut === PackingStatut::ANNULEE) {
+            return false;
+        }
 
-            if ($packing->statut === PackingStatut::ANNULE) {
-                throw ValidationException::withMessages([
-                    'statut' => 'Un packing annule ne peut pas etre valide.',
-                ]);
-            }
+        $montantVerse = (int) $this->versements()->sum('montant');
 
-            if ($packing->statut === PackingStatut::VALIDE) {
-                $this->syncFrom($packing);
-                return $packing->facture;
-            }
+        if ($montantVerse <= 0) {
+            $this->statut = PackingStatut::IMPAYEE;
+        } elseif ($montantVerse >= $this->montant) {
+            $this->statut = PackingStatut::PAYEE;
+        } else {
+            $this->statut = PackingStatut::PARTIELLE;
+        }
 
-            $packing->decrementerStockRouleaux();
-
-            $facture = $packing->facture;
-            if (!$facture && !$packing->facture_id) {
-                $factureDate = $packing->date;
-                if ($factureDate instanceof DateTimeInterface) {
-                    $factureDate = $factureDate->format('Y-m-d');
-                }
-
-                $facture = FacturePacking::create([
-                    'prestataire_id' => $packing->prestataire_id,
-                    'date' => $factureDate ?: now()->toDateString(),
-                    'montant_total' => $packing->montant,
-                    'nb_packings' => 1,
-                    'statut' => FacturePacking::STATUT_IMPAYEE,
-                ]);
-
-                $packing->facture_id = $facture->id;
-            }
-
-            $packing->statut = PackingStatut::VALIDE;
-            $packing->save();
-
-            $this->syncFrom($packing);
-
-            return $facture ?? $packing->facture;
-        });
+        return $this->save();
     }
 
+    /**
+     * Décrémente le stock de rouleaux et met à jour le statut depuis les versements.
+     * Appelé lors de la création d'un packing non annulé.
+     */
+    public function initialiserPaiement(): void
+    {
+        $this->decrementerStockRouleaux();
+        $this->mettreAJourStatut();
+    }
+
+    /**
+     * Annule le packing. Restaure le stock si $compenserStock = true.
+     */
     public function annuler(bool $compenserStock = true): bool
     {
         return DB::transaction(function () use ($compenserStock) {
             /** @var Packing $packing */
             $packing = self::query()->lockForUpdate()->findOrFail($this->id);
 
-            if ($packing->statut === PackingStatut::ANNULE) {
+            if ($packing->statut === PackingStatut::ANNULEE) {
                 $this->syncFrom($packing);
+
                 return true;
             }
 
-            if ($compenserStock && $packing->statut === PackingStatut::VALIDE) {
+            if ($compenserStock) {
                 $packing->restaurerStockRouleaux();
             }
 
-            $packing->statut = PackingStatut::ANNULE;
-            $saved = $packing->save();
+            $packing->statut = PackingStatut::ANNULEE;
+            $saved           = $packing->save();
 
             $this->syncFrom($packing);
 
@@ -312,7 +322,16 @@ class Packing extends Model
         });
     }
 
-    protected function decrementerStockRouleaux(): void
+    /**
+     * Réactive un packing annulé : décrémente le stock et recalcule le statut.
+     */
+    public function reactiver(): void
+    {
+        $this->decrementerStockRouleaux();
+        $this->mettreAJourStatut();
+    }
+
+    public function decrementerStockRouleaux(): void
     {
         if ($this->nb_rouleaux <= 0) {
             return;
@@ -321,11 +340,10 @@ class Packing extends Model
         $produitId = Parametre::getProduitRouleauId();
         if (!$produitId) {
             throw ValidationException::withMessages([
-                'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id' avant de valider un packing.",
+                'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id'.",
             ]);
         }
 
-        // Verrouiller le stock (pas le produit) pour les opérations concurrentes
         $stock = Stock::where('produit_id', $produitId)
             ->where('usine_id', $this->usine_id)
             ->lockForUpdate()
@@ -333,7 +351,7 @@ class Packing extends Model
 
         if (!$stock) {
             throw ValidationException::withMessages([
-                'nb_rouleaux' => "Stock rouleau non trouvé pour cette usine.",
+                'nb_rouleaux' => "Stock rouleau non trouve pour cette usine.",
             ]);
         }
 
@@ -369,11 +387,6 @@ class Packing extends Model
     {
         $this->setRawAttributes($packing->getAttributes(), true);
         $this->syncOriginal();
-    }
-
-    public function estFacturable(): bool
-    {
-        return $this->statut === PackingStatut::VALIDE && $this->facture_id === null;
     }
 
     public static function getStatuts(): array
