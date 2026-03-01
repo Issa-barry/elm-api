@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Packing;
 
-use App\Enums\PackingStatut;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -18,14 +17,13 @@ class UpdatePackingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'prestataire_id' => ['sometimes', 'integer', Rule::exists('prestataires', 'id')],
-            'date' => ['sometimes', 'date'],
-            'nb_rouleaux' => ['sometimes', 'integer', 'min:1', 'max:9999999'],
+            'prestataire_id'   => ['sometimes', 'integer', Rule::exists('prestataires', 'id')],
+            'date'             => ['sometimes', 'date'],
+            'nb_rouleaux'      => ['sometimes', 'integer', 'min:1', 'max:9999999'],
             'prix_par_rouleau' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
-            'statut' => ['sometimes', Rule::enum(PackingStatut::class)],
-            'facture_id' => ['sometimes', 'nullable', 'integer', Rule::exists('facture_packings', 'id')],
-            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            'montant' => ['prohibited'],
+            'notes'            => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'montant'          => ['prohibited'],
+            'statut'           => ['prohibited'],
         ];
     }
 
@@ -41,12 +39,10 @@ class UpdatePackingRequest extends FormRequest
             'prix_par_rouleau.integer' => 'Le prix par rouleau doit etre un entier.',
             'prix_par_rouleau.min' => 'Le prix par rouleau ne peut pas etre negatif.',
             'prix_par_rouleau.max' => 'Le prix par rouleau ne peut pas depasser 99 999 999.',
-            'statut.enum' => 'Le statut doit etre : a_valider, valide ou annule.',
-            'facture_id.integer' => 'La facture est invalide.',
-            'facture_id.exists' => 'La facture fournie est introuvable.',
-            'notes.string' => 'Les notes doivent etre une chaine de caracteres.',
-            'notes.max' => 'Les notes ne peuvent pas depasser 5000 caracteres.',
-            'montant.prohibited' => 'Le montant est calcule automatiquement par le serveur.',
+            'notes.string'      => 'Les notes doivent etre une chaine de caracteres.',
+            'notes.max'         => 'Les notes ne peuvent pas depasser 5000 caracteres.',
+            'montant.prohibited'=> 'Le montant est calcule automatiquement par le serveur.',
+            'statut.prohibited' => 'Le statut ne peut pas etre modifie directement. Utilisez PATCH /{id}/statut.',
         ];
     }
 

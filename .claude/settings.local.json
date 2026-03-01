@@ -35,7 +35,9 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(__NEW_LINE_fdf912ee5e6f6188__ rm -rf \"c:/laragon/www/elm-api/app/Http/Controllers/FacturePacking\")",
+      "Bash(__NEW_LINE_fdf912ee5e6f6188__ echo \"Deleted\")"
     ]
   }
 }

@@ -26,18 +26,12 @@ class StorePackingRequest extends FormRequest
             ? Rule::exists('prestataires', 'id')->where('usine_id', $usineId)
             : Rule::exists('prestataires', 'id');
 
-        // facture_id doit appartenir à la même usine (protection cross-usine)
-        $factureRule = $usineId
-            ? Rule::exists('facture_packings', 'id')->where('usine_id', $usineId)
-            : Rule::exists('facture_packings', 'id');
-
         return [
             'prestataire_id'   => ['required', 'integer', $prestataireRule],
             'date'             => ['required', 'date'],
             'nb_rouleaux'      => ['required', 'integer', 'min:1', 'max:9999999'],
             'prix_par_rouleau' => ['required', 'integer', 'min:0', 'max:99999999'],
             'statut'           => ['nullable', Rule::enum(PackingStatut::class)],
-            'facture_id'       => ['nullable', 'integer', $factureRule],
             'notes'            => ['nullable', 'string', 'max:5000'],
             'montant'          => ['prohibited'],
         ];
@@ -55,6 +49,20 @@ class StorePackingRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $statut = (string) $this->input('statut', PackingStatut::IMPAYEE->value);
+
+            if (in_array($statut, [PackingStatut::PARTIELLE->value, PackingStatut::PAYEE->value], true)) {
+                $validator->errors()->add(
+                    'statut',
+                    'Les statuts partielle et payee sont calcules automatiquement via les versements.'
+                );
+                return;
+            }
+
+            if ($statut === PackingStatut::ANNULEE->value) {
+                return;
+            }
+
             $nbRouleaux = (int) $this->input('nb_rouleaux', 0);
 
             if ($nbRouleaux <= 0) {
@@ -105,9 +113,7 @@ class StorePackingRequest extends FormRequest
             'prix_par_rouleau.integer'  => 'Le prix par rouleau doit etre un entier.',
             'prix_par_rouleau.min'      => 'Le prix par rouleau ne peut pas etre negatif.',
             'prix_par_rouleau.max'      => 'Le prix par rouleau ne peut pas depasser 99 999 999.',
-            'statut.enum'               => 'Le statut doit etre : a_valider, valide ou annule.',
-            'facture_id.integer'        => 'La facture est invalide.',
-            'facture_id.exists'         => 'La facture fournie est introuvable.',
+            'statut.enum'               => 'Le statut doit etre : impayee, partielle, payee ou annulee.',
             'notes.string'              => 'Les notes doivent etre une chaine de caracteres.',
             'notes.max'                 => 'Les notes ne peuvent pas depasser 5000 caracteres.',
             'montant.prohibited'        => 'Le montant est calcule automatiquement par le serveur.',
