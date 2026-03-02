@@ -4,12 +4,13 @@ namespace App\Http\Requests\User;
 
 use App\Enums\Civilite;
 use App\Enums\UserType;
+use App\Http\Requests\Concerns\NormalizesInputFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends FormRequest
 {
-    use ValidatesKycFields;
+    use NormalizesInputFields, ValidatesKycFields;
 
     public function authorize(): bool
     {
@@ -30,6 +31,25 @@ class UpdateUserRequest extends FormRequest
 
         if ($this->exists('quartier')) {
             $normalized['quartier'] = $this->normalizeLocation($this->input('quartier'));
+        }
+
+        if ($this->exists('phone')) {
+            $normalized['phone'] = $this->normalizePhone($this->input('phone'));
+        }
+        if ($this->exists('nom')) {
+            $normalized['nom'] = $this->normalizeString($this->input('nom'));
+        }
+        if ($this->exists('prenom')) {
+            $normalized['prenom'] = $this->normalizeString($this->input('prenom'));
+        }
+        if ($this->exists('pays')) {
+            $normalized['pays'] = $this->normalizeLocation($this->input('pays'));
+        }
+        if ($this->exists('role')) {
+            $normalized['role'] = $this->normalizeLowercase($this->input('role'));
+        }
+        if ($this->exists('type')) {
+            $normalized['type'] = $this->normalizeLowercase($this->input('type'));
         }
 
         if ($normalized !== []) {
@@ -106,29 +126,4 @@ class UpdateUserRequest extends FormRequest
         ], $this->kycMessages());
     }
 
-    private function normalizeEmail($value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = trim((string) $value);
-
-        return $normalized === '' ? null : strtolower($normalized);
-    }
-
-    private function normalizeLocation($value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value));
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        return mb_convert_case($normalized, MB_CASE_TITLE, 'UTF-8');
-    }
 }

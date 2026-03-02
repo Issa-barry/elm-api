@@ -35,8 +35,18 @@ class ResolveUsineContext
         $ctx = app(UsineContext::class);
 
         $requestedUsineId = $request->header('X-Usine-Id');
+        $requestedUsineId = is_string($requestedUsineId) ? trim($requestedUsineId) : $requestedUsineId;
 
         if ($requestedUsineId !== null && $requestedUsineId !== '') {
+            // Sentinel "all" : vue consolidée toutes usines (siège uniquement)
+            if (is_string($requestedUsineId) && strcasecmp($requestedUsineId, 'all') === 0) {
+                if (!$user->isSiege()) {
+                    abort(403, 'Vue consolidée réservée aux utilisateurs siège.');
+                }
+                $ctx->setAllUsines();
+                return $next($request);
+            }
+
             $usineId = (int) $requestedUsineId;
 
             // L'usine doit exister et être active
@@ -52,8 +62,12 @@ class ResolveUsineContext
             }
 
             $ctx->setCurrentUsineId($usineId);
+        } elseif ($user->isSiege()) {
+            // Siège sans header explicite => vue consolidée par défaut
+            // (utile quand le front choisit "Toutes les usines" en supprimant le header)
+            $ctx->setAllUsines();
         } elseif ($user->default_usine_id) {
-            // Pas de header → utiliser l'usine par défaut
+            // Non-siège sans header → usine par défaut
             $ctx->setCurrentUsineId($user->default_usine_id);
         }
         // Sinon : siège sans X-Usine-Id → pas de filtre → vue consolidée

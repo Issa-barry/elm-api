@@ -108,7 +108,9 @@ class Packing extends Model
 
     protected static function generateReference(): string
     {
-        $lastId = self::withTrashed()->max('id') ?? 0;
+        // Important: la référence est unique globalement sur la table packings.
+        // On doit donc ignorer le scope usine, sinon chaque usine repart à 0001.
+        $lastId = self::withoutUsineScope()->withTrashed()->max('id') ?? 0;
 
         return 'PACK-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
     }
@@ -324,9 +326,11 @@ class Packing extends Model
 
     /**
      * Réactive un packing annulé : décrémente le stock et recalcule le statut.
+     * On bascule d'abord le statut à IMPAYEE pour lever le verrou de mettreAJourStatut().
      */
     public function reactiver(): void
     {
+        $this->statut = PackingStatut::IMPAYEE;
         $this->decrementerStockRouleaux();
         $this->mettreAJourStatut();
     }

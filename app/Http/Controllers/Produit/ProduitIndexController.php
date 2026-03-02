@@ -7,6 +7,7 @@ use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
+use App\Services\UsineContext;
 use Illuminate\Http\Request;
 
 class ProduitIndexController extends Controller
@@ -16,8 +17,12 @@ class ProduitIndexController extends Controller
     public function __invoke(Request $request)
     {
         try {
+            $ctx        = app(UsineContext::class);
+            $allUsines  = $ctx->isAllUsines();
+            $stockWith  = $allUsines ? 'stocks' : 'stockCourant';
+
             $query = Produit::nonArchives()
-                ->with(['creator:id,nom,prenom', 'updater:id,nom,prenom', 'stockCourant']);
+                ->with(['creator:id,nom,prenom', 'updater:id,nom,prenom', $stockWith]);
 
             // Filtre par statut
             if ($request->has('statut')) {
@@ -38,14 +43,27 @@ class ProduitIndexController extends Controller
             // Filtre en stock (via table stocks)
             if ($request->has('in_stock')) {
                 $inStock = $request->boolean('in_stock');
-                if ($inStock) {
-                    $query->where(function ($q) {
-                        $q->where('type', ProduitType::SERVICE)
-                          ->orWhereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '>', 0));
-                    });
+                if ($allUsines) {
+                    // Vue consolidée : "en stock" si au moins une usine a qte_stock > 0
+                    if ($inStock) {
+                        $query->where(function ($q) {
+                            $q->where('type', ProduitType::SERVICE)
+                              ->orWhereHas('stocks', fn ($sq) => $sq->where('qte_stock', '>', 0));
+                        });
+                    } else {
+                        $query->where('type', '!=', ProduitType::SERVICE)
+                              ->whereDoesntHave('stocks', fn ($sq) => $sq->where('qte_stock', '>', 0));
+                    }
                 } else {
-                    $query->where('type', '!=', ProduitType::SERVICE)
-                          ->whereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '<=', 0));
+                    if ($inStock) {
+                        $query->where(function ($q) {
+                            $q->where('type', ProduitType::SERVICE)
+                              ->orWhereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '>', 0));
+                        });
+                    } else {
+                        $query->where('type', '!=', ProduitType::SERVICE)
+                              ->whereHas('stockCourant', fn ($sq) => $sq->where('qte_stock', '<=', 0));
+                    }
                 }
             }
 

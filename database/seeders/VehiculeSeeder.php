@@ -32,15 +32,19 @@ class VehiculeSeeder extends Seeder
             $usine->restore();
         }
 
-        $proprietaire = Proprietaire::withTrashed()->firstOrNew([
-            'phone' => '+224620100200',
-        ]);
+        $proprietaire = Proprietaire::withoutGlobalScopes()
+            ->withTrashed()
+            ->firstOrNew([
+                'usine_id' => $usine->id,
+                'phone'    => '+224620100200',
+            ]);
         $proprietaire->fill([
-            'nom' => 'DIALLO',
-            'prenom' => 'Mamadou',
-            'email' => null,
-            'pays' => 'Guinee',
-            'ville' => 'Conakry',
+            'usine_id' => $usine->id,
+            'nom'      => 'DIALLO',
+            'prenom'   => 'Mamadou',
+            'email'    => null,
+            'pays'     => 'Guinee',
+            'ville'    => 'Conakry',
             'quartier' => 'Matam',
             'is_active' => true,
         ]);
@@ -49,15 +53,19 @@ class VehiculeSeeder extends Seeder
             $proprietaire->restore();
         }
 
-        $livreur = Livreur::withTrashed()->firstOrNew([
-            'phone' => '+224621100200',
-        ]);
+        $livreur = Livreur::withoutGlobalScopes()
+            ->withTrashed()
+            ->firstOrNew([
+                'usine_id' => $usine->id,
+                'phone'    => '+224621100200',
+            ]);
         $livreur->fill([
-            'nom' => 'BALDE',
-            'prenom' => 'Alpha',
-            'email' => null,
-            'pays' => 'Guinee',
-            'ville' => 'Conakry',
+            'usine_id' => $usine->id,
+            'nom'      => 'BALDE',
+            'prenom'   => 'Alpha',
+            'email'    => null,
+            'pays'     => 'Guinee',
+            'ville'    => 'Conakry',
             'quartier' => 'Ratoma',
             'is_active' => true,
         ]);
