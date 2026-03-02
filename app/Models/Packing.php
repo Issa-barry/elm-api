@@ -368,6 +368,53 @@ class Packing extends Model
         $stock->ajuster(-$this->nb_rouleaux);
     }
 
+    /**
+     * Ajuste le stock rouleaux selon un delta de modification:
+     * - delta > 0 : consommation supplémentaire (décrément)
+     * - delta < 0 : restitution (incrément)
+     */
+    public function ajusterStockRouleauxSelonDelta(int $delta): void
+    {
+        if ($delta === 0) {
+            return;
+        }
+
+        $produitId = Parametre::getProduitRouleauId();
+        if (!$produitId) {
+            throw ValidationException::withMessages([
+                'nb_rouleaux' => "Le produit rouleau n'est pas configure. Veuillez definir le parametre 'produit_rouleau_id'.",
+            ]);
+        }
+
+        $stock = Stock::where('produit_id', $produitId)
+            ->where('usine_id', $this->usine_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$stock) {
+            if ($delta < 0) {
+                // Cas de restitution: créer la ligne stock manquante pour ne pas perdre l'ajustement.
+                $stock = Stock::create([
+                    'produit_id' => $produitId,
+                    'usine_id'   => $this->usine_id,
+                    'qte_stock'  => 0,
+                ]);
+            } else {
+                throw ValidationException::withMessages([
+                    'nb_rouleaux' => 'Stock rouleau non trouve pour cette usine.',
+                ]);
+            }
+        }
+
+        if ($delta > 0 && $stock->qte_stock < $delta) {
+            throw ValidationException::withMessages([
+                'nb_rouleaux' => "Stock insuffisant. Stock disponible : {$stock->qte_stock} rouleaux.",
+            ]);
+        }
+
+        $stock->ajuster(-$delta);
+    }
+
     protected function restaurerStockRouleaux(): void
     {
         $produitId = Parametre::getProduitRouleauId();

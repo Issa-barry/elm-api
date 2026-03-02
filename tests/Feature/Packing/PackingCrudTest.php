@@ -504,6 +504,88 @@ class PackingCrudTest extends TestCase
             ->assertJsonPath('data.montant', 5000);    // 5 * 1000
     }
 
+    public function test_update_nb_rouleaux_vers_haut_decremente_le_stock_du_delta(): void
+    {
+        Sanctum::actingAs($this->staff);
+
+        $store = $this->postJson('/api/v1/packings', [
+            'prestataire_id'   => $this->prestataire->id,
+            'date'             => today()->toDateString(),
+            'nb_rouleaux'      => 5,
+            'prix_par_rouleau' => 500,
+        ]);
+
+        $store->assertCreated();
+        $packingId = (int) $store->json('data.packing.id');
+        $this->assertEquals(95, $this->stockRouleau->fresh()->qte_stock);
+
+        $update = $this->putJson("/api/v1/packings/{$packingId}", [
+            'nb_rouleaux' => 8, // delta = +3 => stock 95 -> 92
+        ]);
+
+        $update->assertOk()
+            ->assertJsonPath('data.nb_rouleaux', 8)
+            ->assertJsonPath('data.montant', 4000);
+
+        $this->assertEquals(92, $this->stockRouleau->fresh()->qte_stock);
+    }
+
+    public function test_update_nb_rouleaux_vers_bas_restitue_le_stock_du_delta(): void
+    {
+        Sanctum::actingAs($this->staff);
+
+        $store = $this->postJson('/api/v1/packings', [
+            'prestataire_id'   => $this->prestataire->id,
+            'date'             => today()->toDateString(),
+            'nb_rouleaux'      => 5,
+            'prix_par_rouleau' => 500,
+        ]);
+
+        $store->assertCreated();
+        $packingId = (int) $store->json('data.packing.id');
+        $this->assertEquals(95, $this->stockRouleau->fresh()->qte_stock);
+
+        $update = $this->putJson("/api/v1/packings/{$packingId}", [
+            'nb_rouleaux' => 2, // delta = -3 => stock 95 -> 98
+        ]);
+
+        $update->assertOk()
+            ->assertJsonPath('data.nb_rouleaux', 2)
+            ->assertJsonPath('data.montant', 1000);
+
+        $this->assertEquals(98, $this->stockRouleau->fresh()->qte_stock);
+    }
+
+    public function test_update_nb_rouleaux_vers_haut_echoue_si_stock_insuffisant(): void
+    {
+        Sanctum::actingAs($this->staff);
+
+        $store = $this->postJson('/api/v1/packings', [
+            'prestataire_id'   => $this->prestataire->id,
+            'date'             => today()->toDateString(),
+            'nb_rouleaux'      => 95,   // stock 100 -> 5
+            'prix_par_rouleau' => 500,
+        ]);
+
+        $store->assertCreated();
+        $packingId = (int) $store->json('data.packing.id');
+        $this->assertEquals(5, $this->stockRouleau->fresh()->qte_stock);
+
+        $update = $this->putJson("/api/v1/packings/{$packingId}", [
+            'nb_rouleaux' => 101, // delta = +6 > stock dispo 5
+        ]);
+
+        $update->assertUnprocessable();
+
+        // Rollback complet : stock et packing restent inchangés
+        $this->assertEquals(5, $this->stockRouleau->fresh()->qte_stock);
+        $this->assertDatabaseHas('packings', [
+            'id'          => $packingId,
+            'nb_rouleaux' => 95,
+            'montant'     => 47500,
+        ]);
+    }
+
     public function test_update_echoue_si_packing_est_annulee(): void
     {
         $packing = $this->creerPacking(['nb_rouleaux' => 0, 'statut' => PackingStatut::ANNULEE->value]);
