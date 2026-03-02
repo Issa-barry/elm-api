@@ -3,7 +3,10 @@
 use App\Http\Controllers\Packing\PackingChangeStatutController;
 use App\Http\Controllers\Packing\PackingDestroyController;
 use App\Http\Controllers\Packing\PackingIndexController;
+use App\Http\Controllers\Packing\PackingReportController;
+use App\Http\Controllers\Packing\PackingReportEmailController;
 use App\Http\Controllers\Packing\PackingShowController;
+use App\Http\Controllers\Packing\PackingStatsController;
 use App\Http\Controllers\Packing\PackingStoreController;
 use App\Http\Controllers\Packing\PackingUpdateController;
 use App\Http\Controllers\Packing\PackingVersementDestroyController;
@@ -22,6 +25,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('packings')->group(function () {
+    // Rapports — avant les routes /{id} pour éviter tout conflit regex
+    // Tradeoff permission email : packings.read pour ne pas bloquer avant d'avoir seedé packings.export
+    Route::get('/reports', PackingReportController::class)->middleware('permission:packings.read');
+    Route::post('/reports/email', PackingReportEmailController::class)->middleware('permission:packings.read');
+    Route::get('/stats', PackingStatsController::class)->middleware('permission:packings.read');
+
     // Lecture
     Route::get('/', PackingIndexController::class)->middleware('permission:packings.read');
     Route::get('/{id}', PackingShowController::class)->where('id', '[0-9]+')->middleware('permission:packings.read');

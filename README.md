@@ -7,6 +7,16 @@ php artisan storage:link
 php artisan optimize
 
 
+
+composer require barryvdh/laravel-dompdf
+
+# Si la table jobs n'existe pas encore :
+php artisan queue:table && php artisan migrate
+
+# Lancer le worker :
+php artisan queue:work
+
+
 ### 1) Deploiement initiale CONCEPTION
 php artisan migrate:fresh --seed
 
