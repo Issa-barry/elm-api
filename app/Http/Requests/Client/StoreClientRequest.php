@@ -2,15 +2,52 @@
 
 namespace App\Http\Requests\Client;
 
+use App\Http\Requests\Concerns\NormalizesInputFields;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
 class StoreClientRequest extends FormRequest
 {
+    use NormalizesInputFields;
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $normalized = [];
+
+        if ($this->exists('email')) {
+            $normalized['email'] = $this->normalizeEmail($this->input('email'));
+        }
+        if ($this->exists('phone')) {
+            $normalized['phone'] = $this->normalizePhone($this->input('phone'));
+        }
+        if ($this->exists('nom')) {
+            $normalized['nom'] = $this->normalizeString($this->input('nom'));
+        }
+        if ($this->exists('prenom')) {
+            $normalized['prenom'] = $this->normalizeString($this->input('prenom'));
+        }
+        if ($this->exists('raison_sociale')) {
+            $normalized['raison_sociale'] = $this->normalizeString($this->input('raison_sociale'));
+        }
+        if ($this->exists('pays')) {
+            $normalized['pays'] = $this->normalizeLocation($this->input('pays'));
+        }
+        if ($this->exists('ville')) {
+            $normalized['ville'] = $this->normalizeLocation($this->input('ville'));
+        }
+        if ($this->exists('quartier')) {
+            $normalized['quartier'] = $this->normalizeLocation($this->input('quartier'));
+        }
+
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
     }
 
     public function rules(): array

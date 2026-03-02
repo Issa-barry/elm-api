@@ -54,7 +54,7 @@ class Produit extends Model
         'last_stockout_notified_at'=> 'datetime',
     ];
 
-    protected $appends = ['in_stock', 'is_archived', 'is_low_stock', 'is_out_of_stock', 'low_stock_threshold'];
+    protected $appends = ['qte_stock', 'in_stock', 'is_archived', 'is_low_stock', 'is_out_of_stock', 'low_stock_threshold'];
 
     /* =========================
        FORMATAGE AUTOMATIQUE
@@ -223,19 +223,37 @@ class Produit extends Model
     // ACCESSEURS CALCULÉS
     // ========================================
 
+    private function isAllUsinesMode(): bool
+    {
+        return app(UsineContext::class)->isAllUsines();
+    }
+
     /**
-     * Stock actuel pour l'usine courante (délégue à stockCourant).
+     * Stock actuel.
+     * - Mode usine précise : délègue à stockCourant.
+     * - Mode all-usines    : somme sur toutes les usines via la relation stocks.
      */
     public function getQteStockAttribute(): int
     {
+        if ($this->isAllUsinesMode()) {
+            if ($this->relationLoaded('stocks')) {
+                return (int) $this->stocks->sum('qte_stock');
+            }
+            return (int) $this->stocks()->sum('qte_stock');
+        }
+
         return $this->stockCourant?->qte_stock ?? 0;
     }
 
     /**
-     * Seuil d'alerte pour l'usine courante.
+     * Seuil d'alerte pour l'usine courante (non pertinent en mode all-usines).
      */
     public function getSeuilAlerteStockAttribute(): ?int
     {
+        if ($this->isAllUsinesMode()) {
+            return null;
+        }
+
         return $this->stockCourant?->seuil_alerte_stock;
     }
 
@@ -243,6 +261,13 @@ class Produit extends Model
     {
         if ($this->type === ProduitType::SERVICE) {
             return true;
+        }
+
+        if ($this->isAllUsinesMode()) {
+            if ($this->relationLoaded('stocks')) {
+                return $this->stocks->sum('qte_stock') > 0;
+            }
+            return $this->stocks()->sum('qte_stock') > 0;
         }
 
         return ($this->stockCourant?->qte_stock ?? 0) > 0;
@@ -254,12 +279,24 @@ class Produit extends Model
             return false;
         }
 
+        if ($this->isAllUsinesMode()) {
+            if ($this->relationLoaded('stocks')) {
+                return $this->stocks->sum('qte_stock') <= 0;
+            }
+            return $this->stocks()->sum('qte_stock') <= 0;
+        }
+
         return ($this->stockCourant?->qte_stock ?? 0) <= 0;
     }
 
     public function getIsLowStockAttribute(): bool
     {
         if ($this->type === ProduitType::SERVICE || $this->is_out_of_stock) {
+            return false;
+        }
+
+        // En mode all-usines, le seuil n'est pas défini par usine — non évaluable
+        if ($this->isAllUsinesMode()) {
             return false;
         }
 
@@ -278,6 +315,10 @@ class Produit extends Model
      */
     public function getLowStockThresholdAttribute(): int
     {
+        if ($this->isAllUsinesMode()) {
+            return Parametre::getSeuilStockFaible();
+        }
+
         return $this->stockCourant?->low_stock_threshold ?? Parametre::getSeuilStockFaible();
     }
 

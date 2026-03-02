@@ -2,17 +2,44 @@
 
 namespace App\Http\Requests\Livreur;
 
+use App\Http\Requests\Concerns\NormalizesInputFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateLivreurRequest extends FormRequest
 {
+    use NormalizesInputFields;
+
     public function authorize(): bool { return true; }
 
     protected function prepareForValidation(): void
     {
+        $normalized = [];
+
+        if ($this->exists('email')) {
+            $normalized['email'] = $this->normalizeEmail($this->input('email'));
+        }
         if ($this->exists('phone')) {
-            $this->merge(['phone' => preg_replace('/[^0-9+]/', '', (string) $this->input('phone'))]);
+            $normalized['phone'] = $this->normalizePhone($this->input('phone'));
+        }
+        if ($this->exists('nom')) {
+            $normalized['nom'] = $this->normalizeString($this->input('nom'));
+        }
+        if ($this->exists('prenom')) {
+            $normalized['prenom'] = $this->normalizeString($this->input('prenom'));
+        }
+        if ($this->exists('pays')) {
+            $normalized['pays'] = $this->normalizeLocation($this->input('pays'));
+        }
+        if ($this->exists('ville')) {
+            $normalized['ville'] = $this->normalizeLocation($this->input('ville'));
+        }
+        if ($this->exists('quartier')) {
+            $normalized['quartier'] = $this->normalizeLocation($this->input('quartier'));
+        }
+
+        if ($normalized !== []) {
+            $this->merge($normalized);
         }
     }
 
