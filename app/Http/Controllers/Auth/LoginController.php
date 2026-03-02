@@ -33,17 +33,20 @@ class LoginController extends Controller
                 ]);
             }
 
+            if ($user->is_archived) {
+                return $this->forbiddenResponse('Votre compte a été archivé. Veuillez contacter l\'administrateur.');
+            }
+
             if (!$user->is_active) {
                 return $this->forbiddenResponse('Votre compte est désactivé. Veuillez contacter l\'administrateur.');
             }
 
             $isRememberMe = (bool) ($validated['remember_me'] ?? false);
-            $defaultTokenExpiration = (int) config('sanctum.default_expiration', 120);
             $rememberMeTokenExpirationDays = (int) config('sanctum.remember_me_expiration_days', 30);
 
             $expiresAt = $isRememberMe
                 ? now()->addDays($rememberMeTokenExpirationDays)
-                : now()->addMinutes($defaultTokenExpiration);
+                : now()->addWeek();
 
             $token = $user->createToken('auth_token', ['*'], $expiresAt)->plainTextToken;
             $user->updateLastLogin($request->ip());
