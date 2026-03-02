@@ -7,6 +7,7 @@ use App\Http\Controllers\Users\UserShowController;
 use App\Http\Controllers\Users\UserUpdateController;
 use App\Http\Controllers\Users\UserDestroyController;
 use App\Http\Controllers\Users\UserToggleStatusController;
+use App\Http\Controllers\Users\UserArchiveController;
 use App\Http\Controllers\Users\UserCheckPhoneController;
 
 /*
@@ -32,6 +33,7 @@ Route::prefix('users')->group(function () {
     // Mise à jour
     Route::put('/{id}', UserUpdateController::class)->where('id', '[0-9]+')->middleware('permission:users.update');
     Route::patch('/{id}/toggle-status', UserToggleStatusController::class)->where('id', '[0-9]+')->middleware('permission:users.update');
+    Route::patch('/{id}/archiver', UserArchiveController::class)->where('id', '[0-9]+')->middleware('permission:users.delete');
 
     // Suppression
     Route::delete('/{id}', UserDestroyController::class)->where('id', '[0-9]+')->middleware('permission:users.delete');

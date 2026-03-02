@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Users;
 
+use App\Enums\UsineRole;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Models\Packing;
+use App\Models\Produit;
 use App\Models\User;
+use App\Models\UserUsine;
+use App\Models\Versement;
 use Illuminate\Support\Facades\Log;
 
 class UserDestroyController extends Controller
@@ -18,6 +23,36 @@ class UserDestroyController extends Controller
 
             if (!$user) {
                 return $this->notFoundResponse('Utilisateur non trouvé');
+            }
+
+            $hasActivity = Packing::where('created_by', $user->id)->orWhere('updated_by', $user->id)->exists()
+                || Produit::where('created_by', $user->id)->orWhere('updated_by', $user->id)->exists()
+                || Versement::where('created_by', $user->id)->exists();
+
+            if ($hasActivity) {
+                return $this->errorResponse(
+                    'Cet utilisateur a des données liées (packings, produits ou versements). Utilisez l\'archivage à la place.',
+                    ['action' => 'archive'],
+                    422
+                );
+            }
+
+            $hasSiegeRole = UserUsine::where('user_id', $user->id)
+                ->whereIn('role', UsineRole::siegeRoles())
+                ->exists();
+
+            if ($hasSiegeRole) {
+                $otherAdminExists = UserUsine::where('user_id', '!=', $user->id)
+                    ->whereIn('role', UsineRole::siegeRoles())
+                    ->exists();
+
+                if (!$otherAdminExists) {
+                    return $this->errorResponse(
+                        'Impossible de supprimer cet utilisateur : c\'est le dernier administrateur du système.',
+                        null,
+                        422
+                    );
+                }
             }
 
             // Soft delete
