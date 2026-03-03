@@ -23,8 +23,8 @@ class RoleUpdateController extends Controller
                 return $this->notFoundResponse('Rôle non trouvé');
             }
 
-            if ($role->name === 'admin') {
-                return $this->forbiddenResponse('Le rôle admin ne peut pas être modifié');
+            if ($role->name === 'admin_entreprise') {
+                return $this->forbiddenResponse('Le rôle admin_entreprise ne peut pas être modifié');
             }
 
             $validated = $request->validate([

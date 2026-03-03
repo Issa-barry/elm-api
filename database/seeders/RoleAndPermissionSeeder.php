@@ -47,9 +47,14 @@ class RoleAndPermissionSeeder extends Seeder
             }
         }
 
-        // ADMIN : toutes les permissions
-        $admin = Role::firstOrCreate(['name' => 'admin']);
-        $admin->syncPermissions(Permission::all());
+        // ADMIN_ENTREPRISE : toutes les permissions sauf création/suppression d'utilisateurs
+        // (ne peut pas créer, supprimer ni archiver des utilisateurs)
+        $admin = Role::firstOrCreate(['name' => 'admin_entreprise']);
+        $adminPermissions = Permission::whereNotIn('name', [
+            'users.create',
+            'users.delete',
+        ])->get();
+        $admin->syncPermissions($adminPermissions);
 
         // MANAGER : CRUD opérationnel + lecture users/parametres
         $manager = Role::firstOrCreate(['name' => 'manager']);

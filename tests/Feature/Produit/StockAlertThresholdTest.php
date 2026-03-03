@@ -35,7 +35,7 @@ class StockAlertThresholdTest extends TestCase
         app(UsineContext::class)->setCurrentUsineId($usine->id);
 
         // Roles nécessaires pour le ciblage des destinataires
-        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('admin_entreprise', 'web');
         Role::findOrCreate('manager', 'web');
 
         // Paramètres de stock par défaut (seuil global = 10, notifications actives, cooldown = 0)
@@ -68,7 +68,7 @@ class StockAlertThresholdTest extends TestCase
             'ville'           => 'Conakry',
             'quartier'        => 'Kaloum',
         ]);
-        $user->assignRole('admin');
+        $user->assignRole('admin_entreprise');
         return $user;
     }
 
@@ -90,7 +90,7 @@ class StockAlertThresholdTest extends TestCase
         $stock->save();
 
         Notification::assertSentTo(
-            User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
+            User::where('type', UserType::STAFF->value)->role(['admin_entreprise', 'manager'])->get(),
             ProduitRuptureStockNotification::class,
             function (ProduitRuptureStockNotification $notification, $channels) {
                 $payload = $notification->toArray(null);
@@ -141,7 +141,7 @@ class StockAlertThresholdTest extends TestCase
         $stock->save();
 
         Notification::assertSentTo(
-            User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
+            User::where('type', UserType::STAFF->value)->role(['admin_entreprise', 'manager'])->get(),
             ProduitRuptureStockNotification::class,
             function (ProduitRuptureStockNotification $notification, $channels) {
                 $payload = $notification->toArray(null);
@@ -185,7 +185,7 @@ class StockAlertThresholdTest extends TestCase
         $stock->save();
 
         Notification::assertSentTo(
-            User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
+            User::where('type', UserType::STAFF->value)->role(['admin_entreprise', 'manager'])->get(),
             ProduitRuptureStockNotification::class,
             function (ProduitRuptureStockNotification $notification, $channels) {
                 $payload = $notification->toArray(null);
@@ -212,7 +212,7 @@ class StockAlertThresholdTest extends TestCase
         $stock->save();
 
         Notification::assertSentTo(
-            User::where('type', UserType::STAFF->value)->role(['admin', 'manager'])->get(),
+            User::where('type', UserType::STAFF->value)->role(['admin_entreprise', 'manager'])->get(),
             ProduitRuptureStockNotification::class,
             function (ProduitRuptureStockNotification $notification, $channels) {
                 $payload = $notification->toArray(null);

@@ -36,7 +36,7 @@ class ProduitUpdateController extends Controller
 
             if ($isGlobalChange || ($produit->is_global && $hasGlobalFields)) {
                 $user = Auth::user();
-                if (!$user || !$user->hasAnyRole(['admin', 'manager'])) {
+                if (!$user || !$user->hasAnyRole(['admin_entreprise', 'manager'])) {
                     return $this->errorResponse(
                         'Seuls les administrateurs peuvent modifier les données globales d\'un produit.',
                         null,

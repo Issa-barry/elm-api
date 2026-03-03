@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SubscriptionStatus;
 use App\Enums\UsineRole;
 use App\Enums\UsineStatut;
 use App\Enums\UsineType;
@@ -24,6 +25,7 @@ class Usine extends Model
         'code',
         'type',
         'statut',
+        'subscription_status',
         'localisation',
         'pays',
         'ville',
@@ -35,8 +37,9 @@ class Usine extends Model
     protected function casts(): array
     {
         return [
-            'type'   => UsineType::class,
-            'statut' => UsineStatut::class,
+            'type'                => UsineType::class,
+            'statut'              => UsineStatut::class,
+            'subscription_status' => SubscriptionStatus::class,
         ];
     }
 

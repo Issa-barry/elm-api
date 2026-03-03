@@ -333,7 +333,7 @@ class ProduitUsinePrixTest extends TestCase
 
     private function makeStaffWithPermission(string ...$permissions): User
     {
-        $role = Role::findOrCreate('admin', 'web');
+        $role = Role::findOrCreate('admin_entreprise', 'web');
 
         foreach ($permissions as $permission) {
             $perm = Permission::findOrCreate($permission, 'web');
@@ -356,7 +356,7 @@ class ProduitUsinePrixTest extends TestCase
             'quartier'        => 'Kaloum',
         ]);
 
-        $user->assignRole('admin');
+        $user->assignRole('admin_entreprise');
         return $user;
     }
 }
