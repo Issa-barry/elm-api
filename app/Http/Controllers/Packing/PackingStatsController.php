@@ -39,10 +39,11 @@ class PackingStatsController extends Controller
             $stats = $this->buildStats($start, $end, $groupBy, count($labels), $start->month);
 
             return $this->successResponse([
-                'period'  => $period,
-                'labels'  => $labels,
-                'payee'   => $stats['payee'],
-                'impayee' => $stats['impayee'],
+                'period'    => $period,
+                'labels'    => $labels,
+                'payee'     => $stats['payee'],
+                'impayee'   => $stats['impayee'],
+                'partielle' => $stats['partielle'],
             ]);
 
         } catch (\Exception $e) {
@@ -127,55 +128,58 @@ class PackingStatsController extends Controller
 
     private function buildStats(Carbon $start, Carbon $end, string $groupBy, int $slots, int $startMonth): array
     {
-        $payee   = array_fill(0, $slots, 0);
-        $impayee = array_fill(0, $slots, 0);
+        $payee    = array_fill(0, $slots, 0);
+        $impayee  = array_fill(0, $slots, 0);
+        $partielle = array_fill(0, $slots, 0);
 
         if ($groupBy === 'hour4') {
             // Grouper par tranche de 4h via created_at
             Packing::whereBetween('created_at', [$start, $end])
                 ->get(['created_at', 'statut'])
-                ->each(function ($p) use (&$payee, &$impayee) {
+                ->each(function ($p) use (&$payee, &$impayee, &$partielle) {
                     $slot = (int) floor(Carbon::parse($p->created_at)->hour / 4);
-                    $this->increment($p->statut, min($slot, 5), $payee, $impayee);
+                    $this->increment($p->statut, min($slot, 5), $payee, $impayee, $partielle);
                 });
 
         } elseif ($groupBy === 'weekday') {
             Packing::whereBetween('date', [$start->toDateString(), $end->toDateString()])
                 ->get(['date', 'statut'])
-                ->each(function ($p) use (&$payee, &$impayee) {
+                ->each(function ($p) use (&$payee, &$impayee, &$partielle) {
                     $idx = Carbon::parse($p->date)->dayOfWeekIso - 1; // 0=Lun, 6=Dim
-                    $this->increment($p->statut, $idx, $payee, $impayee);
+                    $this->increment($p->statut, $idx, $payee, $impayee, $partielle);
                 });
 
         } elseif ($groupBy === 'week_of_month') {
             Packing::whereBetween('date', [$start->toDateString(), $end->toDateString()])
                 ->get(['date', 'statut'])
-                ->each(function ($p) use (&$payee, &$impayee, $slots) {
+                ->each(function ($p) use (&$payee, &$impayee, &$partielle, $slots) {
                     $day = Carbon::parse($p->date)->day;
                     $idx = min((int) floor(($day - 1) / 7), $slots - 1);
-                    $this->increment($p->statut, $idx, $payee, $impayee);
+                    $this->increment($p->statut, $idx, $payee, $impayee, $partielle);
                 });
 
         } elseif ($groupBy === 'month') {
             Packing::whereBetween('date', [$start->toDateString(), $end->toDateString()])
                 ->get(['date', 'statut'])
-                ->each(function ($p) use (&$payee, &$impayee, $startMonth) {
+                ->each(function ($p) use (&$payee, &$impayee, &$partielle, $startMonth) {
                     $idx = Carbon::parse($p->date)->month - $startMonth;
-                    $this->increment($p->statut, $idx, $payee, $impayee);
+                    $this->increment($p->statut, $idx, $payee, $impayee, $partielle);
                 });
         }
 
-        return compact('payee', 'impayee');
+        return compact('payee', 'impayee', 'partielle');
     }
 
-    private function increment($statut, int $idx, array &$payee, array &$impayee): void
+    private function increment($statut, int $idx, array &$payee, array &$impayee, array &$partielle): void
     {
         $val = $statut instanceof PackingStatut ? $statut->value : (string) $statut;
 
         if ($val === PackingStatut::PAYEE->value) {
             $payee[$idx]++;
-        } elseif (in_array($val, [PackingStatut::IMPAYEE->value, PackingStatut::PARTIELLE->value], true)) {
+        } elseif ($val === PackingStatut::IMPAYEE->value) {
             $impayee[$idx]++;
+        } elseif ($val === PackingStatut::PARTIELLE->value) {
+            $partielle[$idx]++;
         }
         // ANNULEE ignoré
     }

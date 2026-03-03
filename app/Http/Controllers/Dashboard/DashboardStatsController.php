@@ -24,6 +24,8 @@ class DashboardStatsController extends Controller
         'today', 'yesterday',
         'this_week', 'last_week',
         'this_month', 'last_month',
+        'q1', 'q2', 'q3', 'q4',
+        's1', 's2',
         'this_year', 'last_year',
         'last_x_days',
     ];
@@ -59,6 +61,7 @@ class DashboardStatsController extends Controller
                 'to'   => $to->toDateString(),
             ],
             'prestataires'       => $this->buildEntityStat(Prestataire::class, $from, $to, $prevFrom, $prevTo),
+            'packings'           => $this->buildEntityStat(Packing::class, $from, $to, $prevFrom, $prevTo),
             'utilisateurs'       => $this->buildUserStat($from, $to, $prevFrom, $prevTo, $usineId),
             'vehicules'          => $this->buildEntityStat(Vehicule::class, $from, $to, $prevFrom, $prevTo),
             'rouleaux_stock'     => $this->buildRouleauxStat($from, $to, $prevFrom, $prevTo, $usineId),
@@ -114,6 +117,44 @@ class DashboardStatsController extends Controller
                 $now->copy()->subMonths(2)->startOfMonth(),
                 $now->copy()->subMonths(2)->endOfMonth(),
             ],
+            // Trimestriels — comparaison : même trimestre l'année précédente
+            'q1' => [
+                Carbon::create($now->year, 1, 1)->startOfDay(),
+                Carbon::create($now->year, 3, 31)->endOfDay(),
+                Carbon::create($now->year - 1, 1, 1)->startOfDay(),
+                Carbon::create($now->year - 1, 3, 31)->endOfDay(),
+            ],
+            'q2' => [
+                Carbon::create($now->year, 4, 1)->startOfDay(),
+                Carbon::create($now->year, 6, 30)->endOfDay(),
+                Carbon::create($now->year - 1, 4, 1)->startOfDay(),
+                Carbon::create($now->year - 1, 6, 30)->endOfDay(),
+            ],
+            'q3' => [
+                Carbon::create($now->year, 7, 1)->startOfDay(),
+                Carbon::create($now->year, 9, 30)->endOfDay(),
+                Carbon::create($now->year - 1, 7, 1)->startOfDay(),
+                Carbon::create($now->year - 1, 9, 30)->endOfDay(),
+            ],
+            'q4' => [
+                Carbon::create($now->year, 10, 1)->startOfDay(),
+                Carbon::create($now->year, 12, 31)->endOfDay(),
+                Carbon::create($now->year - 1, 10, 1)->startOfDay(),
+                Carbon::create($now->year - 1, 12, 31)->endOfDay(),
+            ],
+            // Semestriels — comparaison : même semestre l'année précédente
+            's1' => [
+                Carbon::create($now->year, 1, 1)->startOfDay(),
+                Carbon::create($now->year, 6, 30)->endOfDay(),
+                Carbon::create($now->year - 1, 1, 1)->startOfDay(),
+                Carbon::create($now->year - 1, 6, 30)->endOfDay(),
+            ],
+            's2' => [
+                Carbon::create($now->year, 7, 1)->startOfDay(),
+                Carbon::create($now->year, 12, 31)->endOfDay(),
+                Carbon::create($now->year - 1, 7, 1)->startOfDay(),
+                Carbon::create($now->year - 1, 12, 31)->endOfDay(),
+            ],
             'this_year' => [
                 $now->copy()->startOfYear(),
                 $now->copy()->endOfYear(),
@@ -163,10 +204,11 @@ class DashboardStatsController extends Controller
         $sparkline = $this->buildSparkline($modelClass, $from, $to);
 
         return [
-            'value'     => $value,
-            'delta_pct' => $deltaPct,
-            'trend'     => $trend,
-            'sparkline' => $sparkline,
+            'value'       => $value,
+            'delta_pct'   => $deltaPct,
+            'delta_count' => $current - $previous,
+            'trend'       => $trend,
+            'sparkline'   => $sparkline,
         ];
     }
 
@@ -197,10 +239,11 @@ class DashboardStatsController extends Controller
         $sparkline = $this->buildUserSparkline($from, $to, $usineId);
 
         return [
-            'value'     => $value,
-            'delta_pct' => $deltaPct,
-            'trend'     => $trend,
-            'sparkline' => $sparkline,
+            'value'       => $value,
+            'delta_pct'   => $deltaPct,
+            'delta_count' => $current - $previous,
+            'trend'       => $trend,
+            'sparkline'   => $sparkline,
         ];
     }
 
@@ -226,10 +269,11 @@ class DashboardStatsController extends Controller
 
         if (! $produitRouleauId) {
             return [
-                'value'     => 0,
-                'delta_pct' => null,
-                'trend'     => 'flat',
-                'sparkline' => array_fill(0, 7, 0),
+                'value'       => 0,
+                'delta_pct'   => null,
+                'delta_count' => 0,
+                'trend'       => 'flat',
+                'sparkline'   => array_fill(0, 7, 0),
             ];
         }
 
@@ -240,19 +284,17 @@ class DashboardStatsController extends Controller
         }
         $value = (int) $stockQuery->sum('qte_stock');
 
-        // Use packings as proxy for consumption/activity trend
-        // HasUsineScope auto-filters Packing when context is set
-        $current  = Packing::query()->whereBetween('created_at', [$from, $to])->count();
-        $previous = Packing::query()->whereBetween('created_at', [$prevFrom, $prevTo])->count();
-
-        [$deltaPct, $trend] = $this->computeDelta($current, $previous);
+        // delta_pct non calculable : l'historique du stock n'est pas persisté.
+        // Tout proxy basé sur les packings devient faux dès qu'on ajuste le stock manuellement.
+        // La sparkline reste utile (elle montre la consommation de rouleaux par période).
         $sparkline = $this->buildSparkline(Packing::class, $from, $to);
 
         return [
-            'value'     => $value,
-            'delta_pct' => $deltaPct,
-            'trend'     => $trend,
-            'sparkline' => $sparkline,
+            'value'       => $value,
+            'delta_pct'   => null,
+            'delta_count' => 0,
+            'trend'       => 'flat',
+            'sparkline'   => $sparkline,
         ];
     }
 
@@ -262,12 +304,14 @@ class DashboardStatsController extends Controller
      * Compute percentage delta and trend label.
      *
      * Returns [?float $deltaPct, string $trend].
-     * When previous = 0, deltaPct is null (indeterminate) and trend is 'flat'.
+     * When previous = 0 and current > 0 : deltaPct is null but trend is 'up'
+     * (new entries appeared — % is mathematically indeterminate).
+     * When both are 0 : deltaPct is null, trend is 'flat'.
      */
     private function computeDelta(int $current, int $previous): array
     {
         if ($previous === 0) {
-            return [null, 'flat'];
+            return [null, $current > 0 ? 'up' : 'flat'];
         }
 
         $deltaPct = round(($current - $previous) / $previous * 100, 1);
