@@ -4,8 +4,8 @@ namespace App\Models;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Models\Traits\HasUsineScope;
-use App\Services\UsineContext;
+use App\Models\Traits\HasSiteScope;
+use App\Services\SiteContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,10 +17,10 @@ use Illuminate\Support\Facades\Auth;
 
 class Produit extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'is_global',
         'nom',
         'code',
@@ -223,9 +223,9 @@ class Produit extends Model
     // ACCESSEURS CALCULÉS
     // ========================================
 
-    private function isAllUsinesMode(): bool
+    private function isAllSitesMode(): bool
     {
-        return app(UsineContext::class)->isAllUsines();
+        return app(SiteContext::class)->isAllSites();
     }
 
     /**
@@ -235,7 +235,7 @@ class Produit extends Model
      */
     public function getQteStockAttribute(): int
     {
-        if ($this->isAllUsinesMode()) {
+        if ($this->isAllSitesMode()) {
             if ($this->relationLoaded('stocks')) {
                 return (int) $this->stocks->sum('qte_stock');
             }
@@ -250,7 +250,7 @@ class Produit extends Model
      */
     public function getSeuilAlerteStockAttribute(): ?int
     {
-        if ($this->isAllUsinesMode()) {
+        if ($this->isAllSitesMode()) {
             return null;
         }
 
@@ -263,7 +263,7 @@ class Produit extends Model
             return true;
         }
 
-        if ($this->isAllUsinesMode()) {
+        if ($this->isAllSitesMode()) {
             if ($this->relationLoaded('stocks')) {
                 return $this->stocks->sum('qte_stock') > 0;
             }
@@ -279,7 +279,7 @@ class Produit extends Model
             return false;
         }
 
-        if ($this->isAllUsinesMode()) {
+        if ($this->isAllSitesMode()) {
             if ($this->relationLoaded('stocks')) {
                 return $this->stocks->sum('qte_stock') <= 0;
             }
@@ -296,7 +296,7 @@ class Produit extends Model
         }
 
         // En mode all-usines, le seuil n'est pas défini par usine — non évaluable
-        if ($this->isAllUsinesMode()) {
+        if ($this->isAllSitesMode()) {
             return false;
         }
 
@@ -315,7 +315,7 @@ class Produit extends Model
      */
     public function getLowStockThresholdAttribute(): int
     {
-        if ($this->isAllUsinesMode()) {
+        if ($this->isAllSitesMode()) {
             return Parametre::getSeuilStockFaible();
         }
 
@@ -336,9 +336,9 @@ class Produit extends Model
     // RELATIONS
     // ========================================
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     public function creator(): BelongsTo
@@ -374,27 +374,27 @@ class Produit extends Model
      */
     public function stockCourant(): HasOne
     {
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
-        return $this->hasOne(Stock::class)->where('usine_id', $usineId);
+        return $this->hasOne(Stock::class)->where('site_id', $siteId);
     }
 
     /**
      * Toutes les configurations locales (produit_usines) pour ce produit.
      */
-    public function produitUsines(): HasMany
+    public function produitSites(): HasMany
     {
-        return $this->hasMany(ProduitUsine::class);
+        return $this->hasMany(ProduitSite::class);
     }
 
     /**
-     * Configuration locale pour l'usine du contexte courant.
+     * Configuration locale pour le site du contexte courant.
      */
-    public function produitUsineCourant(): HasOne
+    public function produitSiteCourant(): HasOne
     {
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
-        return $this->hasOne(ProduitUsine::class)->where('usine_id', $usineId);
+        return $this->hasOne(ProduitSite::class)->where('site_id', $siteId);
     }
 
     // ========================================
@@ -442,31 +442,31 @@ class Produit extends Model
     /**
      * Produits visibles par une usine (ont une config produit_usines pour cette usine).
      */
-    public function scopeVisiblePourUsine(Builder $query, int $usineId): Builder
+    public function scopeVisiblePourUsine(Builder $query, int $siteId): Builder
     {
-        return $query->whereHas('produitUsines', fn ($q) => $q->where('usine_id', $usineId));
+        return $query->whereHas('produitSites', fn ($q) => $q->where('site_id', $siteId));
     }
 
     /**
-     * Produits activés dans une usine (config locale is_active = true ET statut global = actif).
+     * Produits activés dans un site (config locale is_active = true ET statut global = actif).
      */
-    public function scopeActifDansUsine(Builder $query, int $usineId): Builder
+    public function scopeActifDansUsine(Builder $query, int $siteId): Builder
     {
         return $query->where('statut', ProduitStatut::ACTIF)
-            ->whereHas('produitUsines', fn ($q) => $q->where('usine_id', $usineId)->where('is_active', true));
+            ->whereHas('produitSites', fn ($q) => $q->where('site_id', $siteId)->where('is_active', true));
     }
 
     /**
-     * Produits disponibles au POS d'une usine :
+     * Produits disponibles au POS d'un site :
      * actifs globalement + activés localement + en stock (sauf services).
      */
-    public function scopeDisponiblesPOS(Builder $query, int $usineId): Builder
+    public function scopeDisponiblesPOS(Builder $query, int $siteId): Builder
     {
         return $query->where('statut', ProduitStatut::ACTIF)
-            ->whereHas('produitUsines', fn ($q) => $q->where('usine_id', $usineId)->where('is_active', true))
-            ->where(function (Builder $q) use ($usineId) {
+            ->whereHas('produitSites', fn ($q) => $q->where('site_id', $siteId)->where('is_active', true))
+            ->where(function (Builder $q) use ($siteId) {
                 $q->where('type', ProduitType::SERVICE)
-                  ->orWhereHas('stocks', fn ($sq) => $sq->where('usine_id', $usineId)->where('qte_stock', '>', 0));
+                  ->orWhereHas('stocks', fn ($sq) => $sq->where('site_id', $siteId)->where('qte_stock', '>', 0));
             });
     }
 
@@ -537,10 +537,10 @@ class Produit extends Model
      * Retourne les prix effectifs pour une usine donnée.
      * Si un prix local est défini dans produit_usines, il prend le dessus sur le prix global.
      */
-    public function prixEffectifDansUsine(?int $usineId): array
+    public function prixEffectifDansUsine(?int $siteId): array
     {
-        $local = $usineId
-            ? $this->produitUsines()->where('usine_id', $usineId)->first()
+        $local = $siteId
+            ? $this->produitSites()->where('site_id', $siteId)->first()
             : null;
 
         return [

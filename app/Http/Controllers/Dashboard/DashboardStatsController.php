@@ -11,7 +11,7 @@ use App\Models\Prestataire;
 use App\Models\Stock;
 use App\Models\User;
 use App\Models\Vehicule;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,7 +52,7 @@ class DashboardStatsController extends Controller
 
         [$from, $to, $prevFrom, $prevTo] = $this->resolvePeriod($period, $days);
 
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
         $data = [
             'period' => [
@@ -62,9 +62,9 @@ class DashboardStatsController extends Controller
             ],
             'prestataires'       => $this->buildEntityStat(Prestataire::class, $from, $to, $prevFrom, $prevTo),
             'packings'           => $this->buildEntityStat(Packing::class, $from, $to, $prevFrom, $prevTo),
-            'utilisateurs'       => $this->buildUserStat($from, $to, $prevFrom, $prevTo, $usineId),
+            'utilisateurs'       => $this->buildUserStat($from, $to, $prevFrom, $prevTo, $siteId),
             'vehicules'          => $this->buildEntityStat(Vehicule::class, $from, $to, $prevFrom, $prevTo),
-            'rouleaux_stock'     => $this->buildRouleauxStat($from, $to, $prevFrom, $prevTo, $usineId),
+            'rouleaux_stock'     => $this->buildRouleauxStat($from, $to, $prevFrom, $prevTo, $siteId),
             'vehicules_par_type' => $this->buildVehiculesByType(),
         ];
 
@@ -186,8 +186,8 @@ class DashboardStatsController extends Controller
     // ── Stat builders ──────────────────────────────────────────────────────
 
     /**
-     * Build stat for models using HasUsineScope (Prestataire, Vehicule).
-     * The global scope auto-applies the usine filter when UsineContext is set.
+     * Build stat for models using HasSiteScope (Prestataire, Vehicule).
+     * The global scope auto-applies the usine filter when SiteContext is set.
      */
     private function buildEntityStat(
         string $modelClass,
@@ -214,21 +214,21 @@ class DashboardStatsController extends Controller
 
     /**
      * Build stat for users.
-     * User does not use HasUsineScope; the usine filter is applied manually
-     * via the user_usines pivot when a usine context is present.
+     * User does not use HasSiteScope; the site filter is applied manually
+     * via the user_sites pivot when a site context is present.
      */
     private function buildUserStat(
         Carbon $from,
         Carbon $to,
         Carbon $prevFrom,
         Carbon $prevTo,
-        ?int $usineId,
+        ?int $siteId,
     ): array {
         $base = fn () => User::query()
             ->where('type', 'staff')
-            ->when($usineId, fn ($q) => $q->whereHas(
-                'usines',
-                fn ($iq) => $iq->where('usines.id', $usineId)
+            ->when($siteId, fn ($q) => $q->whereHas(
+                'sites',
+                fn ($iq) => $iq->where('sites.id', $siteId)
             ));
 
         $value    = $base()->count();
@@ -236,7 +236,7 @@ class DashboardStatsController extends Controller
         $previous = $base()->whereBetween('created_at', [$prevFrom, $prevTo])->count();
 
         [$deltaPct, $trend] = $this->computeDelta($current, $previous);
-        $sparkline = $this->buildUserSparkline($from, $to, $usineId);
+        $sparkline = $this->buildUserSparkline($from, $to, $siteId);
 
         return [
             'value'       => $value,
@@ -263,7 +263,7 @@ class DashboardStatsController extends Controller
         Carbon $to,
         Carbon $prevFrom,
         Carbon $prevTo,
-        ?int $usineId,
+        ?int $siteId,
     ): array {
         $produitRouleauId = Parametre::getProduitRouleauId();
 
@@ -277,10 +277,10 @@ class DashboardStatsController extends Controller
             ];
         }
 
-        // Current stock value (explicit usine filter — Stock has no HasUsineScope)
+        // Current stock value (explicit usine filter — Stock has no HasSiteScope)
         $stockQuery = Stock::query()->where('produit_id', $produitRouleauId);
-        if ($usineId) {
-            $stockQuery->where('usine_id', $usineId);
+        if ($siteId) {
+            $stockQuery->where('site_id', $siteId);
         }
         $value = (int) $stockQuery->sum('qte_stock');
 
@@ -304,14 +304,13 @@ class DashboardStatsController extends Controller
      * Compute percentage delta and trend label.
      *
      * Returns [?float $deltaPct, string $trend].
-     * When previous = 0 and current > 0 : deltaPct is null but trend is 'up'
-     * (new entries appeared — % is mathematically indeterminate).
-     * When both are 0 : deltaPct is null, trend is 'flat'.
+     * When previous = 0 : deltaPct is null (indeterminate), trend is 'flat'.
+     * When both are non-zero : deltaPct and trend computed normally.
      */
     private function computeDelta(int $current, int $previous): array
     {
         if ($previous === 0) {
-            return [null, $current > 0 ? 'up' : 'flat'];
+            return [null, 'flat'];
         }
 
         $deltaPct = round(($current - $previous) / $previous * 100, 1);
@@ -327,7 +326,7 @@ class DashboardStatsController extends Controller
     // ── Sparkline builders ─────────────────────────────────────────────────
 
     /**
-     * Build a 7-point sparkline for HasUsineScope models.
+     * Build a 7-point sparkline for HasSiteScope models.
      * Splits the period into 7 equal time buckets and counts records per bucket.
      */
     private function buildSparkline(string $modelClass, Carbon $from, Carbon $to): array
@@ -351,9 +350,9 @@ class DashboardStatsController extends Controller
     }
 
     /**
-     * Build a 7-point sparkline for User (manual usine filter).
+     * Build a 7-point sparkline for User (manual site filter).
      */
-    private function buildUserSparkline(Carbon $from, Carbon $to, ?int $usineId): array
+    private function buildUserSparkline(Carbon $from, Carbon $to, ?int $siteId): array
     {
         $totalSeconds = max(1, $to->timestamp - $from->timestamp);
         $bucketSize   = intdiv($totalSeconds, 7);
@@ -367,9 +366,9 @@ class DashboardStatsController extends Controller
 
             $result[] = User::query()
                 ->where('type', 'staff')
-                ->when($usineId, fn ($q) => $q->whereHas(
-                    'usines',
-                    fn ($iq) => $iq->where('usines.id', $usineId)
+                ->when($siteId, fn ($q) => $q->whereHas(
+                    'sites',
+                    fn ($iq) => $iq->where('sites.id', $siteId)
                 ))
                 ->whereBetween('created_at', [$bucketFrom, $bucketTo])
                 ->count();
@@ -381,7 +380,7 @@ class DashboardStatsController extends Controller
     // ── Vehicules par type ─────────────────────────────────────────────────
 
     /**
-     * Count active vehicles grouped by type_vehicule (HasUsineScope auto-applied).
+     * Count active vehicles grouped by type_vehicule (HasSiteScope auto-applied).
      * Returns an array ordered by count DESC, including only types with at least one vehicle.
      *
      * @return array<int, array{type: string, label: string, count: int}>

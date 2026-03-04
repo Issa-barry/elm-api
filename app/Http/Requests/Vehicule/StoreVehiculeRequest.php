@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Vehicule;
 
 use App\Enums\TypeVehicule;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,10 +15,10 @@ class StoreVehiculeRequest extends FormRequest
     {
         $dataToMerge = [];
 
-        if (!$this->exists('usine_id') || $this->input('usine_id') === null) {
-            $usineId = app(UsineContext::class)->getCurrentUsineId();
-            if ($usineId !== null) {
-                $dataToMerge['usine_id'] = $usineId;
+        if (!$this->exists('site_id') || $this->input('site_id') === null) {
+            $siteId = app(SiteContext::class)->getCurrentSiteId();
+            if ($siteId !== null) {
+                $dataToMerge['site_id'] = $siteId;
             }
         }
 
@@ -64,13 +64,13 @@ class StoreVehiculeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'usine_id'                 => ['required', 'integer', 'exists:usines,id'],
+            'site_id'                 => ['required', 'integer', 'exists:sites,id'],
             'nom_vehicule'             => ['required', 'string', 'max:100'],
             'marque'                   => ['nullable', 'string', 'max:100'],
             'modele'                   => ['nullable', 'string', 'max:100'],
             'immatriculation'          => [
                 'required', 'string', 'max:20',
-                Rule::unique('vehicules', 'immatriculation')->where('usine_id', $this->input('usine_id')),
+                Rule::unique('vehicules', 'immatriculation')->where('site_id', $this->input('site_id')),
             ],
             'type_vehicule'            => ['required', Rule::in(TypeVehicule::allowedValues())],
             'capacite_packs'           => ['nullable', 'integer', 'min:1'],
@@ -87,8 +87,8 @@ class StoreVehiculeRequest extends FormRequest
         return [
             'nom_vehicule.required'       => 'Le nom du vehicule est obligatoire.',
             'immatriculation.required'    => 'L\'immatriculation est obligatoire.',
-            'usine_id.required'           => 'L\'usine est obligatoire.',
-            'usine_id.exists'             => 'L\'usine sélectionnée n\'existe pas.',
+            'site_id.required'           => 'L\'usine est obligatoire.',
+            'site_id.exists'             => 'L\'usine sélectionnée n\'existe pas.',
             'immatriculation.unique'      => 'Ce numero d\'immatriculation est deja utilise pour cette usine.',
             'type_vehicule.required'      => 'Le type de vehicule est obligatoire.',
             'type_vehicule.in'            => 'Le type de vehicule doit etre : ' . implode(', ', TypeVehicule::allowedValues()) . '.',

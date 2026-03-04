@@ -4,14 +4,14 @@ namespace Tests\Feature\Produit;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Enums\UserType;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
@@ -32,24 +32,24 @@ class ProduitGlobalTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine $usineA;
-    private Usine $usineB;
+    private Site $usineA;
+    private Site $usineB;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->usineA = Usine::firstOrCreate(
+        $this->usineA = Site::firstOrCreate(
             ['code' => 'GLB-A'],
-            ['nom' => 'Usine Alpha', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Alpha', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
-        $this->usineB = Usine::firstOrCreate(
+        $this->usineB = Site::firstOrCreate(
             ['code' => 'GLB-B'],
-            ['nom' => 'Usine Beta', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Beta', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
 
-        // Contexte usine A par défaut
-        app(UsineContext::class)->setCurrentUsineId($this->usineA->id);
+        // Contexte site A par défaut
+        app(SiteContext::class)->setCurrentSiteId($this->usineA->id);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -68,22 +68,24 @@ class ProduitGlobalTest extends TestCase
     {
         $produit = Produit::create([
             'nom'       => 'Produit global test',
+            'code'      => 'GLBT-002',
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_achat' => 1000,
             'prix_vente' => 1500,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
         $this->assertTrue((bool) $produit->is_global);
-        $this->assertNull($produit->usine_id);
+        $this->assertNull($produit->site_id);
     }
 
     public function test_produit_local_a_is_global_false_par_defaut(): void
     {
         $produit = Produit::create([
             'nom'       => 'Produit local test',
+            'code'      => 'GLBT-003',
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_achat' => 500,
@@ -91,8 +93,8 @@ class ProduitGlobalTest extends TestCase
         ]);
 
         $this->assertFalse((bool) $produit->is_global);
-        // HasUsineScope remplit usine_id automatiquement depuis le contexte
-        $this->assertEquals($this->usineA->id, $produit->usine_id);
+        // HasSiteScope remplit usine_id automatiquement depuis le contexte
+        $this->assertEquals($this->usineA->id, $produit->site_id);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -103,16 +105,17 @@ class ProduitGlobalTest extends TestCase
     {
         $global = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Global visible partout',
+            'code'      => 'GLBT-004',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 2000,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
-        app(UsineContext::class)->setCurrentUsineId($this->usineA->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineA->id);
 
-        $ids = Produit::withoutGlobalScope('usine')->pluck('id')->toArray();
+        $ids = Produit::withoutGlobalScope('site')->pluck('id')->toArray();
         // Le scope usine laisse passer les is_global=true
         $this->assertContains($global->id, Produit::pluck('id')->toArray());
     }
@@ -121,14 +124,15 @@ class ProduitGlobalTest extends TestCase
     {
         $global = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Global toutes usines',
+            'code'      => 'GLBT-005',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 3000,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
-        app(UsineContext::class)->setCurrentUsineId($this->usineB->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineB->id);
 
         $this->assertContains($global->id, Produit::pluck('id')->toArray());
     }
@@ -136,20 +140,21 @@ class ProduitGlobalTest extends TestCase
     public function test_produit_local_usine_a_invisible_depuis_usine_b(): void
     {
         // Produit créé dans le contexte usine A
-        app(UsineContext::class)->setCurrentUsineId($this->usineA->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineA->id);
 
         $local = Produit::create([
             'nom'       => 'Local usine A seulement',
+            'code'      => 'GLBT-006',
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_achat' => 800,
             'is_global'  => false,
         ]);
 
-        $this->assertEquals($this->usineA->id, $local->usine_id);
+        $this->assertEquals($this->usineA->id, $local->site_id);
 
         // Basculer sur usine B
-        app(UsineContext::class)->setCurrentUsineId($this->usineB->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineB->id);
 
         $ids = Produit::pluck('id')->toArray();
         $this->assertNotContains($local->id, $ids, 'Un produit local de A ne doit pas être visible depuis B');
@@ -164,24 +169,25 @@ class ProduitGlobalTest extends TestCase
         // Produit global existant avant la création de l'usine
         $global = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Produit global pre-usine',
+            'code'      => 'GLBT-007',
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_achat' => 600,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
         // Nouvelle usine créée APRÈS le produit global
-        $nouvelleUsine = Usine::create([
-            'nom'    => 'Nouvelle Usine Gamma',
+        $nouvelleUsine = Site::create([
+            'nom'    => 'Nouveau Site Gamma',
             'code'   => 'GLB-NEW',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
-        // Le hook Usine::created doit avoir créé la config locale
-        $config = ProduitUsine::where('produit_id', $global->id)
-            ->where('usine_id', $nouvelleUsine->id)
+        // Le hook Site::created doit avoir créé la config locale
+        $config = ProduitSite::where('produit_id', $global->id)
+            ->where('site_id', $nouvelleUsine->id)
             ->first();
 
         $this->assertNotNull($config, 'ProduitUsine doit être créé automatiquement pour la nouvelle usine');
@@ -192,22 +198,23 @@ class ProduitGlobalTest extends TestCase
     {
         $global = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Produit global stockable',
+            'code'      => 'GLBT-008',
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_achat' => 400,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
-        $nouvelleUsine = Usine::create([
-            'nom'    => 'Usine Delta Stock',
+        $nouvelleUsine = Site::create([
+            'nom'    => 'Site Delta Stock',
             'code'   => 'GLB-DELTA',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $stock = Stock::where('produit_id', $global->id)
-            ->where('usine_id', $nouvelleUsine->id)
+            ->where('site_id', $nouvelleUsine->id)
             ->first();
 
         $this->assertNotNull($stock, 'Un Stock doit être créé pour la nouvelle usine');
@@ -222,25 +229,27 @@ class ProduitGlobalTest extends TestCase
     {
         $produitSansConfig = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Sans config usine',
+            'code'      => 'GLBT-009',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 1000,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
         $produitAvecConfig = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Avec config usine A',
+            'code'      => 'GLBT-010',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 1200,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produitAvecConfig->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
         ]);
 
@@ -257,24 +266,26 @@ class ProduitGlobalTest extends TestCase
     {
         $actif = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Actif local',
+            'code'      => 'GLBT-011',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 900,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
         $inactif = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Inactif local',
+            'code'      => 'GLBT-012',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 900,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
-        ProduitUsine::create(['produit_id' => $actif->id,   'usine_id' => $this->usineA->id, 'is_active' => true]);
-        ProduitUsine::create(['produit_id' => $inactif->id, 'usine_id' => $this->usineA->id, 'is_active' => false]);
+        ProduitSite::create(['produit_id' => $actif->id,   'site_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $inactif->id, 'site_id' => $this->usineA->id, 'is_active' => false]);
 
         $ids = Produit::withoutGlobalScopes()
             ->actifDansUsine($this->usineA->id)
@@ -294,7 +305,7 @@ class ProduitGlobalTest extends TestCase
         $user = $this->makeStaffWithPermission('produits.create');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->postJson('/api/v1/produits', [
                 'nom'       => 'Produit global API',
                 'type'      => 'materiel',
@@ -308,7 +319,7 @@ class ProduitGlobalTest extends TestCase
         $this->assertDatabaseHas('produits', [
             'nom'       => 'Produit global api', // normalized
             'is_global' => 1,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
     }
 
@@ -316,20 +327,21 @@ class ProduitGlobalTest extends TestCase
     {
         $global = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Global liste',
+            'code'      => 'GLBT-013',
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_achat' => 300,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
 
         // Créer un stock pour que l'assertation de la relation fonctionne
-        Stock::create(['produit_id' => $global->id, 'usine_id' => $this->usineA->id, 'qte_stock' => 0]);
+        Stock::create(['produit_id' => $global->id, 'site_id' => $this->usineA->id, 'qte_stock' => 0]);
 
         $user = $this->makeStaffWithPermission('produits.read');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->getJson('/api/v1/produits');
 
         $response->assertStatus(200);
@@ -364,6 +376,7 @@ class ProduitGlobalTest extends TestCase
         ]);
 
         $user->assignRole('admin_entreprise');
+        $user->sites()->attach($this->usineA->id, ['role' => 'manager', 'is_default' => true]);
         return $user;
     }
 }

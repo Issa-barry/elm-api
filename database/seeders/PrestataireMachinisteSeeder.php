@@ -4,14 +4,14 @@ namespace Database\Seeders;
 
 use App\Enums\PrestataireType;
 use App\Models\Prestataire;
-use App\Models\Usine;
+use App\Models\Site;
 use Illuminate\Database\Seeder;
 
 class PrestataireMachinisteSeeder extends Seeder
 {
     /**
      * Prestataires par usine (nom usine => liste).
-     * Dans un seeder il n'y a pas de contexte HTTP : HasUsineScope ne peut pas
+     * Dans un seeder il n'y a pas de contexte HTTP : HasSiteScope ne peut pas
      * auto-remplir usine_id. On rattache explicitement chaque prestataire à son usine.
      */
     private array $prestatairesParUsine = [
@@ -96,7 +96,7 @@ class PrestataireMachinisteSeeder extends Seeder
     public function run(): void
     {
         foreach ($this->prestatairesParUsine as $usineNom => $prestataires) {
-            $usine = Usine::where('nom', $usineNom)->first();
+            $usine = Site::where('nom', $usineNom)->first();
 
             if (!$usine) {
                 $this->command->warn("PrestataireMachinisteSeeder : usine [{$usineNom}] introuvable, ignorée.");
@@ -112,7 +112,7 @@ class PrestataireMachinisteSeeder extends Seeder
                     ->where('nom', $nomNormalise)
                     ->where('prenom', $prenomNormalise)
                     ->where('type', $data['type']->value)
-                    ->where('usine_id', $usine->id)
+                    ->where('site_id', $usine->id)
                     ->first();
 
                 if ($existe) {
@@ -138,7 +138,7 @@ class PrestataireMachinisteSeeder extends Seeder
                     'tarif_horaire'   => $data['tarif_horaire'],
                     'notes'           => $data['notes'],
                     'is_active'       => true,
-                    'usine_id'        => $usine->id,
+                    'site_id'        => $usine->id,
                     'reference'       => Prestataire::generateReference(),
                 ]);
             }

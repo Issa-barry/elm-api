@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,33 +19,33 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        /** @var UsineContext $ctx */
-        $ctx = app(UsineContext::class);
+        /** @var SiteContext $ctx */
+        $ctx = app(SiteContext::class);
 
-        // Charger les usines accessibles avec le rôle du pivot
-        $accessibleUsines = $user->usines()
-            ->select('usines.id', 'usines.nom', 'usines.code', 'usines.type', 'usines.statut')
+        // Charger les sites accessibles avec le rôle du pivot
+        $accessibleSites = $user->sites()
+            ->select('sites.id', 'sites.nom', 'sites.code', 'sites.type', 'sites.statut')
             ->get()
-            ->map(function ($usine) {
+            ->map(function ($site) {
                 return [
-                    'id'         => $usine->id,
-                    'nom'        => $usine->nom,
-                    'code'       => $usine->code,
-                    'type'       => $usine->type,
-                    'statut'     => $usine->statut,
-                    'mon_role'   => $usine->pivot->role,
-                    'is_default' => (bool) $usine->pivot->is_default,
+                    'id'         => $site->id,
+                    'nom'        => $site->nom,
+                    'code'       => $site->code,
+                    'type'       => $site->type,
+                    'statut'     => $site->statut,
+                    'mon_role'   => $site->pivot->role,
+                    'is_default' => (bool) $site->pivot->is_default,
                 ];
             });
 
         return $this->successResponse([
-            'user'              => $user,
-            'roles'             => $user->getRoleNames(),
-            'permissions'       => $user->getAllPermissions()->pluck('name'),
-            'accessible_usines' => $accessibleUsines,
-            'default_usine_id'  => $user->default_usine_id,
-            'current_usine_id'  => $ctx->getCurrentUsineId(),
-            'is_siege_user'     => $user->isSiege(),
+            'user'             => $user,
+            'roles'            => $user->getRoleNames(),
+            'permissions'      => $user->getAllPermissions()->pluck('name'),
+            'accessible_sites' => $accessibleSites,
+            'default_site_id'  => $user->default_site_id,
+            'current_site_id'  => $ctx->getCurrentSiteId(),
+            'is_siege_user'    => $user->isSiege(),
         ], 'Profil récupéré avec succès');
     }
 

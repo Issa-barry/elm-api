@@ -6,7 +6,7 @@ use App\Enums\PackingStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Jobs\SendPackingReportJob;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +15,7 @@ class PackingReportEmailController extends Controller
 {
     use ApiResponse;
 
-    public function __invoke(Request $request, UsineContext $usineContext)
+    public function __invoke(Request $request, SiteContext $siteContext)
     {
         try {
             $validated = $request->validate([
@@ -31,10 +31,10 @@ class PackingReportEmailController extends Controller
                 'statut.enum'            => 'Statut invalide. Valeurs : impayee, partielle, payee, annulee.',
             ]);
 
-            $usineId = $usineContext->getCurrentUsineId();
+            $siteId = $siteContext->getCurrentSiteId();
 
-            if (!$usineId) {
-                return $this->errorResponse('Contexte usine non résolu. Envoyez le header X-Usine-Id.', null, 422);
+            if (!$siteId) {
+                return $this->errorResponse('Contexte usine non résolu. Envoyez le header X-Site-Id.', null, 422);
             }
 
             // Extraire les filtres (sans l'email) pour le job
@@ -43,7 +43,7 @@ class PackingReportEmailController extends Controller
                 fn ($v) => $v !== null
             );
 
-            SendPackingReportJob::dispatch($validated['email'], $filters, $usineId);
+            SendPackingReportJob::dispatch($validated['email'], $filters, $siteId);
 
             return $this->successResponse(
                 ['email' => $validated['email']],

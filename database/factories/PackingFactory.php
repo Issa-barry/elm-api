@@ -3,10 +3,10 @@
 namespace Database\Factories;
 
 use App\Enums\PackingStatut;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Models\Packing;
 use App\Models\Prestataire;
-use App\Models\Usine;
+use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,15 +21,16 @@ class PackingFactory extends Factory
 
     public function definition(): array
     {
-        $usine = Usine::withoutGlobalScopes()->firstOrCreate(
+        $usine = Site::withoutGlobalScopes()->firstOrCreate(
             ['code' => 'TEST-DEFAULT'],
-            ['nom' => 'Usine Test Default', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Test Default', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
 
         $prestataire = Prestataire::withoutGlobalScopes()->firstOrCreate(
-            ['phone' => '+22460000099', 'usine_id' => $usine->id],
+            ['phone' => '+22460000099', 'site_id' => $usine->id],
             [
                 'nom'             => 'PRESTATAIRE TEST',
+                'prenom'          => 'Test',
                 'code_pays'       => 'GN',
                 'code_phone_pays' => '+224',
                 'pays'            => 'Guinee',
@@ -37,7 +38,7 @@ class PackingFactory extends Factory
         );
 
         return [
-            'usine_id'         => $usine->id,
+            'site_id'          => $usine->id,
             'prestataire_id'   => $prestataire->id,
             'date'             => today()->toDateString(),
             'nb_rouleaux'      => 0,

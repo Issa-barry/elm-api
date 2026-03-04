@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Vehicule;
 
 use App\Enums\TypeVehicule;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -60,16 +60,16 @@ class UpdateVehiculeRequest extends FormRequest
     public function rules(): array
     {
         $id      = $this->route('id');
-        $usineId = $this->input('usine_id') ?? app(UsineContext::class)->getCurrentUsineId();
+        $siteId = $this->input('site_id') ?? app(SiteContext::class)->getCurrentSiteId();
 
         return [
-            'usine_id'                 => ['sometimes', 'integer', 'exists:usines,id'],
+            'site_id'                 => ['sometimes', 'integer', 'exists:sites,id'],
             'nom_vehicule'             => ['sometimes', 'string', 'max:100'],
             'marque'                   => ['sometimes', 'nullable', 'string', 'max:100'],
             'modele'                   => ['sometimes', 'nullable', 'string', 'max:100'],
             'immatriculation'          => [
                 'sometimes', 'string', 'max:20',
-                Rule::unique('vehicules', 'immatriculation')->where('usine_id', $usineId)->ignore($id),
+                Rule::unique('vehicules', 'immatriculation')->where('site_id', $siteId)->ignore($id),
             ],
             'type_vehicule'            => ['sometimes', Rule::in(TypeVehicule::allowedValues())],
             'capacite_packs'           => ['sometimes', 'integer', 'min:1'],
@@ -84,7 +84,7 @@ class UpdateVehiculeRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'usine_id.exists'        => 'L\'usine sélectionnée n\'existe pas.',
+            'site_id.exists'        => 'L\'usine sélectionnée n\'existe pas.',
             'immatriculation.unique' => 'Ce numero d\'immatriculation est deja utilise pour cette usine.',
             'type_vehicule.in'       => 'Le type de vehicule doit etre : ' . implode(', ', TypeVehicule::allowedValues()) . '.',
             'photo.image'            => 'Le fichier doit etre une image.',

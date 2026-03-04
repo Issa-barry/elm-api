@@ -4,13 +4,13 @@ namespace Tests\Feature\Produit;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Enums\UserType;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
-use App\Models\Usine;
+use App\Models\ProduitSite;
+use App\Models\Site;
 use App\Models\User;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -31,23 +31,23 @@ class ProduitUsinePrixTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine $usineA;
-    private Usine $usineB;
+    private Site $usineA;
+    private Site $usineB;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->usineA = Usine::firstOrCreate(
+        $this->usineA = Site::firstOrCreate(
             ['code' => 'PRIX-A'],
-            ['nom' => 'Usine Prix A', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Prix A', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
-        $this->usineB = Usine::firstOrCreate(
+        $this->usineB = Site::firstOrCreate(
             ['code' => 'PRIX-B'],
-            ['nom' => 'Usine Prix B', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Prix B', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
 
-        app(UsineContext::class)->setCurrentUsineId($this->usineA->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineA->id);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -58,9 +58,9 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_achat: 1000, prix_vente: 1800, prix_usine: 900);
 
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             // Aucun prix local
         ]);
@@ -77,9 +77,9 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_achat: 1000, prix_vente: 1800);
 
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             'prix_achat' => 750,
             'prix_vente' => 1200,
@@ -95,9 +95,9 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_achat: 1000, prix_vente: 1800, cout: 500);
 
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             'prix_vente' => 2000, // Seul prix_vente est surchargé
         ]);
@@ -129,16 +129,16 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_achat: 1000, prix_vente: 1500);
 
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             'prix_vente' => 1200, // Prix de vente spécial pour A
         ]);
 
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineB->id,
+            'site_id'   => $this->usineB->id,
             'is_active'  => true,
             'prix_vente' => 1700, // Prix de vente spécial pour B
         ]);
@@ -155,8 +155,8 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_vente: 5000);
 
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'tva' => 18]);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineB->id, 'tva' => 0]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'tva' => 18]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineB->id, 'tva' => 0]);
 
         $prixA = $produit->prixEffectifDansUsine($this->usineA->id);
         $prixB = $produit->prixEffectifDansUsine($this->usineB->id);
@@ -173,9 +173,9 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_usine: 800);
 
-        $config = ProduitUsine::create([
+        $config = ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             'prix_usine' => 600,
         ]);
@@ -188,9 +188,9 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(prix_vente: 2500);
 
-        $config = ProduitUsine::create([
+        $config = ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             // prix_vente local non défini
         ]);
@@ -203,9 +203,9 @@ class ProduitUsinePrixTest extends TestCase
     {
         $produit = $this->creerProduitGlobal(cout: 300);
 
-        $config = ProduitUsine::create([
+        $config = ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
         ]);
         $config->load('produit');
@@ -220,9 +220,9 @@ class ProduitUsinePrixTest extends TestCase
     public function test_api_patch_prix_local_met_a_jour_uniquement_les_champs_fournis(): void
     {
         $produit = $this->creerProduitGlobal(prix_achat: 1000, prix_vente: 1500);
-        ProduitUsine::create([
+        ProduitSite::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => true,
             'prix_achat' => 800,
             'prix_vente' => 1200,
@@ -231,16 +231,16 @@ class ProduitUsinePrixTest extends TestCase
         $user = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineA->id}/prix", [
                 'prix_vente' => 1900, // Uniquement prix_vente mis à jour
             ]);
 
         $response->assertStatus(200);
 
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'prix_achat' => 800,  // inchangé
             'prix_vente' => 1900, // mis à jour
         ]);
@@ -249,13 +249,13 @@ class ProduitUsinePrixTest extends TestCase
     public function test_api_patch_prix_sans_champ_retourne_422(): void
     {
         $produit = $this->creerProduitGlobal();
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         // Aucun champ fourni → withValidator doit rejeter
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineA->id}/prix", []);
 
         $response->assertStatus(422);
@@ -264,12 +264,12 @@ class ProduitUsinePrixTest extends TestCase
     public function test_api_patch_prix_retourne_prix_effectifs_dans_reponse(): void
     {
         $produit = $this->creerProduitGlobal(prix_vente: 2000);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineA->id}/prix", [
                 'prix_vente' => 2500,
                 'tva'        => 18,
@@ -283,27 +283,27 @@ class ProduitUsinePrixTest extends TestCase
     public function test_api_patch_prix_usine_b_naffecte_pas_usine_a(): void
     {
         $produit = $this->creerProduitGlobal(prix_vente: 1000);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'prix_vente' => 1000, 'is_active' => true]);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineB->id, 'prix_vente' => 1000, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'prix_vente' => 1000, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineB->id, 'prix_vente' => 1000, 'is_active' => true]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         // Modifier le prix dans usine B
         $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineB->id)
+            ->withHeader('X-Site-Id', (string) $this->usineB->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineB->id}/prix", [
                 'prix_vente' => 9999,
             ]);
 
         // Vérifier que usine A est inchangée
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'prix_vente' => 1000,
         ]);
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineB->id,
+            'site_id'   => $this->usineB->id,
             'prix_vente' => 9999,
         ]);
     }
@@ -318,17 +318,23 @@ class ProduitUsinePrixTest extends TestCase
         ?int $prix_usine = null,
         ?int $cout = null,
     ): Produit {
-        return Produit::withoutGlobalScopes()->create([
+        $data = [
             'nom'        => 'Produit prix test ' . uniqid(),
+            'code'       => substr(md5(uniqid('PRIX-')), 0, 12),
             'type'       => ProduitType::MATERIEL->value,
             'statut'     => ProduitStatut::ACTIF->value,
             'prix_achat' => $prix_achat,
             'prix_vente' => $prix_vente,
-            'prix_usine' => $prix_usine,
-            'cout'       => $cout,
             'is_global'  => true,
-            'usine_id'   => null,
-        ]);
+            'site_id'    => null,
+        ];
+        if ($prix_usine !== null) {
+            $data['prix_usine'] = $prix_usine;
+        }
+        if ($cout !== null) {
+            $data['cout'] = $cout;
+        }
+        return Produit::withoutGlobalScopes()->create($data);
     }
 
     private function makeStaffWithPermission(string ...$permissions): User
@@ -357,6 +363,8 @@ class ProduitUsinePrixTest extends TestCase
         ]);
 
         $user->assignRole('admin_entreprise');
+        $user->sites()->attach($this->usineA->id, ['role' => 'manager', 'is_default' => true]);
+        $user->sites()->attach($this->usineB->id, ['role' => 'manager', 'is_default' => false]);
         return $user;
     }
 }

@@ -2,18 +2,19 @@
 
 namespace Database\Seeders;
 
-use App\Models\Usine;
+use App\Models\Organisation;
+use App\Models\Site;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class StaffUserSeeder extends Seeder
 {
     /**
-     * Staff par usine (nom usine => liste).
+     * Staff par site (nom site => liste).
      * Chaque user est créé une seule fois (phone unique global),
      * puis rattaché à son usine avec le rôle pivot approprié.
      */
-    private array $staffParUsine = [
+    private array $staffParSite = [
         'Usine de kaka' => [
             [
                 'nom'        => 'BAH',
@@ -102,11 +103,13 @@ class StaffUserSeeder extends Seeder
 
     public function run(): void
     {
-        foreach ($this->staffParUsine as $usineNom => $staffList) {
-            $usine = Usine::where('nom', $usineNom)->first();
+        $org = Organisation::where('code', 'ELM-GN')->first();
+
+        foreach ($this->staffParSite as $siteNom => $staffList) {
+            $usine = Site::where('nom', $siteNom)->first();
 
             if (!$usine) {
-                $this->command->warn("StaffUserSeeder : usine [{$usineNom}] introuvable, ignorée.");
+                $this->command->warn("StaffUserSeeder : site [{$siteNom}] introuvable, ignoré.");
                 continue;
             }
 
@@ -131,6 +134,7 @@ class StaffUserSeeder extends Seeder
                     'quartier'          => $data['quartier'],
                     'password'          => $data['password'],
                     'email_verified_at' => now(),
+                    'organisation_id'   => $org?->id,
                 ]);
 
                 if (empty($user->reference)) {
@@ -140,19 +144,19 @@ class StaffUserSeeder extends Seeder
 
                 $user->syncRoles([$data['role']]);
 
-                if (!$user->usines()->where('usines.id', $usine->id)->exists()) {
-                    $isDefault = $user->default_usine_id === null;
-                    $user->usines()->attach($usine->id, [
+                if (!$user->sites()->where('sites.id', $usine->id)->exists()) {
+                    $isDefault = $user->default_site_id === null;
+                    $user->sites()->attach($usine->id, [
                         'role'       => $data['usine_role'],
                         'is_default' => $isDefault,
                     ]);
                     if ($isDefault) {
-                        $user->update(['default_usine_id' => $usine->id]);
+                        $user->update(['default_site_id' => $usine->id]);
                     }
                 }
             }
 
-            $this->command->info("StaffUserSeeder : " . count($staffList) . " utilisateur(s) traité(s) pour [{$usineNom}].");
+            $this->command->info("StaffUserSeeder : " . count($staffList) . " utilisateur(s) traité(s) pour [{$siteNom}].");
         }
     }
 }

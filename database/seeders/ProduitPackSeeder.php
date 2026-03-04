@@ -6,7 +6,7 @@ use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Models\Produit;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use Illuminate\Database\Seeder;
 
 class ProduitPackSeeder extends Seeder
@@ -35,7 +35,7 @@ class ProduitPackSeeder extends Seeder
                 'nom'        => 'Pack de 30',
                 'type'       => ProduitType::FABRICABLE,
                 'is_global' => true,
-                'usine_id'   => null,
+                'site_id'   => null,
             ]);
         } elseif ($produit->trashed()) {
             $produit->restore();
@@ -46,7 +46,7 @@ class ProduitPackSeeder extends Seeder
         }
 
         $produit->is_global  = true;
-        $produit->usine_id    = null;
+        $produit->site_id    = null;
         $produit->prix_usine  = 4500;
         $produit->prix_vente  = 5000;
         $produit->is_critique = true;
@@ -54,16 +54,16 @@ class ProduitPackSeeder extends Seeder
         $produit->save();
 
         // Créer une entrée stock pour chaque usine existante
-        $usines = Usine::withoutGlobalScopes()->get();
-        foreach ($usines as $usine) {
+        $sites = Site::withoutGlobalScopes()->get();
+        foreach ($sites as $usine) {
             $existing = Stock::where('produit_id', $produit->id)
-                ->where('usine_id', $usine->id)
+                ->where('site_id', $usine->id)
                 ->first();
 
             if (!$existing) {
                 Stock::create([
                     'produit_id' => $produit->id,
-                    'usine_id'   => $usine->id,
+                    'site_id'   => $usine->id,
                     'qte_stock'  => 1000,
                 ]);
             } else {

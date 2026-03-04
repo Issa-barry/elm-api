@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Livraison;
 
 use App\Enums\TypeVehicule;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -58,7 +58,7 @@ class StoreVehiculeOneShotRequest extends FormRequest
 
     public function rules(): array
     {
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
         return [
             'vehicule'                           => ['required', 'array'],
@@ -67,7 +67,7 @@ class StoreVehiculeOneShotRequest extends FormRequest
             'vehicule.modele'                    => ['sometimes', 'nullable', 'string', 'max:100'],
             'vehicule.immatriculation'           => [
                 'required', 'string', 'max:20',
-                Rule::unique('vehicules', 'immatriculation')->where('usine_id', $usineId),
+                Rule::unique('vehicules', 'immatriculation')->where('site_id', $siteId),
             ],
             'vehicule.type_vehicule'             => ['required', Rule::in(TypeVehicule::allowedValues())],
             'vehicule.capacite_packs'            => ['nullable', 'integer', 'min:1'],

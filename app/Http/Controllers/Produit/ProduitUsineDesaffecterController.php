@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Produit;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 
 /**
  * DELETE /produits/{id}/usines/{usine_id}
@@ -15,17 +15,17 @@ class ProduitUsineDesaffecterController extends Controller
 {
     use ApiResponse;
 
-    public function __invoke(int $id, int $usineId)
+    public function __invoke(int $id, int $siteId)
     {
         try {
-            $produit = Produit::withoutUsineScope()->find($id);
+            $produit = Produit::withoutSiteScope()->find($id);
 
             if (!$produit) {
                 return $this->notFoundResponse('Produit non trouvé');
             }
 
-            $config = ProduitUsine::where('produit_id', $id)
-                ->where('usine_id', $usineId)
+            $config = ProduitSite::where('produit_id', $id)
+                ->where('site_id', $siteId)
                 ->first();
 
             if (!$config) {

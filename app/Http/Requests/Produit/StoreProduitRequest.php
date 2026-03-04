@@ -43,7 +43,7 @@ class StoreProduitRequest extends FormRequest
 
             // Affectations usines initiales (is_active non accepté à la création — toujours false)
             'usines'              => 'nullable|array',
-            'usines.*.usine_id'   => 'required_with:usines|integer|exists:usines,id',
+            'usines.*.site_id'   => 'required_with:usines|integer|exists:sites,id',
             'usines.*.prix_usine' => 'nullable|integer|min:0',
             'usines.*.prix_achat' => 'nullable|integer|min:0',
             'usines.*.prix_vente' => 'nullable|integer|min:0',

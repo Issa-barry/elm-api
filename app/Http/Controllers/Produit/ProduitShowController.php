@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Produit;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 
 class ProduitShowController extends Controller
 {
@@ -14,8 +14,8 @@ class ProduitShowController extends Controller
     public function __invoke($id)
     {
         try {
-            $ctx       = app(UsineContext::class);
-            $stockWith = $ctx->isAllUsines() ? 'stocks' : 'stockCourant';
+            $ctx       = app(SiteContext::class);
+            $stockWith = $ctx->isAllSites() ? 'stocks' : 'stockCourant';
 
             $produit = Produit::with(['creator:id,nom,prenom', 'updater:id,nom,prenom', 'archivedByUser:id,nom,prenom', $stockWith])
                 ->find($id);

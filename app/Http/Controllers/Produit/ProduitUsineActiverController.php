@@ -6,7 +6,7 @@ use App\Enums\ProduitStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 
 /**
  * PATCH /produits/{id}/usines/{usine_id}/activer
@@ -16,10 +16,10 @@ class ProduitUsineActiverController extends Controller
 {
     use ApiResponse;
 
-    public function __invoke(int $id, int $usineId)
+    public function __invoke(int $id, int $siteId)
     {
         try {
-            $produit = Produit::withoutUsineScope()->find($id);
+            $produit = Produit::withoutSiteScope()->find($id);
 
             if (!$produit) {
                 return $this->notFoundResponse('Produit non trouvé');
@@ -34,8 +34,8 @@ class ProduitUsineActiverController extends Controller
                 );
             }
 
-            $config = ProduitUsine::where('produit_id', $id)
-                ->where('usine_id', $usineId)
+            $config = ProduitSite::where('produit_id', $id)
+                ->where('site_id', $siteId)
                 ->first();
 
             if (!$config) {
@@ -49,7 +49,7 @@ class ProduitUsineActiverController extends Controller
             $config->update(['is_active' => true]);
 
             return $this->successResponse(
-                $config->load('usine:id,nom,code'),
+                $config->load('site:id,nom,code'),
                 'Produit activé dans l\'usine avec succès'
             );
         } catch (\Exception $e) {

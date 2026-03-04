@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Usine;
+use App\Models\Organisation;
+use App\Models\Site;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -26,19 +27,22 @@ class AdminUserSeeder extends Seeder
             return $user;
         };
 
-        $moussa = $resolveUser('+22466617700', 'issabarry67@gmail.com');
+        $org   = Organisation::where('code', 'ELM-GN')->first();
+
+        $moussa = $resolveUser('+22466617700', 'sidibemsa81@gmail.com');
         $moussa->fill([
-            'phone' => '+224666101011',
-            'nom' => 'SIDIBE',
-            'prenom' => 'Moussa',
-            'email' => 'issabarry67@gmail.com',
-            'pays' => 'Guinee',
-            'code_pays' => 'GN',
+            'phone'           => '+224666101011',
+            'nom'             => 'SIDIBE',
+            'prenom'          => 'Moussa',
+            'email'           => 'sidibemsa81@gmail.com',
+            'pays'            => 'Guinee',
+            'code_pays'       => 'GN',
             'code_phone_pays' => '+224',
-            'ville' => 'Conakry',
-            'quartier' => 'Kaloum',
-            'password' => 'Staff@2025',
+            'ville'           => 'Conakry',
+            'quartier'        => 'Kaloum',
+            'password'        => 'Staff@2025',
             'email_verified_at' => now(),
+            'organisation_id' => $org?->id,
         ]);
         if (empty($moussa->reference)) {
             $moussa->reference = User::generateUniqueReference();
@@ -47,19 +51,19 @@ class AdminUserSeeder extends Seeder
 
         $moussa->syncRoles(['admin_entreprise']);
 
-        $siege = Usine::where('nom', 'Usine de Matoto')->first();
+        $siege = Site::where('nom', 'Usine de Matoto')->first();
         if ($siege) {
-            // Moussa = propriétaire siège, accès à toutes les usines.
+            // Moussa = propriétaire siège, accès à tous les sites.
             $moussaAffectations = [];
-            foreach (Usine::query()->select(['id', 'type'])->get() as $usine) {
-                $moussaAffectations[$usine->id] = [
-                    'role' => $usine->id === $siege->id ? 'owner_siege' : 'manager',
-                    'is_default' => $usine->id === $siege->id,
+            foreach (Site::query()->select(['id', 'type'])->get() as $site) {
+                $moussaAffectations[$site->id] = [
+                    'role' => $site->id === $siege->id ? 'owner_siege' : 'manager',
+                    'is_default' => $site->id === $siege->id,
                 ];
             }
 
-            $moussa->usines()->sync($moussaAffectations);
-            $moussa->update(['default_usine_id' => $siege->id]);
+            $moussa->sites()->sync($moussaAffectations);
+            $moussa->update(['default_site_id' => $siege->id]);
         }
 
         // Thierno Oumar est seedé dans StaffUserSeeder (manager de Matoto).

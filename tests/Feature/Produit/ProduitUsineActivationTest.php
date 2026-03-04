@@ -4,14 +4,14 @@ namespace Tests\Feature\Produit;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Enums\UserType;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -31,23 +31,23 @@ class ProduitUsineActivationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine $usineA;
-    private Usine $usineB;
+    private Site $usineA;
+    private Site $usineB;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->usineA = Usine::firstOrCreate(
+        $this->usineA = Site::firstOrCreate(
             ['code' => 'ACT-A'],
-            ['nom' => 'Usine Activation A', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Activation A', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
-        $this->usineB = Usine::firstOrCreate(
+        $this->usineB = Site::firstOrCreate(
             ['code' => 'ACT-B'],
-            ['nom' => 'Usine Activation B', 'type' => UsineType::USINE->value, 'statut' => 'active']
+            ['nom' => 'Site Activation B', 'type' => SiteType::USINE->value, 'statut' => 'active']
         );
 
-        app(UsineContext::class)->setCurrentUsineId($this->usineA->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineA->id);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -59,16 +59,16 @@ class ProduitUsineActivationTest extends TestCase
         $produit = $this->creerProduitGlobal('Produit indépendant');
 
         // Affecter le produit aux deux usines
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => false]);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineB->id, 'is_active' => false]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => false]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineB->id, 'is_active' => false]);
 
         // Activer uniquement dans usine A
-        ProduitUsine::where('produit_id', $produit->id)
-            ->where('usine_id', $this->usineA->id)
+        ProduitSite::where('produit_id', $produit->id)
+            ->where('site_id', $this->usineA->id)
             ->update(['is_active' => true]);
 
-        $configA = ProduitUsine::where('produit_id', $produit->id)->where('usine_id', $this->usineA->id)->first();
-        $configB = ProduitUsine::where('produit_id', $produit->id)->where('usine_id', $this->usineB->id)->first();
+        $configA = ProduitSite::where('produit_id', $produit->id)->where('site_id', $this->usineA->id)->first();
+        $configB = ProduitSite::where('produit_id', $produit->id)->where('site_id', $this->usineB->id)->first();
 
         $this->assertTrue((bool) $configA->is_active, 'Usine A doit être active');
         $this->assertFalse((bool) $configB->is_active, 'Usine B doit rester inactive');
@@ -78,16 +78,16 @@ class ProduitUsineActivationTest extends TestCase
     {
         $produit = $this->creerProduitGlobal('Produit désactivation');
 
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineB->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineB->id, 'is_active' => true]);
 
         // Désactiver uniquement dans usine B
-        ProduitUsine::where('produit_id', $produit->id)
-            ->where('usine_id', $this->usineB->id)
+        ProduitSite::where('produit_id', $produit->id)
+            ->where('site_id', $this->usineB->id)
             ->update(['is_active' => false]);
 
-        $configA = ProduitUsine::where('produit_id', $produit->id)->where('usine_id', $this->usineA->id)->first();
-        $configB = ProduitUsine::where('produit_id', $produit->id)->where('usine_id', $this->usineB->id)->first();
+        $configA = ProduitSite::where('produit_id', $produit->id)->where('site_id', $this->usineA->id)->first();
+        $configB = ProduitSite::where('produit_id', $produit->id)->where('site_id', $this->usineB->id)->first();
 
         $this->assertTrue((bool) $configA->is_active, 'Usine A doit rester active');
         $this->assertFalse((bool) $configB->is_active, 'Usine B doit être inactive');
@@ -100,18 +100,18 @@ class ProduitUsineActivationTest extends TestCase
     public function test_api_activer_produit_dans_usine_retourne_200(): void
     {
         $produit = $this->creerProduitGlobal('API Activer');
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => false]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => false]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineA->id}/activer");
 
         $response->assertStatus(200);
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => 1,
         ]);
     }
@@ -119,18 +119,18 @@ class ProduitUsineActivationTest extends TestCase
     public function test_api_activer_refuse_si_statut_global_pas_actif(): void
     {
         $produit = $this->creerProduitGlobal('Brouillon global', ProduitStatut::BROUILLON);
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => false]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => false]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineA->id}/activer");
 
         $response->assertStatus(400);
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => 0,
         ]);
     }
@@ -138,18 +138,18 @@ class ProduitUsineActivationTest extends TestCase
     public function test_api_desactiver_produit_dans_usine_retourne_200(): void
     {
         $produit = $this->creerProduitGlobal('API Désactiver');
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->patchJson("/api/v1/produits/{$produit->id}/usines/{$this->usineA->id}/desactiver");
 
         $response->assertStatus(200);
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineA->id,
+            'site_id'   => $this->usineA->id,
             'is_active'  => 0,
         ]);
     }
@@ -161,8 +161,8 @@ class ProduitUsineActivationTest extends TestCase
     public function test_produit_global_inactif_localement_absent_du_scope_pos(): void
     {
         $produit = $this->creerProduitGlobal('POS Inactif local');
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => false]);
-        Stock::firstOrCreate(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id], ['qte_stock' => 50]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => false]);
+        Stock::firstOrCreate(['produit_id' => $produit->id, 'site_id' => $this->usineA->id], ['qte_stock' => 50]);
 
         $ids = Produit::withoutGlobalScopes()
             ->disponiblesPOS($this->usineA->id)
@@ -175,8 +175,8 @@ class ProduitUsineActivationTest extends TestCase
     public function test_produit_global_actif_localement_en_stock_present_au_pos(): void
     {
         $produit = $this->creerProduitGlobal('POS Actif en stock');
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
-        Stock::firstOrCreate(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id], ['qte_stock' => 10]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
+        Stock::firstOrCreate(['produit_id' => $produit->id, 'site_id' => $this->usineA->id], ['qte_stock' => 10]);
 
         $ids = Produit::withoutGlobalScopes()
             ->disponiblesPOS($this->usineA->id)
@@ -189,8 +189,8 @@ class ProduitUsineActivationTest extends TestCase
     public function test_produit_stockable_en_rupture_absent_du_pos(): void
     {
         $produit = $this->creerProduitGlobal('POS rupture');
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
-        Stock::firstOrCreate(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id], ['qte_stock' => 0]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
+        Stock::firstOrCreate(['produit_id' => $produit->id, 'site_id' => $this->usineA->id], ['qte_stock' => 0]);
 
         $ids = Produit::withoutGlobalScopes()
             ->disponiblesPOS($this->usineA->id)
@@ -204,13 +204,14 @@ class ProduitUsineActivationTest extends TestCase
     {
         $service = Produit::withoutGlobalScopes()->create([
             'nom'       => 'Service POS',
+            'code'      => 'ACT-SVC-001',
             'type'      => ProduitType::SERVICE->value,
             'statut'    => ProduitStatut::ACTIF->value,
             'prix_vente' => 5000,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
-        ProduitUsine::create(['produit_id' => $service->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $service->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
 
         $ids = Produit::withoutGlobalScopes()
             ->disponiblesPOS($this->usineA->id)
@@ -225,8 +226,8 @@ class ProduitUsineActivationTest extends TestCase
         $produit = $this->creerProduitGlobal('POS isolation usine');
 
         // Actif en A, non affecté en B
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id, 'is_active' => true]);
-        Stock::firstOrCreate(['produit_id' => $produit->id, 'usine_id' => $this->usineA->id], ['qte_stock' => 5]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineA->id, 'is_active' => true]);
+        Stock::firstOrCreate(['produit_id' => $produit->id, 'site_id' => $this->usineA->id], ['qte_stock' => 5]);
 
         $idsA = Produit::withoutGlobalScopes()->disponiblesPOS($this->usineA->id)->pluck('id')->toArray();
         $idsB = Produit::withoutGlobalScopes()->disponiblesPOS($this->usineB->id)->pluck('id')->toArray();
@@ -244,14 +245,14 @@ class ProduitUsineActivationTest extends TestCase
         $actif   = $this->creerProduitGlobal('POS API Actif');
         $inactif = $this->creerProduitGlobal('POS API Inactif');
 
-        ProduitUsine::create(['produit_id' => $actif->id,   'usine_id' => $this->usineA->id, 'is_active' => true]);
-        ProduitUsine::create(['produit_id' => $inactif->id, 'usine_id' => $this->usineA->id, 'is_active' => false]);
-        Stock::firstOrCreate(['produit_id' => $actif->id, 'usine_id' => $this->usineA->id], ['qte_stock' => 20]);
+        ProduitSite::create(['produit_id' => $actif->id,   'site_id' => $this->usineA->id, 'is_active' => true]);
+        ProduitSite::create(['produit_id' => $inactif->id, 'site_id' => $this->usineA->id, 'is_active' => false]);
+        Stock::firstOrCreate(['produit_id' => $actif->id, 'site_id' => $this->usineA->id], ['qte_stock' => 20]);
 
         $user = $this->makeStaffWithPermission('produits.read');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->getJson('/api/v1/produits/pos');
 
         $response->assertStatus(200);
@@ -265,7 +266,7 @@ class ProduitUsineActivationTest extends TestCase
     {
         $user = $this->makeStaffWithPermission('produits.read');
 
-        // Sans X-Usine-Id, UsineContext::getCurrentUsineId() retourne null
+        // Sans X-Site-Id, SiteContext::getCurrentSiteId() retourne null
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/produits/pos');
 
@@ -283,16 +284,16 @@ class ProduitUsineActivationTest extends TestCase
         $user    = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->postJson("/api/v1/produits/{$produit->id}/usines", [
-                'usine_id'  => $this->usineB->id,
+                'site_id'  => $this->usineB->id,
                 'is_active' => false,
             ]);
 
         $response->assertStatus(201);
-        $this->assertDatabaseHas('produit_usines', [
+        $this->assertDatabaseHas('produit_sites', [
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usineB->id,
+            'site_id'   => $this->usineB->id,
             'is_active'  => 0,
         ]);
     }
@@ -300,14 +301,14 @@ class ProduitUsineActivationTest extends TestCase
     public function test_api_affecter_deux_fois_retourne_409(): void
     {
         $produit = $this->creerProduitGlobal('Double affectation');
-        ProduitUsine::create(['produit_id' => $produit->id, 'usine_id' => $this->usineB->id, 'is_active' => false]);
+        ProduitSite::create(['produit_id' => $produit->id, 'site_id' => $this->usineB->id, 'is_active' => false]);
 
         $user = $this->makeStaffWithPermission('produits.update');
 
         $response = $this->actingAs($user, 'sanctum')
-            ->withHeader('X-Usine-Id', (string) $this->usineA->id)
+            ->withHeader('X-Site-Id', (string) $this->usineA->id)
             ->postJson("/api/v1/produits/{$produit->id}/usines", [
-                'usine_id' => $this->usineB->id,
+                'site_id' => $this->usineB->id,
             ]);
 
         $response->assertStatus(409);
@@ -321,12 +322,13 @@ class ProduitUsineActivationTest extends TestCase
     {
         return Produit::withoutGlobalScopes()->create([
             'nom'       => $nom,
+            'code'      => substr(md5(uniqid($nom)), 0, 12),
             'type'      => ProduitType::MATERIEL->value,
             'statut'    => $statut->value,
             'prix_achat' => 1000,
             'prix_vente' => 1500,
             'is_global' => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
     }
 
@@ -356,6 +358,7 @@ class ProduitUsineActivationTest extends TestCase
         ]);
 
         $user->assignRole('admin_entreprise');
+        $user->sites()->attach($this->usineA->id, ['role' => 'manager', 'is_default' => true]);
         return $user;
     }
 }

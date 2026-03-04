@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PackingStatut;
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class Packing extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     public const STATUT_IMPAYEE  = PackingStatut::IMPAYEE->value;
     public const STATUT_PARTIELLE = PackingStatut::PARTIELLE->value;
@@ -28,7 +28,7 @@ class Packing extends Model
     public const STATUT_DEFAUT = self::STATUT_IMPAYEE;
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'prestataire_id',
         'date',
         'nb_rouleaux',
@@ -110,7 +110,7 @@ class Packing extends Model
     {
         // Important: la référence est unique globalement sur la table packings.
         // On doit donc ignorer le scope usine, sinon chaque usine repart à 0001.
-        $lastId = self::withoutUsineScope()->withTrashed()->max('id') ?? 0;
+        $lastId = self::withoutSiteScope()->withTrashed()->max('id') ?? 0;
 
         return 'PACK-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
     }
@@ -349,7 +349,7 @@ class Packing extends Model
         }
 
         $stock = Stock::where('produit_id', $produitId)
-            ->where('usine_id', $this->usine_id)
+            ->where('site_id', $this->site_id)
             ->lockForUpdate()
             ->first();
 
@@ -387,7 +387,7 @@ class Packing extends Model
         }
 
         $stock = Stock::where('produit_id', $produitId)
-            ->where('usine_id', $this->usine_id)
+            ->where('site_id', $this->site_id)
             ->lockForUpdate()
             ->first();
 
@@ -396,7 +396,7 @@ class Packing extends Model
                 // Cas de restitution: créer la ligne stock manquante pour ne pas perdre l'ajustement.
                 $stock = Stock::create([
                     'produit_id' => $produitId,
-                    'usine_id'   => $this->usine_id,
+                    'site_id'    => $this->site_id,
                     'qte_stock'  => 0,
                 ]);
             } else {
@@ -423,7 +423,7 @@ class Packing extends Model
         }
 
         $stock = Stock::where('produit_id', $produitId)
-            ->where('usine_id', $this->usine_id)
+            ->where('site_id', $this->site_id)
             ->lockForUpdate()
             ->first();
 

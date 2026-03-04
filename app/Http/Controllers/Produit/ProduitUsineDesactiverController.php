@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Produit;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 
 /**
  * PATCH /produits/{id}/usines/{usine_id}/desactiver
@@ -15,17 +15,17 @@ class ProduitUsineDesactiverController extends Controller
 {
     use ApiResponse;
 
-    public function __invoke(int $id, int $usineId)
+    public function __invoke(int $id, int $siteId)
     {
         try {
-            $produit = Produit::withoutUsineScope()->find($id);
+            $produit = Produit::withoutSiteScope()->find($id);
 
             if (!$produit) {
                 return $this->notFoundResponse('Produit non trouvé');
             }
 
-            $config = ProduitUsine::where('produit_id', $id)
-                ->where('usine_id', $usineId)
+            $config = ProduitSite::where('produit_id', $id)
+                ->where('site_id', $siteId)
                 ->first();
 
             if (!$config) {
@@ -39,7 +39,7 @@ class ProduitUsineDesactiverController extends Controller
             $config->update(['is_active' => false]);
 
             return $this->successResponse(
-                $config->load('usine:id,nom,code'),
+                $config->load('site:id,nom,code'),
                 'Produit désactivé dans l\'usine avec succès'
             );
         } catch (\Exception $e) {

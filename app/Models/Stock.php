@@ -9,7 +9,7 @@ class Stock extends Model
 {
     protected $fillable = [
         'produit_id',
-        'usine_id',
+        'site_id',
         'qte_stock',
         'seuil_alerte_stock',
     ];
@@ -26,9 +26,9 @@ class Stock extends Model
         return $this->belongsTo(Produit::class);
     }
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     // ── Setters ───────────────────────────────────────────────────────────

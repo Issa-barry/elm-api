@@ -5,17 +5,17 @@ namespace Tests\Feature\Packing;
 use App\Enums\PackingStatut;
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineRole;
-use App\Enums\UsineType;
+use App\Enums\SiteRole;
+use App\Enums\SiteType;
 use App\Models\Packing;
 use App\Models\Parametre;
 use App\Models\Prestataire;
 use App\Models\Produit;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
 use App\Models\Versement;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -30,7 +30,7 @@ class PackingStatutTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine       $usine;
+    private Site        $usine;
     private User        $staff;
     private Prestataire $prestataire;
     private Produit     $produitRouleau;
@@ -45,29 +45,29 @@ class PackingStatutTest extends TestCase
             Permission::findOrCreate($perm, 'web');
         }
 
-        $this->usine = Usine::create([
-            'nom'    => 'Usine Packing Statut',
+        $this->usine = Site::create([
+            'nom'    => 'Site Packing Statut',
             'code'   => 'PCK-B',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
-            'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'type'            => 'staff',
+            'default_site_id' => $this->usine->id,
         ]);
 
-        $this->staff->usines()->attach($this->usine->id, [
-            'role'       => UsineRole::MANAGER->value,
+        $this->staff->sites()->attach($this->usine->id, [
+            'role'       => SiteRole::MANAGER->value,
             'is_default' => true,
         ]);
 
         $this->staff->givePermissionTo(['packings.read', 'packings.create', 'packings.update']);
 
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $this->prestataire = Prestataire::create([
-            'usine_id'        => $this->usine->id,
+            'site_id'        => $this->usine->id,
             'nom'             => 'BALDE',
             'prenom'          => 'Oumar',
             'phone'           => '620111002',
@@ -86,7 +86,7 @@ class PackingStatutTest extends TestCase
     private function setupProduitRouleau(int $qteStock = 100): void
     {
         $this->produitRouleau = Produit::withoutGlobalScopes()->create([
-            'usine_id'    => $this->usine->id,
+            'site_id'    => $this->usine->id,
             'nom'         => 'Rouleau Statut Test',
             'code'        => 'ROUL-PCK-B',
             'type'        => ProduitType::MATERIEL->value,
@@ -104,7 +104,7 @@ class PackingStatutTest extends TestCase
         Cache::forget('parametre_' . Parametre::CLE_PRODUIT_ROULEAU_ID);
 
         $this->stockRouleau = Stock::updateOrCreate(
-            ['produit_id' => $this->produitRouleau->id, 'usine_id' => $this->usine->id],
+            ['produit_id' => $this->produitRouleau->id, 'site_id' => $this->usine->id],
             ['qte_stock' => $qteStock, 'seuil_alerte_stock' => 5]
         );
     }
@@ -133,7 +133,7 @@ class PackingStatutTest extends TestCase
     private function creerPackingDirect(array $overrides = []): Packing
     {
         return Packing::create(array_merge([
-            'usine_id'         => $this->usine->id,
+            'site_id'         => $this->usine->id,
             'prestataire_id'   => $this->prestataire->id,
             'date'             => today()->toDateString(),
             'nb_rouleaux'      => 10,
@@ -273,7 +273,7 @@ class PackingStatutTest extends TestCase
         // montant total = 5000
 
         Versement::create([
-            'usine_id'       => $this->usine->id,
+            'site_id'       => $this->usine->id,
             'packing_id'     => $packing->id,
             'montant'        => 2000,
             'date_versement' => today()->toDateString(),
@@ -292,7 +292,7 @@ class PackingStatutTest extends TestCase
         // montant total = 5000
 
         Versement::create([
-            'usine_id'       => $this->usine->id,
+            'site_id'       => $this->usine->id,
             'packing_id'     => $packing->id,
             'montant'        => 5000,
             'date_versement' => today()->toDateString(),
@@ -327,7 +327,7 @@ class PackingStatutTest extends TestCase
         // montant = 5000
 
         Versement::create([
-            'usine_id'       => $this->usine->id,
+            'site_id'       => $this->usine->id,
             'packing_id'     => $packing->id,
             'montant'        => 1500,
             'date_versement' => today()->toDateString(),
@@ -345,7 +345,7 @@ class PackingStatutTest extends TestCase
         // montant = 5000
 
         Versement::create([
-            'usine_id'       => $this->usine->id,
+            'site_id'       => $this->usine->id,
             'packing_id'     => $packing->id,
             'montant'        => 5000,
             'date_versement' => today()->toDateString(),

@@ -4,7 +4,7 @@ namespace App\Http\Requests\Prestataire;
 
 use App\Enums\PrestataireType;
 use App\Models\Prestataire;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -78,14 +78,14 @@ class UpdatePrestataireRequest extends FormRequest
     public function rules(): array
     {
         $prestataireId = (int) $this->route('id');
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
         $phoneUnique = Rule::unique('prestataires', 'phone')->ignore($prestataireId);
         $emailUnique = Rule::unique('prestataires', 'email')->ignore($prestataireId);
 
-        if ($usineId) {
-            $phoneUnique = $phoneUnique->where('usine_id', $usineId);
-            $emailUnique = $emailUnique->where('usine_id', $usineId);
+        if ($siteId) {
+            $phoneUnique = $phoneUnique->where('site_id', $siteId);
+            $emailUnique = $emailUnique->where('site_id', $siteId);
         }
 
         return [

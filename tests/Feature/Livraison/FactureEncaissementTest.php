@@ -5,13 +5,14 @@ namespace Tests\Feature\Livraison;
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Enums\StatutFactureVente;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Models\FactureVente;
 use App\Models\Livreur;
 use App\Models\Produit;
 use App\Models\Proprietaire;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
+use App\Models\Stock;
 use App\Models\Vehicule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +25,7 @@ class FactureEncaissementTest extends TestCase
     use RefreshDatabase;
 
     private User  $staff;
-    private Usine $usine;
+    private Site $usine;
     private int   $vehiculeId;
     private int   $produitId;
 
@@ -41,18 +42,18 @@ class FactureEncaissementTest extends TestCase
             Permission::findOrCreate($p, 'web');
         }
 
-        $this->usine = Usine::create([
+        $this->usine = Site::create([
             'nom'    => 'Usine Facture Test',
             'code'   => 'FAC-TEST',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
             'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'default_site_id' => $this->usine->id,
         ]);
-        $this->staff->usines()->attach($this->usine->id, ['role' => 'manager', 'is_default' => true]);
+        $this->staff->sites()->attach($this->usine->id, ['role' => 'manager', 'is_default' => true]);
         $this->staff->givePermissionTo([
             'commandes.create',
             'factures-livraisons.read',
@@ -63,7 +64,7 @@ class FactureEncaissementTest extends TestCase
         Livreur::factory()->create();
 
         $vehicule = Vehicule::withoutGlobalScopes()->create([
-            'usine_id'                => $this->usine->id,
+            'site_id'                => $this->usine->id,
             'nom_vehicule'            => 'Camion Facture',
             'immatriculation'         => 'FAC-001',
             'type_vehicule'           => 'camion',
@@ -75,21 +76,21 @@ class FactureEncaissementTest extends TestCase
         $this->vehiculeId = $vehicule->id;
 
         $produit = Produit::withoutGlobalScopes()->create([
-            'usine_id'   => $this->usine->id,
+            'site_id'   => $this->usine->id,
             'nom'        => 'Béton Facture',
             'code'       => 'BETON-FAC',
             'type'       => ProduitType::FABRICABLE->value,
             'statut'     => ProduitStatut::ACTIF->value,
             'prix_usine' => 400,
             'prix_vente' => 500,
-            'qte_stock'  => 1000,
         ]);
+        Stock::create(['produit_id' => $produit->id, 'site_id' => $this->usine->id, 'qte_stock' => 1000]);
         $this->produitId = $produit->id;
     }
 
     private function header(): array
     {
-        return ['X-Usine-Id' => (string) $this->usine->id];
+        return ['X-Site-Id' => (string) $this->usine->id];
     }
 
     /**

@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Usine;
+use App\Models\Organisation;
+use App\Models\Site;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
@@ -26,10 +27,10 @@ class SuperAdminUserSeeder extends Seeder
                 'code_phone_pays' => '+224',
                 'ville' => 'Conakry',
                 'quartier' => 'Kaloum',
-                'password' => 'Jeux@2019',
+                'password' => 'Staff@2025',
             ],
             [
-                'phone' => '+224666101001',
+                'phone' => '+224666101002',
                 'nom' => 'DIALLO',
                 'prenom' => 'Abdoulaye',
                 'email' => 'abdoulaye.gn@gmail.com',
@@ -38,11 +39,12 @@ class SuperAdminUserSeeder extends Seeder
                 'code_phone_pays' => '+224',
                 'ville' => 'Conakry',
                 'quartier' => 'Non renseigne',
-                'password' => 'Omega2026!',
+                'password' => 'Staff@2025',
             ],
         ];
 
-        $siege = Usine::query()->where('nom', 'Usine de Matoto')->first();
+        $siege = Site::query()->where('nom', 'Usine de Matoto')->first();
+        $org   = Organisation::where('code', 'ELM-GN')->first();
 
         foreach ($superAdmins as $data) {
             $user = User::withTrashed()->where('phone', $data['phone'])->first();
@@ -59,18 +61,19 @@ class SuperAdminUserSeeder extends Seeder
 
             if (!$user->exists) {
                 $user->fill([
-                    'phone' => $data['phone'],
-                    'nom' => $data['nom'],
-                    'prenom' => $data['prenom'],
-                    'email' => $data['email'],
-                    'pays' => $data['pays'],
-                    'code_pays' => $data['code_pays'],
+                    'phone'           => $data['phone'],
+                    'nom'             => $data['nom'],
+                    'prenom'          => $data['prenom'],
+                    'email'           => $data['email'],
+                    'pays'            => $data['pays'],
+                    'code_pays'       => $data['code_pays'],
                     'code_phone_pays' => $data['code_phone_pays'],
-                    'ville' => $data['ville'],
-                    'quartier' => $data['quartier'] ?? 'Non renseigne',
-                    'password' => $data['password'],
+                    'ville'           => $data['ville'],
+                    'quartier'        => $data['quartier'] ?? 'Non renseigne',
+                    'password'        => $data['password'],
                     'email_verified_at' => now(),
-                    'reference' => User::generateUniqueReference(),
+                    'reference'       => User::generateUniqueReference(),
+                    'organisation_id' => $org?->id,
                 ]);
                 $user->save();
             } else {
@@ -84,6 +87,9 @@ class SuperAdminUserSeeder extends Seeder
                 if (!$user->reference) {
                     $updates['reference'] = User::generateUniqueReference();
                 }
+                if (!$user->organisation_id && $org) {
+                    $updates['organisation_id'] = $org->id;
+                }
                 if (!empty($updates)) {
                     $user->fill($updates);
                     $user->save();
@@ -95,17 +101,17 @@ class SuperAdminUserSeeder extends Seeder
             }
 
             if ($siege) {
-                if (!$user->usines()->where('usines.id', $siege->id)->exists()) {
-                    $user->usines()->attach($siege->id, [
+                if (!$user->sites()->where('sites.id', $siege->id)->exists()) {
+                    $user->sites()->attach($siege->id, [
                         'role' => 'owner_siege',
-                        'is_default' => $user->default_usine_id === null,
+                        'is_default' => $user->default_site_id === null,
                     ]);
                 } else {
-                    $user->usines()->updateExistingPivot($siege->id, ['role' => 'owner_siege']);
+                    $user->sites()->updateExistingPivot($siege->id, ['role' => 'owner_siege']);
                 }
 
-                if ($user->default_usine_id === null) {
-                    $user->update(['default_usine_id' => $siege->id]);
+                if ($user->default_site_id === null) {
+                    $user->update(['default_site_id' => $siege->id]);
                 }
             }
         }

@@ -3,7 +3,7 @@
 namespace Tests\Feature\Role;
 
 use App\Enums\UserType;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,7 +27,7 @@ class AdminEntrepriseRoleTest extends TestCase
     use RefreshDatabase;
 
     private User $adminUser;
-    private Usine $usine;
+    private Site $usine;
 
     protected function setUp(): void
     {
@@ -35,14 +35,14 @@ class AdminEntrepriseRoleTest extends TestCase
 
         $this->seed(RoleAndPermissionSeeder::class);
 
-        $this->usine = Usine::factory()->create(['code' => 'ADM-TEST', 'nom' => 'Usine Test Admin']);
+        $this->usine = Site::factory()->create(['code' => 'ADM-TEST', 'nom' => 'Site Test Admin']);
 
         $this->adminUser = User::factory()->create([
             'type' => UserType::STAFF->value,
         ]);
         $this->adminUser->assignRole('admin_entreprise');
-        $this->adminUser->usines()->attach($this->usine->id, ['role' => 'owner_siege', 'is_default' => true]);
-        $this->adminUser->update(['default_usine_id' => $this->usine->id]);
+        $this->adminUser->sites()->attach($this->usine->id, ['role' => 'owner_siege', 'is_default' => true]);
+        $this->adminUser->update(['default_site_id' => $this->usine->id]);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -85,15 +85,30 @@ class AdminEntrepriseRoleTest extends TestCase
 
     public function test_admin_entreprise_has_all_other_permissions(): void
     {
+        // organisations.* est réservé au super_admin — exclu du périmètre admin_entreprise
         $allPermissions = Permission::whereNotIn('name', [
             'users.create',
             'users.delete',
+            'organisations.create',
+            'organisations.read',
+            'organisations.update',
+            'organisations.delete',
         ])->pluck('name');
 
         foreach ($allPermissions as $permission) {
             $this->assertTrue(
                 $this->adminUser->hasPermissionTo($permission),
                 "admin_entreprise devrait avoir la permission [{$permission}]"
+            );
+        }
+    }
+
+    public function test_admin_entreprise_cannot_manage_organisations(): void
+    {
+        foreach (['organisations.create', 'organisations.read', 'organisations.update', 'organisations.delete'] as $perm) {
+            $this->assertFalse(
+                $this->adminUser->hasPermissionTo($perm),
+                "admin_entreprise ne devrait PAS avoir la permission [{$perm}]"
             );
         }
     }
@@ -105,7 +120,7 @@ class AdminEntrepriseRoleTest extends TestCase
     public function test_admin_entreprise_can_list_users(): void
     {
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/users');
 
         $this->assertNotEquals(403, $response->status());
@@ -118,7 +133,7 @@ class AdminEntrepriseRoleTest extends TestCase
     public function test_admin_entreprise_cannot_create_user_via_api(): void
     {
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->postJson('/api/v1/users', [
                 'nom'             => 'Test',
                 'prenom'          => 'User',
@@ -145,7 +160,7 @@ class AdminEntrepriseRoleTest extends TestCase
         $cible = User::factory()->create(['type' => UserType::STAFF->value]);
 
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->deleteJson("/api/v1/users/{$cible->id}");
 
         $response->assertStatus(403);
@@ -160,7 +175,7 @@ class AdminEntrepriseRoleTest extends TestCase
         $cible = User::factory()->create(['type' => UserType::STAFF->value]);
 
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->patchJson("/api/v1/users/{$cible->id}/archiver");
 
         $response->assertStatus(403);
@@ -173,10 +188,10 @@ class AdminEntrepriseRoleTest extends TestCase
     public function test_admin_entreprise_can_toggle_user_status(): void
     {
         $cible = User::factory()->create(['type' => UserType::STAFF->value]);
-        $cible->usines()->attach($this->usine->id, ['role' => 'staff', 'is_default' => true]);
+        $cible->sites()->attach($this->usine->id, ['role' => 'staff', 'is_default' => true]);
 
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->patchJson("/api/v1/users/{$cible->id}/toggle-status");
 
         $this->assertNotEquals(403, $response->status());
@@ -189,7 +204,7 @@ class AdminEntrepriseRoleTest extends TestCase
     public function test_admin_entreprise_can_list_roles(): void
     {
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/roles');
 
         $this->assertNotEquals(403, $response->status());
@@ -204,7 +219,7 @@ class AdminEntrepriseRoleTest extends TestCase
         $role = Role::where('name', 'admin_entreprise')->first();
 
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->deleteJson("/api/v1/roles/{$role->id}");
 
         $response->assertStatus(403);
@@ -215,7 +230,7 @@ class AdminEntrepriseRoleTest extends TestCase
         $role = Role::where('name', 'admin_entreprise')->first();
 
         $response = $this->actingAs($this->adminUser)
-            ->withHeaders(['X-Usine-Id' => $this->usine->id])
+            ->withHeaders(['X-Site-Id' => $this->usine->id])
             ->putJson("/api/v1/roles/{$role->id}", ['name' => 'super_admin']);
 
         $response->assertStatus(403);

@@ -5,17 +5,17 @@ namespace Tests\Feature\Packing;
 use App\Enums\PackingStatut;
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineRole;
-use App\Enums\UsineType;
+use App\Enums\SiteRole;
+use App\Enums\SiteType;
 use App\Models\Packing;
 use App\Models\Parametre;
 use App\Models\Prestataire;
 use App\Models\Produit;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
 use App\Models\Versement;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -35,7 +35,7 @@ class PackingVersementTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine       $usine;
+    private Site        $usine;
     private User        $staff;
     private Prestataire $prestataire;
     private Produit     $produitRouleau;
@@ -50,29 +50,29 @@ class PackingVersementTest extends TestCase
             Permission::findOrCreate($perm, 'web');
         }
 
-        $this->usine = Usine::create([
-            'nom'    => 'Usine Packing Versement',
+        $this->usine = Site::create([
+            'nom'    => 'Site Packing Versement',
             'code'   => 'PCK-C',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
-            'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'type'            => 'staff',
+            'default_site_id' => $this->usine->id,
         ]);
 
-        $this->staff->usines()->attach($this->usine->id, [
-            'role'       => UsineRole::MANAGER->value,
+        $this->staff->sites()->attach($this->usine->id, [
+            'role'       => SiteRole::MANAGER->value,
             'is_default' => true,
         ]);
 
         $this->staff->givePermissionTo(['packings.read', 'packings.create', 'versements.create', 'versements.delete']);
 
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $this->prestataire = Prestataire::create([
-            'usine_id'        => $this->usine->id,
+            'site_id'        => $this->usine->id,
             'nom'             => 'SOUMAH',
             'prenom'          => 'Alpha',
             'phone'           => '620111003',
@@ -91,7 +91,7 @@ class PackingVersementTest extends TestCase
     private function setupProduitRouleau(int $qteStock = 100): void
     {
         $this->produitRouleau = Produit::withoutGlobalScopes()->create([
-            'usine_id'    => $this->usine->id,
+            'site_id'    => $this->usine->id,
             'nom'         => 'Rouleau Versement Test',
             'code'        => 'ROUL-PCK-C',
             'type'        => ProduitType::MATERIEL->value,
@@ -109,7 +109,7 @@ class PackingVersementTest extends TestCase
         Cache::forget('parametre_' . Parametre::CLE_PRODUIT_ROULEAU_ID);
 
         $this->stockRouleau = Stock::updateOrCreate(
-            ['produit_id' => $this->produitRouleau->id, 'usine_id' => $this->usine->id],
+            ['produit_id' => $this->produitRouleau->id, 'site_id' => $this->usine->id],
             ['qte_stock' => $qteStock, 'seuil_alerte_stock' => 5]
         );
     }
@@ -121,7 +121,7 @@ class PackingVersementTest extends TestCase
     private function creerPacking(array $overrides = []): Packing
     {
         return Packing::create(array_merge([
-            'usine_id'         => $this->usine->id,
+            'site_id'         => $this->usine->id,
             'prestataire_id'   => $this->prestataire->id,
             'date'             => today()->toDateString(),
             'nb_rouleaux'      => 10,
@@ -134,7 +134,7 @@ class PackingVersementTest extends TestCase
     private function creerVersement(Packing $packing, int $montant): Versement
     {
         return Versement::create([
-            'usine_id'       => $this->usine->id,
+            'site_id'       => $this->usine->id,
             'packing_id'     => $packing->id,
             'montant'        => $montant,
             'date_versement' => today()->toDateString(),
@@ -311,9 +311,9 @@ class PackingVersementTest extends TestCase
 
         $userSansPerm = User::factory()->create([
             'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'default_site_id' => $this->usine->id,
         ]);
-        $userSansPerm->usines()->attach($this->usine->id, ['role' => UsineRole::STAFF->value, 'is_default' => true]);
+        $userSansPerm->sites()->attach($this->usine->id, ['role' => SiteRole::STAFF->value, 'is_default' => true]);
 
         $packing = $this->creerPacking();
 
