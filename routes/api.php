@@ -8,7 +8,8 @@ Route::prefix('v1')->group(function () {
     });
 
     // Routes backoffice (staff uniquement)
-    Route::middleware(['auth:sanctum', 'user.type:staff', 'usine.context'])->group(function () {
+    Route::middleware(['auth:sanctum', 'user.type:staff', 'site.context'])->group(function () {
+        require __DIR__.'/api/organisations.php';
         require __DIR__.'/api/dashboard.php';
         require __DIR__.'/api/roles.php';
         require __DIR__.'/api/produits.php';
@@ -18,7 +19,7 @@ Route::prefix('v1')->group(function () {
         require __DIR__.'/api/packings.php';
         require __DIR__.'/api/parametres.php';
         require __DIR__.'/api/notifications.php';
-        require __DIR__.'/api/usines.php';
+        require __DIR__.'/api/sites.php';
         require __DIR__.'/api/proprietaires.php';
         require __DIR__.'/api/livreurs.php';
         require __DIR__.'/api/vehicules.php';

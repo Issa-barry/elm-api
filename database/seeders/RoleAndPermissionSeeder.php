@@ -35,9 +35,11 @@ class RoleAndPermissionSeeder extends Seeder
             'factures-livraisons'   => ['create', 'read'],
             'encaissements'         => ['create', 'read'],
             'commissions'           => ['create', 'read', 'verser'],
-            'usines'                => ['create', 'read', 'update', 'delete'],
+            'sites'                 => ['create', 'read', 'update', 'delete'],
             // Module ventes
             'commandes'             => ['create', 'read', 'update', 'delete'],
+            // Module organisation (super_admin only — gated by role middleware sur les routes)
+            'organisations'         => ['create', 'read', 'update', 'delete'],
         ];
 
         // Creer toutes les permissions
@@ -47,9 +49,19 @@ class RoleAndPermissionSeeder extends Seeder
             }
         }
 
-        // ADMIN : toutes les permissions
-        $admin = Role::firstOrCreate(['name' => 'admin']);
-        $admin->syncPermissions(Permission::all());
+        // ADMIN_ENTREPRISE : toutes les permissions sauf création/suppression d'utilisateurs
+        // (ne peut pas créer, supprimer ni archiver des utilisateurs)
+        $admin = Role::firstOrCreate(['name' => 'admin_entreprise']);
+        $adminPermissions = Permission::whereNotIn('name', [
+            'users.create',
+            'users.delete',
+            // Les organisations sont réservées au super_admin
+            'organisations.create',
+            'organisations.read',
+            'organisations.update',
+            'organisations.delete',
+        ])->get();
+        $admin->syncPermissions($adminPermissions);
 
         // MANAGER : CRUD opérationnel + lecture users/parametres
         $manager = Role::firstOrCreate(['name' => 'manager']);
@@ -68,7 +80,7 @@ class RoleAndPermissionSeeder extends Seeder
 
         $managerPermissions[] = 'users.read';
         $managerPermissions[] = 'parametres.read';
-        $managerPermissions[] = 'usines.read';
+        $managerPermissions[] = 'sites.read';
 
         $manager->syncPermissions($managerPermissions);
 
@@ -121,5 +133,9 @@ class RoleAndPermissionSeeder extends Seeder
             'vehicules.create', // one-shot
             'encaissements.read',
         ]);
+
+        // SUPER_ADMIN : toutes les permissions sans restriction
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin->syncPermissions(Permission::all());
     }
 }

@@ -14,7 +14,10 @@ class RoleIndexController extends Controller
     public function __invoke()
     {
         try {
-            $roles = Role::with('permissions')->get();
+            $roles = Role::with('permissions')
+                ->orderByRaw("CASE WHEN name = 'super_admin' THEN 0 ELSE 1 END")
+                ->orderBy('name')
+                ->get();
 
             $modules = Permission::all()
                 ->groupBy(fn($p) => explode('.', $p->name)[0])

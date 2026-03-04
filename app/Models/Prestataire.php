@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PrestataireType;
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Prestataire extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     public const TYPE_MACHINISTE = PrestataireType::MACHINISTE->value;
     public const TYPE_MECANICIEN = PrestataireType::MECANICIEN->value;
@@ -23,7 +23,7 @@ class Prestataire extends Model
     public const TYPES = PrestataireType::LABELS;
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'nom',
         'prenom',
         'raison_sociale',
@@ -260,9 +260,9 @@ class Prestataire extends Model
         return $this->hasMany(Packing::class);
     }
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     public function isPersonneMorale(): bool

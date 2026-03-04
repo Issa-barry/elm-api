@@ -5,14 +5,15 @@ namespace Tests\Feature\Vente;
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
 use App\Enums\StatutFactureVente;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Models\CommandeVente;
 use App\Models\FactureVente;
 use App\Models\Livreur;
 use App\Models\Produit;
 use App\Models\Proprietaire;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
+use App\Models\Stock;
 use App\Models\Vehicule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +26,7 @@ class CommandeVenteTest extends TestCase
     use RefreshDatabase;
 
     private User    $staff;
-    private Usine   $usine;
+    private Site    $usine;
     private int     $vehiculeId;
     private Produit $produitFabricable;
 
@@ -41,18 +42,18 @@ class CommandeVenteTest extends TestCase
             Permission::findOrCreate($p, 'web');
         }
 
-        $this->usine = Usine::create([
+        $this->usine = Site::create([
             'nom'    => 'Usine Commandes Test',
             'code'   => 'CMD-TEST',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
             'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'default_site_id' => $this->usine->id,
         ]);
-        $this->staff->usines()->attach($this->usine->id, ['role' => 'manager', 'is_default' => true]);
+        $this->staff->sites()->attach($this->usine->id, ['role' => 'manager', 'is_default' => true]);
         $this->staff->givePermissionTo([
             'commandes.create', 'commandes.read',
             'factures-livraisons.read',
@@ -63,7 +64,7 @@ class CommandeVenteTest extends TestCase
         $livreur      = Livreur::factory()->create();
 
         $vehicule = Vehicule::withoutGlobalScopes()->create([
-            'usine_id'                => $this->usine->id,
+            'site_id'                => $this->usine->id,
             'nom_vehicule'            => 'Camion CMD',
             'immatriculation'         => 'CMD-001',
             'type_vehicule'           => 'camion',
@@ -77,20 +78,20 @@ class CommandeVenteTest extends TestCase
 
         // Produit fabricable de test
         $this->produitFabricable = Produit::withoutGlobalScopes()->create([
-            'usine_id'   => $this->usine->id,
+            'site_id'   => $this->usine->id,
             'nom'        => 'Béton préfabriqué',
             'code'       => 'BETON-01',
             'type'       => ProduitType::FABRICABLE->value,
             'statut'     => ProduitStatut::ACTIF->value,
             'prix_usine' => 5000,
             'prix_vente' => 8000,
-            'qte_stock'  => 500,
         ]);
+        Stock::create(['produit_id' => $this->produitFabricable->id, 'site_id' => $this->usine->id, 'qte_stock' => 500]);
     }
 
     private function header(): array
     {
-        return ['X-Usine-Id' => (string) $this->usine->id];
+        return ['X-Site-Id' => (string) $this->usine->id];
     }
 
     private function commandePayload(array $overrides = []): array
@@ -119,7 +120,7 @@ class CommandeVenteTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.vehicule_id', $this->vehiculeId);
 
-        $this->assertStringStartsWith('CMD-VNT-', $response->json('data.reference'));
+        $this->assertStringStartsWith('VNT-', $response->json('data.reference'));
 
         // La facture est automatiquement créée
         $factureData = $response->json('data.facture');
@@ -166,15 +167,15 @@ class CommandeVenteTest extends TestCase
 
         // Deuxième produit fabricable
         $produit2 = Produit::withoutGlobalScopes()->create([
-            'usine_id'   => $this->usine->id,
+            'site_id'   => $this->usine->id,
             'nom'        => 'Brique standard',
             'code'       => 'BRIQUE-01',
             'type'       => ProduitType::FABRICABLE->value,
             'statut'     => ProduitStatut::ACTIF->value,
             'prix_usine' => 200,
             'prix_vente' => 300,
-            'qte_stock'  => 1000,
         ]);
+        Stock::create(['produit_id' => $produit2->id, 'site_id' => $this->usine->id, 'qte_stock' => 1000]);
 
         // Ligne 1 : 10 × 8000 = 80 000 ; Ligne 2 : 50 × 300 = 15 000 ; total = 95 000
         $response = $this->withHeaders($this->header())
@@ -198,7 +199,7 @@ class CommandeVenteTest extends TestCase
         Sanctum::actingAs($this->staff);
 
         $produitMateriel = Produit::withoutGlobalScopes()->create([
-            'usine_id'   => $this->usine->id,
+            'site_id'   => $this->usine->id,
             'nom'        => 'Pelle',
             'code'       => 'PELLE-01',
             'type'       => ProduitType::MATERIEL->value,

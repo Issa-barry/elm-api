@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Parametre;
 use App\Models\Produit;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Support\Facades\DB;
 
 class ProduitStatisticsController extends Controller
@@ -21,46 +21,46 @@ class ProduitStatisticsController extends Controller
     {
         try {
             $seuilStockFaible = Parametre::getSeuilStockFaible();
-            $usineId          = app(UsineContext::class)->getCurrentUsineId();
+            $siteId          = app(SiteContext::class)->getCurrentSiteId();
 
             $stats = [
                 'total_produits'      => Produit::count(),
-                'produits_en_stock'   => Produit::where(function ($q) use ($usineId) {
+                'produits_en_stock'   => Produit::where(function ($q) use ($siteId) {
                     $q->where('type', ProduitType::SERVICE)
                       ->orWhereHas('stocks', fn ($sq) =>
-                          $sq->where('usine_id', $usineId)->where('qte_stock', '>', 0)
+                          $sq->where('site_id', $siteId)->where('qte_stock', '>', 0)
                       );
                 })->count(),
                 'produits_en_rupture' => Produit::where('type', '!=', ProduitType::SERVICE)
                     ->whereHas('stocks', fn ($sq) =>
-                        $sq->where('usine_id', $usineId)->where('qte_stock', '<=', 0)
+                        $sq->where('site_id', $siteId)->where('qte_stock', '<=', 0)
                     )->count(),
                 'seuil_stock_faible'  => $seuilStockFaible,
                 'produits_stock_faible' => Produit::where('type', '!=', ProduitType::SERVICE)
-                    ->whereHas('stocks', function ($sq) use ($usineId, $seuilStockFaible) {
-                        $sq->where('usine_id', $usineId)
+                    ->whereHas('stocks', function ($sq) use ($siteId, $seuilStockFaible) {
+                        $sq->where('site_id', $siteId)
                            ->where('qte_stock', '>', 0)
                            ->whereRaw('COALESCE(seuil_alerte_stock, ?) > 0', [$seuilStockFaible])
                            ->whereRaw('qte_stock <= COALESCE(seuil_alerte_stock, ?)', [$seuilStockFaible]);
                     })->count(),
                 'valeur_stock_total'  => DB::table('produits')
-                    ->join('stocks', function ($join) use ($usineId) {
+                    ->join('stocks', function ($join) use ($siteId) {
                         $join->on('stocks.produit_id', '=', 'produits.id')
-                             ->where('stocks.usine_id', $usineId);
+                             ->where('stocks.site_id', $siteId);
                     })
                     ->whereNull('produits.deleted_at')
                     ->sum(DB::raw('produits.prix_vente * stocks.qte_stock')),
                 'valeur_achat_total'  => DB::table('produits')
-                    ->join('stocks', function ($join) use ($usineId) {
+                    ->join('stocks', function ($join) use ($siteId) {
                         $join->on('stocks.produit_id', '=', 'produits.id')
-                             ->where('stocks.usine_id', $usineId);
+                             ->where('stocks.site_id', $siteId);
                     })
                     ->whereNull('produits.deleted_at')
                     ->sum(DB::raw('produits.prix_achat * stocks.qte_stock')),
                 'valeur_usine_total'  => DB::table('produits')
-                    ->join('stocks', function ($join) use ($usineId) {
+                    ->join('stocks', function ($join) use ($siteId) {
                         $join->on('stocks.produit_id', '=', 'produits.id')
-                             ->where('stocks.usine_id', $usineId);
+                             ->where('stocks.site_id', $siteId);
                     })
                     ->whereNull('produits.deleted_at')
                     ->sum(DB::raw('produits.prix_usine * stocks.qte_stock')),
@@ -69,7 +69,7 @@ class ProduitStatisticsController extends Controller
                 'produit_plus_cher'   => Produit::orderBy('prix_vente', 'desc')->first(),
                 'produit_moins_cher'  => Produit::orderBy('prix_vente', 'asc')->first(),
                 'stock_total'         => DB::table('stocks')
-                    ->where('usine_id', $usineId)
+                    ->where('site_id', $siteId)
                     ->sum('qte_stock'),
                 'types'               => Produit::select('type', DB::raw('count(*) as count'))
                     ->whereNotNull('type')

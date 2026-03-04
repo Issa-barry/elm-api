@@ -21,7 +21,7 @@ use App\Http\Controllers\Role\UserRolesController;
 |
 */
 
-Route::middleware('role:admin')->group(function () {
+Route::middleware('role:admin_entreprise|super_admin')->group(function () {
     // Rôles CRUD
     Route::prefix('roles')->group(function () {
         Route::get('/', RoleIndexController::class);

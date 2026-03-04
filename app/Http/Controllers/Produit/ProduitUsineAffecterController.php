@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\AffecterProduitUsineRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 use App\Models\Stock;
 use Illuminate\Support\Facades\DB;
 
@@ -22,17 +22,17 @@ class ProduitUsineAffecterController extends Controller
     public function __invoke(AffecterProduitUsineRequest $request, int $id)
     {
         try {
-            $produit = Produit::withoutUsineScope()->find($id);
+            $produit = Produit::withoutSiteScope()->find($id);
 
             if (!$produit) {
                 return $this->notFoundResponse('Produit non trouvé');
             }
 
             $data    = $request->validated();
-            $usineId = (int) $data['usine_id'];
+            $siteId = (int) $data['site_id'];
 
             // Vérifier si l'affectation existe déjà
-            if (ProduitUsine::where('produit_id', $id)->where('usine_id', $usineId)->exists()) {
+            if (ProduitSite::where('produit_id', $id)->where('site_id', $siteId)->exists()) {
                 return $this->errorResponse(
                     'Ce produit est déjà affecté à cette usine.',
                     null,
@@ -40,10 +40,10 @@ class ProduitUsineAffecterController extends Controller
                 );
             }
 
-            return DB::transaction(function () use ($produit, $usineId, $data) {
-                $config = ProduitUsine::create([
+            return DB::transaction(function () use ($produit, $siteId, $data) {
+                $config = ProduitSite::create([
                     'produit_id' => $produit->id,
-                    'usine_id'   => $usineId,
+                    'site_id'   => $siteId,
                     'is_active'  => $data['is_active']  ?? false,
                     'prix_usine' => $data['prix_usine'] ?? null,
                     'prix_achat' => $data['prix_achat'] ?? null,
@@ -55,13 +55,13 @@ class ProduitUsineAffecterController extends Controller
                 // Créer une entrée stock si le produit est stockable
                 if ($produit->type !== ProduitType::SERVICE) {
                     Stock::firstOrCreate(
-                        ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                        ['produit_id' => $produit->id, 'site_id' => $siteId],
                         ['qte_stock' => 0]
                     );
                 }
 
                 return $this->createdResponse(
-                    $config->load('usine:id,nom,code'),
+                    $config->load('site:id,nom,code'),
                     'Produit affecté à l\'usine avec succès'
                 );
             });

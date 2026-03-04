@@ -16,7 +16,7 @@ class KycValidationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('admin_entreprise', 'web');
     }
     /**
      * Données de base valides (hors KYC) pour StoreUserRequest.
@@ -28,7 +28,7 @@ class KycValidationTest extends TestCase
             'prenom'          => 'Mamadou',
             'phone'           => '+224620000001',
             'type'            => 'staff',
-            'role'            => 'admin',
+            'role'            => 'admin_entreprise',
             'pays'            => 'Guinée',
             'code_pays'       => 'GN',
             'code_phone_pays' => '+224',

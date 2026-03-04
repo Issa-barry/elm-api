@@ -7,10 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\UpdateProduitRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 use App\Models\Stock;
-use App\Models\Usine;
-use App\Services\UsineContext;
+use App\Models\Site;
+use App\Services\SiteContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +36,7 @@ class ProduitUpdateController extends Controller
 
             if ($isGlobalChange || ($produit->is_global && $hasGlobalFields)) {
                 $user = Auth::user();
-                if (!$user || !$user->hasAnyRole(['admin', 'manager'])) {
+                if (!$user || !$user->hasAnyRole(['admin_entreprise', 'manager'])) {
                     return $this->errorResponse(
                         'Seuls les administrateurs peuvent modifier les données globales d\'un produit.',
                         null,
@@ -78,18 +78,18 @@ class ProduitUpdateController extends Controller
 
                     if ($nouvelEtat) {
                         // local → global : libérer usine_id, propager aux usines
-                        $data['usine_id'] = null;
+                        $data['site_id'] = null;
                         $produit->update($data);
                         $this->propagerVersToutes($produit);
                     } else {
                         // global → local : rattacher à l'usine courante
-                        $usineId = app(UsineContext::class)->getCurrentUsineId();
-                        if (!$usineId) {
+                        $siteId = app(SiteContext::class)->getCurrentSiteId();
+                        if (!$siteId) {
                             throw new \RuntimeException(
-                                'Impossible de rendre un produit local sans usine courante (X-Usine-Id manquant).'
+                                'Impossible de rendre un produit local sans usine courante (X-Site-Id manquant).'
                             );
                         }
-                        $data['usine_id'] = $usineId;
+                        $data['site_id'] = $siteId;
                         $produit->update($data);
                     }
                 } elseif (!empty($data)) {
@@ -99,10 +99,10 @@ class ProduitUpdateController extends Controller
                 // ── Mise à jour des prix locaux dans produit_usines ──────────────
                 // Toute modification de prix est locale à l'usine courante.
                 if (!empty($localPrix)) {
-                    $usineId = app(UsineContext::class)->getCurrentUsineId();
-                    if ($usineId) {
-                        $produitUsine = ProduitUsine::firstOrCreate(
-                            ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                    $siteId = app(SiteContext::class)->getCurrentSiteId();
+                    if ($siteId) {
+                        $produitUsine = ProduitSite::firstOrCreate(
+                            ['produit_id' => $produit->id, 'site_id' => $siteId],
                             ['is_active' => false]
                         );
                         $produitUsine->update($localPrix);
@@ -111,10 +111,10 @@ class ProduitUpdateController extends Controller
 
                 // ── Mise à jour du stock de l'usine courante dans stocks ─────────
                 if ($produit->type !== ProduitType::SERVICE && ($qteStock !== null || $stockSeuil !== null)) {
-                    $usineId = app(UsineContext::class)->getCurrentUsineId();
-                    if ($usineId) {
+                    $siteId = app(SiteContext::class)->getCurrentSiteId();
+                    if ($siteId) {
                         $stock = Stock::firstOrCreate(
-                            ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                            ['produit_id' => $produit->id, 'site_id' => $siteId],
                             ['qte_stock' => 0, 'seuil_alerte_stock' => null]
                         );
 
@@ -128,7 +128,7 @@ class ProduitUpdateController extends Controller
                     }
                 }
 
-                $produit->load(['creator:id,nom,prenom', 'updater:id,nom,prenom', 'stockCourant', 'produitUsineCourant']);
+                $produit->load(['creator:id,nom,prenom', 'updater:id,nom,prenom', 'stockCourant', 'produitSiteCourant']);
 
                 return $this->successResponse($produit, 'Produit mis à jour avec succès');
             });
@@ -144,16 +144,16 @@ class ProduitUpdateController extends Controller
      */
     private function propagerVersToutes(Produit $produit): void
     {
-        Usine::withoutGlobalScopes()->get()
-            ->each(function (Usine $usine) use ($produit) {
-                ProduitUsine::firstOrCreate(
-                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+        Site::withoutGlobalScopes()->get()
+            ->each(function (Site $site) use ($produit) {
+                ProduitSite::firstOrCreate(
+                    ['produit_id' => $produit->id, 'site_id' => $site->id],
                     ['is_active' => false]
                 );
 
                 if ($produit->type !== ProduitType::SERVICE) {
                     Stock::firstOrCreate(
-                        ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                        ['produit_id' => $produit->id, 'site_id' => $site->id],
                         ['qte_stock' => 0]
                     );
                 }

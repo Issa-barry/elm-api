@@ -4,7 +4,7 @@ namespace App\Http\Requests\Prestataire;
 
 use App\Enums\PrestataireType;
 use App\Models\Prestataire;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -35,15 +35,15 @@ class StorePrestataireRequest extends FormRequest
 
     public function rules(): array
     {
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
         // unique scopé par usine : un même numéro peut exister dans deux usines différentes
-        $phoneUnique = $usineId
-            ? Rule::unique('prestataires', 'phone')->where('usine_id', $usineId)
+        $phoneUnique = $siteId
+            ? Rule::unique('prestataires', 'phone')->where('site_id', $siteId)
             : Rule::unique('prestataires', 'phone');
 
-        $emailUnique = $usineId
-            ? Rule::unique('prestataires', 'email')->where('usine_id', $usineId)
+        $emailUnique = $siteId
+            ? Rule::unique('prestataires', 'email')->where('site_id', $siteId)
             : Rule::unique('prestataires', 'email');
 
         return [

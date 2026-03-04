@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,10 +11,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Proprietaire extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'nom',
         'prenom',
         'phone',
@@ -71,9 +71,9 @@ class Proprietaire extends Model
 
     // ── Relations ─────────────────────────────────────────────────────────
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     public function vehicules(): HasMany

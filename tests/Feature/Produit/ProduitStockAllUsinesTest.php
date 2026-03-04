@@ -4,13 +4,13 @@ namespace Tests\Feature\Produit;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineRole;
-use App\Enums\UsineType;
+use App\Enums\SiteRole;
+use App\Enums\SiteType;
 use App\Models\Produit;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -18,22 +18,22 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * Tests de la vue consolidée multi-usines via X-Usine-Id: all.
+ * Tests de la vue consolidée multi-usines via X-Site-Id: all.
  *
  * Couvre :
  *  - Usine précise → qte_stock = stock de cette usine uniquement
- *  - X-Usine-Id: all → qte_stock = SUM sur toutes les usines
+ *  - X-Site-Id: all → qte_stock = SUM sur toutes les usines
  *  - Filtre in_stock en mode all-usines
- *  - Utilisateur non-siège → 403 sur X-Usine-Id: all
- *  - Siège avec default_usine_id → all-usines avec X-Usine-Id: all
+ *  - Utilisateur non-siège → 403 sur X-Site-Id: all
+ *  - Siège avec default_site_id → all-usines avec X-Site-Id: all
  */
 class ProduitStockAllUsinesTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine $siege;
-    private Usine $usineA;
-    private Usine $usineB;
+    private Site $siege;
+    private Site $usineA;
+    private Site $usineB;
     private User  $siegeUser;
     private User  $staffUser;
 
@@ -44,47 +44,47 @@ class ProduitStockAllUsinesTest extends TestCase
 
         Permission::findOrCreate('produits.read', 'web');
 
-        // Usine siège
-        $this->siege = Usine::create([
+        // Site siège
+        $this->siege = Site::create([
             'nom'    => 'Siege Central',
             'code'   => 'ALLSTK-SIEGE',
-            'type'   => UsineType::SIEGE->value,
+            'type'   => SiteType::SIEGE->value,
             'statut' => 'active',
         ]);
 
-        // Deux usines de production
-        $this->usineA = Usine::create([
-            'nom'    => 'Usine All-Stock A',
+        // Deux sites de production
+        $this->usineA = Site::create([
+            'nom'    => 'Site All-Stock A',
             'code'   => 'ALLSTK-A',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
-        $this->usineB = Usine::create([
-            'nom'    => 'Usine All-Stock B',
+        $this->usineB = Site::create([
+            'nom'    => 'Site All-Stock B',
             'code'   => 'ALLSTK-B',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         // Utilisateur siège (affecté au siège avec rôle owner_siege)
         $this->siegeUser = User::factory()->create([
-            'type'             => 'staff',
-            'default_usine_id' => $this->usineA->id,   // default pointe sur A, pas siège
+            'type'            => 'staff',
+            'default_site_id' => $this->usineA->id,   // default pointe sur A, pas siège
         ]);
-        $this->siegeUser->usines()->attach($this->siege->id, [
-            'role'       => UsineRole::OWNER_SIEGE->value,
+        $this->siegeUser->sites()->attach($this->siege->id, [
+            'role'       => SiteRole::OWNER_SIEGE->value,
             'is_default' => false,
         ]);
         $this->siegeUser->givePermissionTo('produits.read');
 
-        // Utilisateur staff ordinaire (uniquement affecté à l'usine A)
+        // Utilisateur staff ordinaire (uniquement affecté au site A)
         $this->staffUser = User::factory()->create([
-            'type'             => 'staff',
-            'default_usine_id' => $this->usineA->id,
+            'type'            => 'staff',
+            'default_site_id' => $this->usineA->id,
         ]);
-        $this->staffUser->usines()->attach($this->usineA->id, [
-            'role'       => UsineRole::STAFF->value,
+        $this->staffUser->sites()->attach($this->usineA->id, [
+            'role'       => SiteRole::STAFF->value,
             'is_default' => true,
         ]);
         $this->staffUser->givePermissionTo('produits.read');
@@ -94,12 +94,12 @@ class ProduitStockAllUsinesTest extends TestCase
     // Helpers
     // ──────────────────────────────────────────────────────────────────────
 
-    private function creerProduit(string $suffix, Usine $usine): Produit
+    private function creerProduit(string $suffix, Site $usine): Produit
     {
-        app(UsineContext::class)->setCurrentUsineId($usine->id);
+        app(SiteContext::class)->setCurrentSiteId($usine->id);
 
         return Produit::withoutGlobalScopes()->create([
-            'usine_id'    => $usine->id,
+            'site_id'    => $usine->id,
             'nom'         => "Produit {$suffix}",
             'code'        => "ALLSTK-{$suffix}",
             'type'        => ProduitType::MATERIEL->value,
@@ -112,10 +112,10 @@ class ProduitStockAllUsinesTest extends TestCase
 
     private function creerProduitGlobal(string $suffix): Produit
     {
-        app(UsineContext::class)->setCurrentUsineId($this->usineA->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usineA->id);
 
         return Produit::withoutGlobalScopes()->create([
-            'usine_id'    => null,
+            'site_id'    => null,
             'nom'         => "Produit Global {$suffix}",
             'code'        => "ALLSTK-G-{$suffix}",
             'type'        => ProduitType::MATERIEL->value,
@@ -126,10 +126,10 @@ class ProduitStockAllUsinesTest extends TestCase
         ]);
     }
 
-    private function setStock(Produit $produit, Usine $usine, int $qte): Stock
+    private function setStock(Produit $produit, Site $usine, int $qte): Stock
     {
         return Stock::updateOrCreate(
-            ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+            ['produit_id' => $produit->id, 'site_id' => $usine->id],
             ['qte_stock' => $qte, 'seuil_alerte_stock' => 5]
         );
     }
@@ -148,7 +148,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         $response = $this->getJson(
             "/api/v1/produits/{$produit->id}",
-            ['X-Usine-Id' => (string) $this->usineA->id]
+            ['X-Site-Id' => (string) $this->usineA->id]
         );
 
         $response->assertOk();
@@ -165,7 +165,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         $response = $this->getJson(
             "/api/v1/produits/{$produit->id}",
-            ['X-Usine-Id' => (string) $this->usineB->id]
+            ['X-Site-Id' => (string) $this->usineB->id]
         );
 
         $response->assertOk();
@@ -173,7 +173,7 @@ class ProduitStockAllUsinesTest extends TestCase
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // Vue consolidée X-Usine-Id: all
+    // Vue consolidée X-Site-Id: all
     // ──────────────────────────────────────────────────────────────────────
 
     public function test_vue_all_retourne_somme_des_stocks(): void
@@ -186,7 +186,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         $response = $this->getJson(
             "/api/v1/produits/{$produit->id}",
-            ['X-Usine-Id' => 'all']
+            ['X-Site-Id' => 'all']
         );
 
         $response->assertOk();
@@ -205,7 +205,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         Sanctum::actingAs($this->siegeUser);
 
-        $response = $this->getJson('/api/v1/produits', ['X-Usine-Id' => 'all']);
+        $response = $this->getJson('/api/v1/produits', ['X-Site-Id' => 'all']);
 
         $response->assertOk();
 
@@ -227,7 +227,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         Sanctum::actingAs($this->siegeUser);
 
-        $response = $this->getJson('/api/v1/produits?in_stock=1', ['X-Usine-Id' => 'all']);
+        $response = $this->getJson('/api/v1/produits?in_stock=1', ['X-Site-Id' => 'all']);
 
         $response->assertOk();
         $ids = collect($response->json('data'))->pluck('id')->all();
@@ -242,7 +242,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         Sanctum::actingAs($this->siegeUser);
 
-        $response = $this->getJson('/api/v1/produits?in_stock=0', ['X-Usine-Id' => 'all']);
+        $response = $this->getJson('/api/v1/produits?in_stock=0', ['X-Site-Id' => 'all']);
 
         $response->assertOk();
         $ids = collect($response->json('data'))->pluck('id')->all();
@@ -257,17 +257,17 @@ class ProduitStockAllUsinesTest extends TestCase
     {
         Sanctum::actingAs($this->staffUser);
 
-        $this->getJson('/api/v1/produits', ['X-Usine-Id' => 'all'])
+        $this->getJson('/api/v1/produits', ['X-Site-Id' => 'all'])
             ->assertForbidden();
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // Siège avec default_usine_id → all-usines quand X-Usine-Id: all
+    // Siège avec default_site_id → all-usines quand X-Site-Id: all
     // ──────────────────────────────────────────────────────────────────────
 
-    public function test_siege_avec_default_usine_id_obtient_vue_all_avec_header(): void
+    public function test_siege_avec_default_site_id_obtient_vue_all_avec_header(): void
     {
-        // siegeUser a default_usine_id = usineA ; sans header => vue consolidée (nouveau contrat)
+        // siegeUser a default_site_id = usineA ; sans header => vue consolidée (nouveau contrat)
         $produit = $this->creerProduitGlobal('DEF1');
         $this->setStock($produit, $this->usineA, 1000);
         $this->setStock($produit, $this->usineB, 993);
@@ -282,7 +282,7 @@ class ProduitStockAllUsinesTest extends TestCase
         // Avec header all → consolidé
         $responseAll = $this->getJson(
             "/api/v1/produits/{$produit->id}",
-            ['X-Usine-Id' => 'all']
+            ['X-Site-Id' => 'all']
         );
         $responseAll->assertOk();
         $this->assertEquals(1993, $responseAll->json('data.qte_stock'));
@@ -302,7 +302,7 @@ class ProduitStockAllUsinesTest extends TestCase
 
         Sanctum::actingAs($this->siegeUser);
 
-        $response = $this->getJson('/api/v1/produits', ['X-Usine-Id' => 'all']);
+        $response = $this->getJson('/api/v1/produits', ['X-Site-Id' => 'all']);
 
         $response->assertOk();
         $ids = collect($response->json('data'))->pluck('id')->all();

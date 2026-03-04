@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatutFactureVente;
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FactureVente extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     protected $table = 'factures_ventes';
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'vehicule_id',
         'commande_vente_id',
         'reference',
@@ -67,9 +67,9 @@ class FactureVente extends Model
         return $this->belongsTo(Vehicule::class);
     }
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     public function commande(): BelongsTo

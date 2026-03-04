@@ -3,18 +3,18 @@
 namespace App\Models;
 
 use App\Enums\StatutVersementCommission;
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VersementCommission extends Model
 {
-    use HasUsineScope;
+    use HasSiteScope;
 
     protected $table = 'versements_commission';
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'commission_vente_id',
         'beneficiaire_type',
         'beneficiaire_id',

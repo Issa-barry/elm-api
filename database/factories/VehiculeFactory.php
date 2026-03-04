@@ -3,10 +3,10 @@
 namespace Database\Factories;
 
 use App\Enums\TypeVehicule;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Models\Livreur;
 use App\Models\Proprietaire;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\Vehicule;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,9 +20,9 @@ class VehiculeFactory extends Factory
     public function definition(): array
     {
         return [
-            'usine_id'                 => fn () => Usine::withoutGlobalScopes()->firstOrCreate(
+            'site_id'                  => fn () => Site::withoutGlobalScopes()->firstOrCreate(
                 ['code' => 'TEST-DEFAULT'],
-                ['nom' => 'Usine Test Default', 'type' => UsineType::USINE->value, 'statut' => 'active']
+                ['nom' => 'Site Test Default', 'type' => SiteType::USINE->value, 'statut' => 'active']
             )->id,
             'nom_vehicule'             => fake()->words(2, true),
             'immatriculation'          => strtoupper(fake()->unique()->bothify('??-####-?')),

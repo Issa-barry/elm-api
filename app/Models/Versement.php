@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class Versement extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     /* =========================
        MODES DE PAIEMENT
@@ -30,7 +30,7 @@ class Versement extends Model
     ];
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'reference',
         'packing_id',
         'montant',

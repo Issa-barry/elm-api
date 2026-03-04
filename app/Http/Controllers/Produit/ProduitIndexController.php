@@ -7,7 +7,7 @@ use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Http\Request;
 
 class ProduitIndexController extends Controller
@@ -17,9 +17,9 @@ class ProduitIndexController extends Controller
     public function __invoke(Request $request)
     {
         try {
-            $ctx        = app(UsineContext::class);
-            $allUsines  = $ctx->isAllUsines();
-            $stockWith  = $allUsines ? 'stocks' : 'stockCourant';
+            $ctx        = app(SiteContext::class);
+            $allSites  = $ctx->isAllSites();
+            $stockWith  = $allSites ? 'stocks' : 'stockCourant';
 
             $query = Produit::nonArchives()
                 ->with(['creator:id,nom,prenom', 'updater:id,nom,prenom', $stockWith]);
@@ -43,7 +43,7 @@ class ProduitIndexController extends Controller
             // Filtre en stock (via table stocks)
             if ($request->has('in_stock')) {
                 $inStock = $request->boolean('in_stock');
-                if ($allUsines) {
+                if ($allSites) {
                     // Vue consolidée : "en stock" si au moins une usine a qte_stock > 0
                     if ($inStock) {
                         $query->where(function ($q) {

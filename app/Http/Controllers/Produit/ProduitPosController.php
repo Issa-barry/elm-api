@@ -6,7 +6,7 @@ use App\Enums\ProduitType;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Http\Request;
 
 /**
@@ -25,21 +25,21 @@ class ProduitPosController extends Controller
     public function __invoke(Request $request)
     {
         try {
-            $usineId = app(UsineContext::class)->getCurrentUsineId();
+            $siteId = app(SiteContext::class)->getCurrentSiteId();
 
-            if (!$usineId) {
+            if (!$siteId) {
                 return $this->errorResponse(
-                    'Aucune usine sélectionnée. Fournissez le header X-Usine-Id.',
+                    'Aucune usine sélectionnée. Fournissez le header X-Site-Id.',
                     null,
                     400
                 );
             }
 
             $query = Produit::withoutGlobalScopes()
-                ->disponiblesPOS($usineId)
+                ->disponiblesPOS($siteId)
                 ->with([
                     'stockCourant',
-                    'produitUsineCourant',
+                    'produitSiteCourant',
                 ]);
 
             // Filtre par type
@@ -62,8 +62,8 @@ class ProduitPosController extends Controller
                 : $query->get();
 
             // Enrichir chaque produit avec ses prix effectifs locaux
-            $produits->each(function (Produit $produit) use ($usineId) {
-                $produit->setAttribute('prix_effectifs', $produit->prixEffectifDansUsine($usineId));
+            $produits->each(function (Produit $produit) use ($siteId) {
+                $produit->setAttribute('prix_effectifs', $produit->prixEffectifDansUsine($siteId));
             });
 
             return $this->successResponse($produits, 'Catalogue POS récupéré avec succès');

@@ -3,14 +3,14 @@
 namespace Tests\Feature\Packing;
 
 use App\Enums\PackingStatut;
-use App\Enums\UsineRole;
-use App\Enums\UsineType;
+use App\Enums\SiteRole;
+use App\Enums\SiteType;
 use App\Jobs\SendPackingReportJob;
 use App\Models\Packing;
 use App\Models\Prestataire;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -27,7 +27,7 @@ class PackingReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine       $usine;
+    private Site        $usine;
     private User        $staff;
     private Prestataire $prestataire;
 
@@ -37,29 +37,29 @@ class PackingReportTest extends TestCase
 
         Permission::findOrCreate('packings.read', 'web');
 
-        $this->usine = Usine::create([
-            'nom'    => 'Usine Report Test',
+        $this->usine = Site::create([
+            'nom'    => 'Site Report Test',
             'code'   => 'RPT-A',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
-            'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'type'            => 'staff',
+            'default_site_id' => $this->usine->id,
         ]);
 
-        $this->staff->usines()->attach($this->usine->id, [
-            'role'       => UsineRole::MANAGER->value,
+        $this->staff->sites()->attach($this->usine->id, [
+            'role'       => SiteRole::MANAGER->value,
             'is_default' => true,
         ]);
 
         $this->staff->givePermissionTo('packings.read');
 
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $this->prestataire = Prestataire::create([
-            'usine_id'        => $this->usine->id,
+            'site_id'        => $this->usine->id,
             'nom'             => 'BARRY',
             'prenom'          => 'Ibrahima',
             'phone'           => '621999001',
@@ -76,14 +76,14 @@ class PackingReportTest extends TestCase
     public function test_rapport_json_retourne_structure_correcte(): void
     {
         Packing::factory()->count(3)->create([
-            'usine_id'       => $this->usine->id,
+            'site_id'       => $this->usine->id,
             'prestataire_id' => $this->prestataire->id,
             'statut'         => PackingStatut::IMPAYEE->value,
         ]);
 
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/packings/reports');
 
         $response->assertOk()
@@ -101,17 +101,17 @@ class PackingReportTest extends TestCase
     public function test_rapport_json_filtre_par_statut(): void
     {
         Packing::factory()->create([
-            'usine_id' => $this->usine->id,
+            'site_id' => $this->usine->id,
             'statut'   => PackingStatut::IMPAYEE->value,
         ]);
         Packing::factory()->create([
-            'usine_id' => $this->usine->id,
+            'site_id' => $this->usine->id,
             'statut'   => PackingStatut::PAYEE->value,
         ]);
 
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/packings/reports?statut=payee');
 
         $response->assertOk()
@@ -121,17 +121,17 @@ class PackingReportTest extends TestCase
     public function test_rapport_json_filtre_par_date(): void
     {
         Packing::factory()->create([
-            'usine_id' => $this->usine->id,
+            'site_id' => $this->usine->id,
             'date'     => '2026-01-10',
         ]);
         Packing::factory()->create([
-            'usine_id' => $this->usine->id,
+            'site_id' => $this->usine->id,
             'date'     => '2026-03-01',
         ]);
 
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/packings/reports?date_from=2026-03-01&date_to=2026-03-31');
 
         $response->assertOk()
@@ -142,7 +142,7 @@ class PackingReportTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/packings/reports?date_from=2026-03-31&date_to=2026-01-01');
 
         $response->assertStatus(422);
@@ -158,11 +158,11 @@ class PackingReportTest extends TestCase
             $this->markTestSkipped('barryvdh/laravel-dompdf non installé. Lancer : composer require barryvdh/laravel-dompdf');
         }
 
-        Packing::factory()->create(['usine_id' => $this->usine->id]);
+        Packing::factory()->create(['site_id' => $this->usine->id]);
 
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->get('/api/v1/packings/reports?format=pdf');
 
         $response->assertOk()
@@ -179,7 +179,7 @@ class PackingReportTest extends TestCase
 
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->postJson('/api/v1/packings/reports/email', [
                 'email'    => 'rapport@example.com',
                 'statut'   => 'payee',
@@ -191,7 +191,7 @@ class PackingReportTest extends TestCase
 
         Queue::assertPushed(SendPackingReportJob::class, function ($job) {
             return $job->recipientEmail === 'rapport@example.com'
-                && $job->usineId === $this->usine->id
+                && $job->siteId === $this->usine->id
                 && ($job->filters['statut'] ?? null) === 'payee';
         });
     }
@@ -200,7 +200,7 @@ class PackingReportTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->postJson('/api/v1/packings/reports/email', [
                 'email' => 'pas-un-email',
             ]);
@@ -213,7 +213,7 @@ class PackingReportTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->postJson('/api/v1/packings/reports/email', []);
 
         $response->assertStatus(422);
@@ -225,22 +225,22 @@ class PackingReportTest extends TestCase
 
     public function test_rapport_nexpose_pas_les_packings_dune_autre_usine(): void
     {
-        $autreUsine = Usine::create([
-            'nom'    => 'Autre Usine',
+        $autreUsine = Site::create([
+            'nom'    => 'Autre Site',
             'code'   => 'RPT-B',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         // 2 packings dans l'autre usine
-        Packing::factory()->count(2)->create(['usine_id' => $autreUsine->id]);
+        Packing::factory()->count(2)->create(['site_id' => $autreUsine->id]);
 
         // 1 seul packing dans notre usine
-        Packing::factory()->create(['usine_id' => $this->usine->id]);
+        Packing::factory()->create(['site_id' => $this->usine->id]);
 
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/packings/reports');
 
         $response->assertOk()
@@ -255,12 +255,12 @@ class PackingReportTest extends TestCase
     {
         $userSansPerm = User::factory()->create([
             'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'default_site_id' => $this->usine->id,
         ]);
 
         Sanctum::actingAs($userSansPerm);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->getJson('/api/v1/packings/reports');
 
         $response->assertStatus(403);
@@ -272,12 +272,12 @@ class PackingReportTest extends TestCase
 
         $userSansPerm = User::factory()->create([
             'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'default_site_id' => $this->usine->id,
         ]);
 
         Sanctum::actingAs($userSansPerm);
 
-        $response = $this->withHeaders(['X-Usine-Id' => $this->usine->id])
+        $response = $this->withHeaders(['X-Site-Id' => $this->usine->id])
             ->postJson('/api/v1/packings/reports/email', ['email' => 'test@test.com']);
 
         $response->assertStatus(403);

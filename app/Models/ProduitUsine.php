@@ -13,11 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ProduitUsine extends Model
 {
-    protected $table = 'produit_usines';
+    protected $table = 'produit_sites';
 
     protected $fillable = [
         'produit_id',
-        'usine_id',
+        'site_id',
         'is_active',
         'prix_usine',
         'prix_achat',
@@ -42,9 +42,9 @@ class ProduitUsine extends Model
         return $this->belongsTo(Produit::class);
     }
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     // ── Setters ───────────────────────────────────────────────────────────

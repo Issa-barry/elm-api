@@ -4,10 +4,10 @@ namespace Database\Factories;
 
 use App\Enums\ProduitStatut;
 use App\Enums\ProduitType;
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Models\Produit;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -34,9 +34,9 @@ class ProduitFactory extends Factory
             'prix_achat'  => fake()->numberBetween(100, 10000),
             'is_critique' => false,
             'is_global'  => false,
-            'usine_id'    => fn () => Usine::withoutGlobalScopes()->firstOrCreate(
+            'site_id'    => fn () => Site::withoutGlobalScopes()->firstOrCreate(
                 ['code' => 'TEST-DEFAULT'],
-                ['nom' => 'Usine Test Default', 'type' => UsineType::USINE->value, 'statut' => 'active']
+                ['nom' => 'Site Test Default', 'type' => SiteType::USINE->value, 'statut' => 'active']
             )->id,
         ];
     }
@@ -44,9 +44,9 @@ class ProduitFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (Produit $produit) {
-            if ($produit->type !== ProduitType::SERVICE && !$produit->is_global && $produit->usine_id) {
+            if ($produit->type !== ProduitType::SERVICE && !$produit->is_global && $produit->site_id) {
                 Stock::firstOrCreate(
-                    ['produit_id' => $produit->id, 'usine_id' => $produit->usine_id],
+                    ['produit_id' => $produit->id, 'site_id' => $produit->site_id],
                     ['qte_stock' => $this->stockQte, 'seuil_alerte_stock' => $this->stockSeuil]
                 );
             }
@@ -62,7 +62,7 @@ class ProduitFactory extends Factory
     {
         return $this->afterCreating(function (Produit $produit) use ($seuil) {
             Stock::where('produit_id', $produit->id)
-                ->where('usine_id', $produit->usine_id)
+                ->where('site_id', $produit->site_id)
                 ->update(['seuil_alerte_stock' => $seuil]);
         });
     }
@@ -71,7 +71,7 @@ class ProduitFactory extends Factory
     {
         return $this->afterCreating(function (Produit $produit) use ($stock) {
             Stock::where('produit_id', $produit->id)
-                ->where('usine_id', $produit->usine_id)
+                ->where('site_id', $produit->site_id)
                 ->update(['qte_stock' => $stock]);
         });
     }

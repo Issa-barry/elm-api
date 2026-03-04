@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TypeVehicule;
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Storage;
 
 class Vehicule extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'nom_vehicule',
         'marque',
         'modele',
@@ -65,9 +65,9 @@ class Vehicule extends Model
         return $this->belongsTo(Livreur::class, 'livreur_principal_id');
     }
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
 }

@@ -16,7 +16,7 @@ class AffecterProduitUsineRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'usine_id'   => 'required|integer|exists:usines,id',
+            'site_id'   => 'required|integer|exists:sites,id',
             'is_active'  => 'nullable|boolean',
             'prix_usine' => 'nullable|integer|min:0',
             'prix_achat' => 'nullable|integer|min:0',
@@ -29,8 +29,8 @@ class AffecterProduitUsineRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'usine_id.required' => "L'identifiant de l'usine est obligatoire.",
-            'usine_id.exists'   => "L'usine spécifiée n'existe pas.",
+            'site_id.required' => "L'identifiant du site est obligatoire.",
+            'site_id.exists'   => "Le site spécifié n'existe pas.",
         ];
     }
 

@@ -52,7 +52,7 @@ class StockObserver
 
         // 7. Destinataires : staff avec rôle admin ou manager
         $destinataires = User::where('type', UserType::STAFF->value)
-            ->role(['admin', 'manager'])
+            ->role(['admin_entreprise', 'manager'])
             ->get();
 
         if ($destinataires->isEmpty()) {

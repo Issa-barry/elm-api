@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Users;
 
-use App\Enums\UsineRole;
+use App\Enums\SiteRole;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Packing;
 use App\Models\Produit;
 use App\Models\User;
-use App\Models\UserUsine;
+use App\Models\UserSite;
 use App\Models\Versement;
 use Illuminate\Support\Facades\Log;
 
@@ -37,13 +37,13 @@ class UserDestroyController extends Controller
                 );
             }
 
-            $hasSiegeRole = UserUsine::where('user_id', $user->id)
-                ->whereIn('role', UsineRole::siegeRoles())
+            $hasSiegeRole = UserSite::where('user_id', $user->id)
+                ->whereIn('role', SiteRole::siegeRoles())
                 ->exists();
 
             if ($hasSiegeRole) {
-                $otherAdminExists = UserUsine::where('user_id', '!=', $user->id)
-                    ->whereIn('role', UsineRole::siegeRoles())
+                $otherAdminExists = UserSite::where('user_id', '!=', $user->id)
+                    ->whereIn('role', SiteRole::siegeRoles())
                     ->exists();
 
                 if (!$otherAdminExists) {

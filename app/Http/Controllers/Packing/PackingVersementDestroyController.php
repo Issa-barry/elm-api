@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Packing;
 
-use App\Enums\PackingStatut;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Packing;
@@ -22,14 +21,6 @@ class PackingVersementDestroyController extends Controller
 
                 if (!$packing) {
                     return $this->notFoundResponse('Packing non trouve');
-                }
-
-                if ($packing->statut === PackingStatut::PAYEE) {
-                    return $this->errorResponse(
-                        'Impossible de modifier les versements d\'un packing payé.',
-                        null,
-                        422
-                    );
                 }
 
                 $versement = Versement::where('packing_id', $id)

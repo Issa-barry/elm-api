@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Enums\Civilite;
 use App\Enums\PieceType;
-use App\Enums\UsineRole;
+use App\Enums\SiteRole;
 use App\Enums\UserType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Organisation;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -39,7 +40,8 @@ class User extends Authenticatable
         'reference',
         'type',
         'language',
-        'default_usine_id',
+        'default_site_id',
+        'organisation_id',
         'password',
         'is_active',
         'is_archived',
@@ -194,52 +196,61 @@ class User extends Authenticatable
     }
 
     /* =========================
-       RELATIONS USINES
+       RELATION ORGANISATION
        ========================= */
 
-    /** Toutes les usines auxquelles cet utilisateur est affecté */
-    public function usines(): BelongsToMany
+    /** Organisation à laquelle cet utilisateur appartient (tenant principal) */
+    public function organisation(): BelongsTo
     {
-        return $this->belongsToMany(Usine::class, 'user_usines')
-            ->withPivot(['role', 'is_default'])
-            ->withTimestamps()
-            ->using(UserUsine::class);
-    }
-
-    /** Entrées pivot user ↔ usine */
-    public function userUsines(): HasMany
-    {
-        return $this->hasMany(UserUsine::class);
-    }
-
-    /** Usine par défaut de cet utilisateur */
-    public function defaultUsine(): BelongsTo
-    {
-        return $this->belongsTo(Usine::class, 'default_usine_id');
+        return $this->belongsTo(Organisation::class);
     }
 
     /* =========================
-       ACCÈS USINE
+       RELATIONS SITES
+       ========================= */
+
+    /** Tous les sites auxquels cet utilisateur est affecté */
+    public function sites(): BelongsToMany
+    {
+        return $this->belongsToMany(Site::class, 'user_sites')
+            ->withPivot(['role', 'is_default'])
+            ->withTimestamps()
+            ->using(UserSite::class);
+    }
+
+    /** Entrées pivot user ↔ site */
+    public function userSites(): HasMany
+    {
+        return $this->hasMany(UserSite::class);
+    }
+
+    /** Site par défaut de cet utilisateur */
+    public function defaultSite(): BelongsTo
+    {
+        return $this->belongsTo(Site::class, 'default_site_id');
+    }
+
+    /* =========================
+       ACCÈS SITE
        ========================= */
 
     /**
-     * L'utilisateur a-t-il un rôle siège sur au moins une usine de type SIEGE ?
-     * Résultat mis en cache sur l'instance pour éviter les requêtes répétées.
+     * L'utilisateur a-t-il un rôle siège sur au moins un site de type SIEGE ?
      */
     public function isSiege(): bool
     {
-        return $this->usines()
-            ->where('usines.type', 'siege')
-            ->whereIn('user_usines.role', UsineRole::siegeRoles())
+        return $this->sites()
+            ->where('sites.type', 'siege')
+            ->whereIn('user_sites.role', SiteRole::siegeRoles())
             ->exists();
     }
 
     /**
-     * L'utilisateur a-t-il accès à l'usine donnée (est-il affecté) ?
+     * L'utilisateur a-t-il accès au site donné (est-il affecté) ?
      */
-    public function hasUsineAccess(int $usineId): bool
+    public function hasSiteAccess(int $siteId): bool
     {
-        return $this->usines()->where('usines.id', $usineId)->exists();
+        return $this->sites()->where('sites.id', $siteId)->exists();
     }
 
     /* =========================

@@ -2,17 +2,17 @@
 
 namespace Tests\Feature\Dashboard;
 
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Enums\UserType;
-use App\Enums\UsineRole;
+use App\Enums\SiteRole;
 use App\Models\Parametre;
 use App\Models\Prestataire;
 use App\Models\Produit;
 use App\Models\Stock;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
 use App\Models\Vehicule;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -32,7 +32,7 @@ class DashboardStatsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Usine  $usine;
+    private Site   $usine;
     private User   $staff;
 
     protected function setUp(): void
@@ -41,20 +41,20 @@ class DashboardStatsTest extends TestCase
 
         Permission::findOrCreate('prestataires.read', 'web');
 
-        $this->usine = Usine::create([
-            'nom'    => 'Usine Dashboard Test',
+        $this->usine = Site::create([
+            'nom'    => 'Site Dashboard Test',
             'code'   => 'DSH-A',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
-            'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'type'            => 'staff',
+            'default_site_id' => $this->usine->id,
         ]);
 
-        $this->staff->usines()->attach($this->usine->id, [
-            'role'       => UsineRole::MANAGER->value,
+        $this->staff->sites()->attach($this->usine->id, [
+            'role'       => SiteRole::MANAGER->value,
             'is_default' => true,
         ]);
 
@@ -68,7 +68,7 @@ class DashboardStatsTest extends TestCase
     public function test_retourne_200_avec_structure_json_correcte(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $response = $this->getJson('/api/v1/dashboard/stats');
 
@@ -107,7 +107,7 @@ class DashboardStatsTest extends TestCase
     public function test_periode_invalide_retourne_422(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $response = $this->getJson('/api/v1/dashboard/stats?period=invalid_period');
 
@@ -125,7 +125,7 @@ class DashboardStatsTest extends TestCase
     public function test_filtre_de_periode(string $period): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $response = $this->getJson("/api/v1/dashboard/stats?period={$period}");
 
@@ -154,7 +154,7 @@ class DashboardStatsTest extends TestCase
     public function test_last_x_days_utilise_le_parametre_days(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $response = $this->getJson('/api/v1/dashboard/stats?period=last_x_days&days=14');
 
@@ -172,7 +172,7 @@ class DashboardStatsTest extends TestCase
     public function test_last_x_days_sans_days_utilise_30_par_defaut(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $response = $this->getJson('/api/v1/dashboard/stats?period=last_x_days');
 
@@ -187,7 +187,7 @@ class DashboardStatsTest extends TestCase
     public function test_last_x_days_avec_days_zero_retourne_422(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $response = $this->getJson('/api/v1/dashboard/stats?period=last_x_days&days=0');
 
@@ -200,19 +200,19 @@ class DashboardStatsTest extends TestCase
 
     public function test_avec_contexte_usine_les_valeurs_sont_filtrees(): void
     {
-        // Second usine with its own prestataire
-        $usineB = Usine::create([
-            'nom'    => 'Usine B Dashboard',
+        // Second site with its own prestataire
+        $usineB = Site::create([
+            'nom'    => 'Site B Dashboard',
             'code'   => 'DSH-B',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         // Create prestataire in usineA (context will be set to usineA)
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         Prestataire::withoutGlobalScopes()->create([
-            'usine_id' => $this->usine->id,
+            'site_id' => $this->usine->id,
             'nom'      => 'PREST-A',
             'prenom'   => 'Test',
             'phone'    => '+224620000001',
@@ -226,7 +226,7 @@ class DashboardStatsTest extends TestCase
 
         // Create prestataire in usineB (should NOT appear in usineA context)
         Prestataire::withoutGlobalScopes()->create([
-            'usine_id' => $usineB->id,
+            'site_id' => $usineB->id,
             'nom'      => 'PREST-B',
             'prenom'   => 'Test',
             'phone'    => '+224620000002',
@@ -251,10 +251,10 @@ class DashboardStatsTest extends TestCase
     public function test_sans_contexte_usine_retourne_la_vue_globale(): void
     {
         // No usine context → count across all usines
-        app(UsineContext::class)->setCurrentUsineId(null);
+        app(SiteContext::class)->setCurrentSiteId(null);
 
         Prestataire::withoutGlobalScopes()->create([
-            'usine_id' => $this->usine->id,
+            'site_id' => $this->usine->id,
             'nom'      => 'GLOBAL-PREST',
             'prenom'   => 'Test',
             'phone'    => '+224620000010',
@@ -283,7 +283,7 @@ class DashboardStatsTest extends TestCase
     public function test_delta_est_null_quand_periode_precedente_est_vide(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         // Empty DB → previous period count = 0 → delta_pct must be null, not a division error
         $response = $this->getJson('/api/v1/dashboard/stats?period=this_month');
@@ -303,14 +303,14 @@ class DashboardStatsTest extends TestCase
     public function test_trend_est_up_quand_periode_actuelle_superieure(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $lastMonth = Carbon::now()->subMonth()->startOfMonth()->addDays(5)->toDateTimeString();
         $thisMonth = Carbon::now()->startOfMonth()->addDays(3)->toDateTimeString();
 
         // Create 1 prestataire in previous period, then backdate created_at via DB
         $p = Prestataire::withoutGlobalScopes()->create([
-            'usine_id'        => $this->usine->id,
+            'site_id'        => $this->usine->id,
             'nom'             => 'PREST-PREV',
             'prenom'          => 'Test',
             'phone'           => '+224620000020',
@@ -326,7 +326,7 @@ class DashboardStatsTest extends TestCase
         // Create 3 prestataires in current period
         foreach (range(1, 3) as $i) {
             $p = Prestataire::withoutGlobalScopes()->create([
-                'usine_id'        => $this->usine->id,
+                'site_id'        => $this->usine->id,
                 'nom'             => "PREST-CURR-{$i}",
                 'prenom'          => 'Test',
                 'phone'           => "+22462000003{$i}",
@@ -352,14 +352,14 @@ class DashboardStatsTest extends TestCase
     public function test_trend_est_down_quand_periode_actuelle_inferieure(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         $lastMonth = Carbon::now()->subMonth()->startOfMonth()->addDays(5)->toDateTimeString();
         $thisMonth = Carbon::now()->startOfMonth()->addDays(3)->toDateTimeString();
 
         foreach (range(1, 5) as $i) {
             $p = Prestataire::withoutGlobalScopes()->create([
-                'usine_id'        => $this->usine->id,
+                'site_id'        => $this->usine->id,
                 'nom'             => "PREST-PREV-{$i}",
                 'prenom'          => 'Test',
                 'phone'           => "+22462000004{$i}",
@@ -375,7 +375,7 @@ class DashboardStatsTest extends TestCase
 
         // Only 1 prestataire this month
         $p = Prestataire::withoutGlobalScopes()->create([
-            'usine_id'        => $this->usine->id,
+            'site_id'        => $this->usine->id,
             'nom'             => 'PREST-CURR',
             'prenom'          => 'Test',
             'phone'           => '+224620000050',
@@ -404,7 +404,7 @@ class DashboardStatsTest extends TestCase
     public function test_rouleaux_stock_retourne_zero_si_pas_de_produit_configure(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         // Ensure no rouleau product is configured (cache already cleared by RefreshDatabase)
         $response = $this->getJson('/api/v1/dashboard/stats');
@@ -421,10 +421,10 @@ class DashboardStatsTest extends TestCase
     public function test_rouleaux_stock_retourne_somme_du_stock_correct(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         // Create rouleau product and set it as the configured product
-        app(UsineContext::class)->setCurrentUsineId(null); // disable scope for product creation
+        app(SiteContext::class)->setCurrentSiteId(null); // disable scope for product creation
         $produit = Produit::create([
             'nom'        => 'Rouleau Test',
             'code'       => 'DSH-ROULEAU-01',
@@ -433,14 +433,14 @@ class DashboardStatsTest extends TestCase
             'prix_achat' => 500,
             'prix_vente' => 700,
             'is_global'  => true,
-            'usine_id'   => null,
+            'site_id'   => null,
         ]);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         // Create stock for this usine
         Stock::create([
             'produit_id' => $produit->id,
-            'usine_id'   => $this->usine->id,
+            'site_id'   => $this->usine->id,
             'qte_stock'  => 42,
         ]);
 
@@ -470,7 +470,7 @@ class DashboardStatsTest extends TestCase
     public function test_utilisateurs_compte_uniquement_les_users_de_lusine_courante(): void
     {
         Sanctum::actingAs($this->staff);
-        app(UsineContext::class)->setCurrentUsineId($this->usine->id);
+        app(SiteContext::class)->setCurrentSiteId($this->usine->id);
 
         // staff user already attached to $this->usine in setUp (1 user)
         // Add another user NOT attached to this usine

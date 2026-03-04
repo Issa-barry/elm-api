@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Livraison;
 
-use App\Enums\UsineType;
+use App\Enums\SiteType;
 use App\Models\Proprietaire;
-use App\Models\Usine;
+use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -18,7 +18,7 @@ class VehiculeTest extends TestCase
     use RefreshDatabase;
 
     private User $staff;
-    private Usine $usine;
+    private Site $usine;
 
     protected function setUp(): void
     {
@@ -30,18 +30,18 @@ class VehiculeTest extends TestCase
         Permission::findOrCreate('vehicules.update', 'web');
         Permission::findOrCreate('vehicules.delete', 'web');
 
-        $this->usine = Usine::create([
+        $this->usine = Site::create([
             'nom'    => 'Usine Vehicule Test',
             'code'   => 'VEH-TEST',
-            'type'   => UsineType::USINE->value,
+            'type'   => SiteType::USINE->value,
             'statut' => 'active',
         ]);
 
         $this->staff = User::factory()->create([
             'type'             => 'staff',
-            'default_usine_id' => $this->usine->id,
+            'default_site_id' => $this->usine->id,
         ]);
-        $this->staff->usines()->attach($this->usine->id, ['role' => 'manager', 'is_default' => true]);
+        $this->staff->sites()->attach($this->usine->id, ['role' => 'manager', 'is_default' => true]);
         $this->staff->givePermissionTo(['vehicules.create', 'vehicules.read', 'vehicules.update', 'vehicules.delete']);
     }
 
@@ -64,7 +64,7 @@ class VehiculeTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
+        $response = $this->withHeader('X-Site-Id', (string) $this->usine->id)
             ->postJson('/api/v1/vehicules', $this->payload());
 
         $response->assertCreated()
@@ -84,7 +84,7 @@ class VehiculeTest extends TestCase
         $payload = $this->payload();
         unset($payload['photo']);
 
-        $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
+        $response = $this->withHeader('X-Site-Id', (string) $this->usine->id)
             ->postJson('/api/v1/vehicules', $payload);
 
         $response->assertCreated()
@@ -101,7 +101,7 @@ class VehiculeTest extends TestCase
         ]);
         unset($payload['capacite_packs']);
 
-        $response = $this->withHeader('X-Usine-Id', (string) $this->usine->id)
+        $response = $this->withHeader('X-Site-Id', (string) $this->usine->id)
             ->postJson('/api/v1/vehicules', $payload);
 
         $response->assertCreated()
@@ -113,7 +113,7 @@ class VehiculeTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $header = ['X-Usine-Id' => (string) $this->usine->id];
+        $header = ['X-Site-Id' => (string) $this->usine->id];
 
         $createResponse = $this->withHeaders($header)->postJson('/api/v1/vehicules', $this->payload());
         $createResponse->assertCreated();
@@ -133,7 +133,7 @@ class VehiculeTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $header = ['X-Usine-Id' => (string) $this->usine->id];
+        $header = ['X-Site-Id' => (string) $this->usine->id];
 
         $this->withHeaders($header)->postJson('/api/v1/vehicules', $this->payload(['immatriculation' => 'GN-0001-X']))->assertCreated();
         $this->withHeaders($header)->postJson('/api/v1/vehicules', $this->payload(['immatriculation' => 'GN-0001-X']))->assertUnprocessable();
@@ -143,7 +143,7 @@ class VehiculeTest extends TestCase
     {
         Sanctum::actingAs($this->staff);
 
-        $header = ['X-Usine-Id' => (string) $this->usine->id];
+        $header = ['X-Site-Id' => (string) $this->usine->id];
 
         $createResponse = $this->withHeaders($header)->postJson('/api/v1/vehicules', $this->payload());
         $createResponse->assertCreated();

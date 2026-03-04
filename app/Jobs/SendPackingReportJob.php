@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\PackingReportMail;
 use App\Models\Packing;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,13 +23,13 @@ class SendPackingReportJob implements ShouldQueue
     public function __construct(
         public readonly string $recipientEmail,
         public readonly array  $filters,
-        public readonly int    $usineId,
+        public readonly int    $siteId,
     ) {}
 
-    public function handle(UsineContext $usineContext): void
+    public function handle(SiteContext $siteContext): void
     {
         // Reconstituer le contexte usine dans le worker (pas de requête HTTP)
-        $usineContext->setCurrentUsineId($this->usineId);
+        $siteContext->setCurrentSiteId($this->usineId);
 
         $packings = Packing::with(['prestataire', 'versements'])
             ->when($this->filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('date', '>=', $v))

@@ -8,10 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Produit\StoreProduitRequest;
 use App\Http\Traits\ApiResponse;
 use App\Models\Produit;
-use App\Models\ProduitUsine;
+use App\Models\ProduitSite;
 use App\Models\Stock;
-use App\Models\Usine;
-use App\Services\UsineContext;
+use App\Models\Site;
+use App\Services\SiteContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -46,30 +46,30 @@ class ProduitStoreController extends Controller
                 // Tous les produits démarrent avec is_active = false dans chaque usine.
                 // Le stock initial est 0 ; il sera saisi lors de l'activation par usine.
                 if ($produit->is_global) {
-                    Usine::withoutGlobalScopes()->get()
-                        ->each(function (Usine $usine) use ($produit, $stockSeuil) {
-                            ProduitUsine::firstOrCreate(
-                                ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                    Site::withoutGlobalScopes()->get()
+                        ->each(function (Site $site) use ($produit, $stockSeuil) {
+                            ProduitSite::firstOrCreate(
+                                ['produit_id' => $produit->id, 'site_id' => $site->id],
                                 ['is_active' => false]
                             );
                             if ($produit->type !== ProduitType::SERVICE) {
                                 Stock::firstOrCreate(
-                                    ['produit_id' => $produit->id, 'usine_id' => $usine->id],
+                                    ['produit_id' => $produit->id, 'site_id' => $site->id],
                                     ['qte_stock' => 0, 'seuil_alerte_stock' => $stockSeuil]
                                 );
                             }
                         });
                 } else {
-                    $usineId = app(UsineContext::class)->getCurrentUsineId();
-                    if ($usineId) {
-                        ProduitUsine::firstOrCreate(
-                            ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                    $siteId = app(SiteContext::class)->getCurrentSiteId();
+                    if ($siteId) {
+                        ProduitSite::firstOrCreate(
+                            ['produit_id' => $produit->id, 'site_id' => $siteId],
                             ['is_active' => false]
                         );
                         if ($produit->type !== ProduitType::SERVICE) {
                             Stock::create([
                                 'produit_id'         => $produit->id,
-                                'usine_id'           => $usineId,
+                                'site_id'           => $siteId,
                                 'qte_stock'          => 0,
                                 'seuil_alerte_stock' => $stockSeuil,
                             ]);
@@ -80,10 +80,10 @@ class ProduitStoreController extends Controller
                 // ── Affectations initiales explicites (usines[]) ─────────────────
                 // is_active toujours false à la création ; les prix locaux sont acceptés.
                 foreach ($affectations as $affectation) {
-                    $usineId = (int) $affectation['usine_id'];
+                    $siteId = (int) $affectation['site_id'];
 
-                    $config = ProduitUsine::firstOrCreate(
-                        ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                    $config = ProduitSite::firstOrCreate(
+                        ['produit_id' => $produit->id, 'site_id' => $siteId],
                         ['is_active' => false]
                     );
 
@@ -98,7 +98,7 @@ class ProduitStoreController extends Controller
 
                     if ($produit->type !== ProduitType::SERVICE) {
                         Stock::firstOrCreate(
-                            ['produit_id' => $produit->id, 'usine_id' => $usineId],
+                            ['produit_id' => $produit->id, 'site_id' => $siteId],
                             ['qte_stock' => 0]
                         );
                     }
@@ -111,7 +111,7 @@ class ProduitStoreController extends Controller
                     $produit->update(['image_url' => Storage::disk('public')->url($path)]);
                 }
 
-                $produit->load(['creator:id,nom,prenom', 'stockCourant', 'produitUsineCourant']);
+                $produit->load(['creator:id,nom,prenom', 'stockCourant', 'produitSiteCourant']);
 
                 return $this->createdResponse($produit, 'Produit créé avec succès');
             });

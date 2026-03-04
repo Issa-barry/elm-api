@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Traits\HasUsineScope;
+use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CommandeVente extends Model
 {
-    use HasFactory, SoftDeletes, HasUsineScope;
+    use HasFactory, SoftDeletes, HasSiteScope;
 
     protected $table = 'commandes_ventes';
 
     protected $fillable = [
-        'usine_id',
+        'site_id',
         'vehicule_id',
         'reference',
         'total_commande',
@@ -50,9 +50,9 @@ class CommandeVente extends Model
         return $this->belongsTo(Vehicule::class);
     }
 
-    public function usine(): BelongsTo
+    public function site(): BelongsTo
     {
-        return $this->belongsTo(Usine::class);
+        return $this->belongsTo(Site::class);
     }
 
     public function lignes(): HasMany

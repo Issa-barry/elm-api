@@ -22,7 +22,7 @@ class ProduitArchiveController extends Controller
                 return $this->notFoundResponse('Produit non trouvé');
             }
 
-            if ($produit->is_global && !Auth::user()?->hasAnyRole(['admin', 'manager'])) {
+            if ($produit->is_global && !Auth::user()?->hasAnyRole(['admin_entreprise', 'manager'])) {
                 return $this->errorResponse('Seuls les administrateurs peuvent archiver un produit global.', null, 403);
             }
 

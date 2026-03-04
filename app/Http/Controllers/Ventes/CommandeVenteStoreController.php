@@ -16,7 +16,7 @@ use App\Models\Produit;
 use App\Models\Stock;
 use App\Models\VersementCommission;
 use App\Models\Vehicule;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Support\Facades\DB;
 
 class CommandeVenteStoreController extends Controller
@@ -28,7 +28,7 @@ class CommandeVenteStoreController extends Controller
         try {
             return DB::transaction(function () use ($request) {
             $validated  = $request->validated();
-            $usineId    = app(UsineContext::class)->getCurrentUsineId();
+            $siteId    = app(SiteContext::class)->getCurrentSiteId();
 
             // 1. Préparer les lignes avec snapshots de prix
             $lignesData   = [];
@@ -45,7 +45,7 @@ class CommandeVenteStoreController extends Controller
 
                 // lockForUpdate sur le stock pour les opérations concurrentes
                 $stock = Stock::where('produit_id', $produit->id)
-                    ->where('usine_id', $usineId)
+                    ->where('site_id', $siteId)
                     ->lockForUpdate()
                     ->firstOrFail();
 

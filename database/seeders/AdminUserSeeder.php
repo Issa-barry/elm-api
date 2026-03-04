@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Usine;
+use App\Models\Organisation;
+use App\Models\Site;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -10,36 +11,61 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::firstOrCreate(
-            ['phone' => '+224666177006'],
-            [
-                'nom' => 'BARRY',
-                'prenom' => 'Issa',
-                'email' => 'issabarry67@gmail.com',
-                'pays' => 'Guinee',
-                'code_pays' => 'GN',
-                'code_phone_pays' => '+224',
-                'ville' => 'Conakry',
-                'quartier' => 'Kaloum',
-                'reference' => User::generateUniqueReference(),
-                'password' => 'Jeux@2019',
-                'email_verified_at' => now(),
-            ]
-        );
+        $resolveUser = static function (string $phone, ?string $email): User {
+            $user = User::withTrashed()->where('phone', $phone)->first();
 
-        $admin->assignRole('admin');
+            if (!$user && $email) {
+                $user = User::withTrashed()->where('email', $email)->first();
+            }
 
-        // Rattacher l'admin aux deux usines
-        $siege = Usine::where('nom', 'Usine de Matoto')->first();
-        $usine = Usine::where('nom', 'Usine de kaka')->first();
+            if (!$user) {
+                $user = new User();
+            } elseif ($user->trashed()) {
+                $user->restore();
+            }
 
-        if ($siege && ! $admin->usines()->where('usines.id', $siege->id)->exists()) {
-            $admin->usines()->attach($siege->id, ['role' => 'owner_siege', 'is_default' => false]);
+            return $user;
+        };
+
+        $org   = Organisation::where('code', 'ELM-GN')->first();
+
+        $moussa = $resolveUser('+22466617700', 'sidibemsa81@gmail.com');
+        $moussa->fill([
+            'phone'           => '+224666101011',
+            'nom'             => 'SIDIBE',
+            'prenom'          => 'Moussa',
+            'email'           => 'sidibemsa81@gmail.com',
+            'pays'            => 'Guinee',
+            'code_pays'       => 'GN',
+            'code_phone_pays' => '+224',
+            'ville'           => 'Conakry',
+            'quartier'        => 'Kaloum',
+            'password'        => 'Staff@2025',
+            'email_verified_at' => now(),
+            'organisation_id' => $org?->id,
+        ]);
+        if (empty($moussa->reference)) {
+            $moussa->reference = User::generateUniqueReference();
+        }
+        $moussa->save();
+
+        $moussa->syncRoles(['admin_entreprise']);
+
+        $siege = Site::where('nom', 'Usine de Matoto')->first();
+        if ($siege) {
+            // Moussa = propriétaire siège, accès à tous les sites.
+            $moussaAffectations = [];
+            foreach (Site::query()->select(['id', 'type'])->get() as $site) {
+                $moussaAffectations[$site->id] = [
+                    'role' => $site->id === $siege->id ? 'owner_siege' : 'manager',
+                    'is_default' => $site->id === $siege->id,
+                ];
+            }
+
+            $moussa->sites()->sync($moussaAffectations);
+            $moussa->update(['default_site_id' => $siege->id]);
         }
 
-        if ($usine && ! $admin->usines()->where('usines.id', $usine->id)->exists()) {
-            $admin->usines()->attach($usine->id, ['role' => 'manager', 'is_default' => true]);
-            $admin->update(['default_usine_id' => $usine->id]);
-        }
+        // Thierno Oumar est seedé dans StaffUserSeeder (manager de Matoto).
     }
 }

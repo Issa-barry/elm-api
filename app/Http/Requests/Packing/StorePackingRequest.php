@@ -4,7 +4,7 @@ namespace App\Http\Requests\Packing;
 
 use App\Enums\PackingStatut;
 use App\Models\Parametre;
-use App\Services\UsineContext;
+use App\Services\SiteContext;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -19,11 +19,11 @@ class StorePackingRequest extends FormRequest
 
     public function rules(): array
     {
-        $usineId = app(UsineContext::class)->getCurrentUsineId();
+        $siteId = app(SiteContext::class)->getCurrentSiteId();
 
         // prestataire_id doit appartenir à la même usine (protection cross-usine)
-        $prestataireRule = $usineId
-            ? Rule::exists('prestataires', 'id')->where('usine_id', $usineId)
+        $prestataireRule = $siteId
+            ? Rule::exists('prestataires', 'id')->where('site_id', $siteId)
             : Rule::exists('prestataires', 'id');
 
         return [
@@ -81,9 +81,9 @@ class StorePackingRequest extends FormRequest
             }
 
             // Récupérer le stock pour l'usine courante
-            $usineId       = app(UsineContext::class)->getCurrentUsineId();
+            $siteId       = app(SiteContext::class)->getCurrentSiteId();
             $stock         = \App\Models\Stock::where('produit_id', $produitId)
-                ->where('usine_id', $usineId)
+                ->where('site_id', $siteId)
                 ->first();
             $qteDisponible = $stock?->qte_stock ?? 0;
 
