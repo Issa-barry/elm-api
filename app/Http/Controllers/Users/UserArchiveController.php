@@ -20,6 +20,10 @@ class UserArchiveController extends Controller
                 return $this->notFoundResponse('Utilisateur non trouvé');
             }
 
+            if ($user->hasRole('super_admin')) {
+                return $this->errorResponse('Impossible d\'archiver un super administrateur.', null, 403);
+            }
+
             if ($user->is_archived) {
                 return $this->errorResponse('Cet utilisateur est déjà archivé.', null, 422);
             }

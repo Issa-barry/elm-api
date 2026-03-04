@@ -20,6 +20,10 @@ class UserToggleStatusController extends Controller
                 return $this->notFoundResponse('Utilisateur non trouvé');
             }
 
+            if ($user->hasRole('super_admin')) {
+                return $this->errorResponse('Impossible de modifier le statut d\'un super administrateur.', null, 403);
+            }
+
             $user->update([
                 'is_active' => !$user->is_active
             ]);

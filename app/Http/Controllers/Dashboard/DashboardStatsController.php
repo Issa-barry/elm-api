@@ -9,6 +9,7 @@ use App\Models\Packing;
 use App\Models\Parametre;
 use App\Models\Prestataire;
 use App\Models\Stock;
+use App\Models\StockMouvement;
 use App\Models\User;
 use App\Models\Vehicule;
 use App\Services\SiteContext;
@@ -284,16 +285,35 @@ class DashboardStatsController extends Controller
         }
         $value = (int) $stockQuery->sum('qte_stock');
 
-        // delta_pct non calculable : l'historique du stock n'est pas persisté.
-        // Tout proxy basé sur les packings devient faux dès qu'on ajuste le stock manuellement.
-        // La sparkline reste utile (elle montre la consommation de rouleaux par période).
-        $sparkline = $this->buildSparkline(Packing::class, $from, $to);
+        // Delta basé sur les mouvements de stock enregistrés (packings + ajustements manuels).
+        // variation nette = somme des variations dans la période
+        // stock_début = stock_actuel - variation_nette
+        $mouvementQuery = StockMouvement::query()->where('produit_id', $produitRouleauId);
+        if ($siteId) {
+            $mouvementQuery->where('site_id', $siteId);
+        }
+        $variation  = (int) (clone $mouvementQuery)->whereBetween('created_at', [$from, $to])->sum('variation');
+        $stockStart = $value - $variation;
+
+        if ($stockStart > 0 && $variation !== 0) {
+            $deltaPct = round(($value - $stockStart) / $stockStart * 100, 1);
+            $trend    = match (true) {
+                $deltaPct > 0 => 'up',
+                $deltaPct < 0 => 'down',
+                default       => 'flat',
+            };
+        } else {
+            $deltaPct = null;
+            $trend    = 'flat';
+        }
+
+        $sparkline = $this->buildRouleauxSparkline($from, $to, $produitRouleauId, $siteId);
 
         return [
             'value'       => $value,
-            'delta_pct'   => null,
-            'delta_count' => 0,
-            'trend'       => 'flat',
+            'delta_pct'   => $deltaPct,
+            'delta_count' => $variation,
+            'trend'       => $trend,
             'sparkline'   => $sparkline,
         ];
     }
@@ -310,7 +330,12 @@ class DashboardStatsController extends Controller
     private function computeDelta(int $current, int $previous): array
     {
         if ($previous === 0) {
-            return [null, 'flat'];
+            // Aucune donnée dans les deux périodes → pas de comparaison possible
+            if ($current === 0) {
+                return [null, 'flat'];
+            }
+            // Nouvelle activité là où il n'y en avait pas → +100%
+            return [100.0, 'up'];
         }
 
         $deltaPct = round(($current - $previous) / $previous * 100, 1);
@@ -372,6 +397,33 @@ class DashboardStatsController extends Controller
                 ))
                 ->whereBetween('created_at', [$bucketFrom, $bucketTo])
                 ->count();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Build a 7-point sparkline from stock movements (absolute variations per bucket).
+     */
+    private function buildRouleauxSparkline(Carbon $from, Carbon $to, int $produitId, ?int $siteId): array
+    {
+        $totalSeconds = max(1, $to->timestamp - $from->timestamp);
+        $bucketSize   = intdiv($totalSeconds, 7);
+        $result       = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            $bucketFrom = $from->copy()->addSeconds($bucketSize * $i);
+            $bucketTo   = $i < 6
+                ? $from->copy()->addSeconds($bucketSize * ($i + 1) - 1)
+                : $to->copy();
+
+            $result[] = (int) abs(
+                StockMouvement::query()
+                    ->where('produit_id', $produitId)
+                    ->when($siteId, fn ($q) => $q->where('site_id', $siteId))
+                    ->whereBetween('created_at', [$bucketFrom, $bucketTo])
+                    ->sum('variation')
+            );
         }
 
         return $result;

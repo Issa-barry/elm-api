@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Enums\UserType;
 use App\Models\Parametre;
 use App\Models\Stock;
+use App\Models\StockMouvement;
 use App\Models\User;
 use App\Notifications\ProduitRuptureStockNotification;
 use Illuminate\Support\Facades\Notification;
@@ -18,6 +19,18 @@ class StockObserver
             return;
         }
 
+        $ancienStock  = (int) $stock->getOriginal('qte_stock');
+        $nouveauStock = $stock->qte_stock;
+
+        // Enregistrer le mouvement de stock
+        StockMouvement::create([
+            'produit_id' => $stock->produit_id,
+            'site_id'    => $stock->site_id,
+            'variation'  => $nouveauStock - $ancienStock,
+            'qte_avant'  => $ancienStock,
+            'qte_apres'  => $nouveauStock,
+        ]);
+
         // 2. Charger le produit associé
         $produit = $stock->produit;
 
@@ -26,8 +39,6 @@ class StockObserver
             return;
         }
 
-        $ancienStock   = (int) $stock->getOriginal('qte_stock');
-        $nouveauStock  = $stock->qte_stock;
         $seuilEffectif = $stock->low_stock_threshold;
 
         // 4. Seuil franchi à la baisse

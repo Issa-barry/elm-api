@@ -290,14 +290,18 @@ class DashboardStatsTest extends TestCase
 
         $response->assertOk();
 
-        // All metrics have 0 in previous period → delta_pct is null
-        foreach (['prestataires', 'utilisateurs', 'vehicules'] as $key) {
+        // prestataires and vehicules: 0 in both periods → null, flat
+        foreach (['prestataires', 'vehicules'] as $key) {
             $this->assertNull(
                 $response->json("data.{$key}.delta_pct"),
-                "{$key}.delta_pct should be null when previous period is empty"
+                "{$key}.delta_pct should be null when both periods are empty"
             );
             $this->assertSame('flat', $response->json("data.{$key}.trend"));
         }
+
+        // utilisateurs: 1 created this month (setUp) vs 0 last month → 100%, up
+        $this->assertEquals(100, $response->json('data.utilisateurs.delta_pct'));
+        $this->assertSame('up', $response->json('data.utilisateurs.trend'));
     }
 
     public function test_trend_est_up_quand_periode_actuelle_superieure(): void
