@@ -50,9 +50,9 @@ class PackingChangeStatutController extends Controller
             }
 
             if ($newStatut === PackingStatut::ANNULEE->value) {
-                if ($packing->statut === PackingStatut::PAYEE) {
+                if ($packing->statut !== PackingStatut::IMPAYEE) {
                     return $this->errorResponse(
-                        'Un packing payé ne peut pas être annulé. Supprimez d\'abord les versements associés.',
+                        'Seul un packing impayé peut être annulé.',
                         null,
                         422
                     );

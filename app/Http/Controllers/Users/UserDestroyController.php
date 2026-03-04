@@ -25,6 +25,10 @@ class UserDestroyController extends Controller
                 return $this->notFoundResponse('Utilisateur non trouvé');
             }
 
+            if ($user->hasRole('super_admin')) {
+                return $this->errorResponse('Impossible de supprimer un super administrateur.', null, 403);
+            }
+
             $hasActivity = Packing::where('created_by', $user->id)->orWhere('updated_by', $user->id)->exists()
                 || Produit::where('created_by', $user->id)->orWhere('updated_by', $user->id)->exists()
                 || Versement::where('created_by', $user->id)->exists();

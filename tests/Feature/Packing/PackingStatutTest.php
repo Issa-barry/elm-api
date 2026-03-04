@@ -162,7 +162,7 @@ class PackingStatutTest extends TestCase
         $this->assertEquals(100, $this->stockRouleau->fresh()->qte_stock);
     }
 
-    public function test_annuler_packing_deja_annulee_est_idempotent(): void
+    public function test_annuler_packing_deja_annulee_est_interdit(): void
     {
         $packing = $this->creerPackingDirect(['nb_rouleaux' => 0, 'statut' => PackingStatut::ANNULEE->value]);
 
@@ -170,11 +170,7 @@ class PackingStatutTest extends TestCase
 
         $response = $this->patchJson("/api/v1/packings/{$packing->id}/statut", ['statut' => 'annulee']);
 
-        $response->assertOk()
-            ->assertJsonPath('data.statut', 'annulee');
-
-        // Stock inchangé
-        $this->assertEquals(100, $this->stockRouleau->fresh()->qte_stock);
+        $response->assertStatus(422);
     }
 
     public function test_reactiver_packing_annulee_decremente_le_stock(): void
