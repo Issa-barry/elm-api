@@ -40,6 +40,8 @@ class RoleAndPermissionSeeder extends Seeder
             'commandes'             => ['create', 'read', 'update', 'delete'],
             // Module organisation (super_admin only — gated by role middleware sur les routes)
             'organisations'         => ['create', 'read', 'update', 'delete'],
+            // Module facturation (super_admin only)
+            'billing'               => ['read', 'update'],
         ];
 
         // Creer toutes les permissions
@@ -60,6 +62,9 @@ class RoleAndPermissionSeeder extends Seeder
             'organisations.read',
             'organisations.update',
             'organisations.delete',
+            // La facturation est réservée au super_admin
+            'billing.read',
+            'billing.update',
         ])->get();
         $admin->syncPermissions($adminPermissions);
 

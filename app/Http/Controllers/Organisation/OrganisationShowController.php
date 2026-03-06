@@ -18,7 +18,7 @@ class OrganisationShowController extends Controller
     public function __invoke(Organisation $organisation): JsonResponse
     {
         return $this->successResponse(
-            new OrganisationResource($organisation->loadCount(['sites', 'users'])->load('sites:id,nom,code,type,statut,organisation_id')),
+            new OrganisationResource($organisation->loadCount(['sites', 'users'])->load(['forfait', 'sites:id,nom,code,type,statut,organisation_id'])),
             'Organisation récupérée'
         );
     }

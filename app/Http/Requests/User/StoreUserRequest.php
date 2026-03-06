@@ -85,6 +85,9 @@ class StoreUserRequest extends FormRequest
             'quartier' => ['required', 'string', 'max:100'],
             'adresse' => ['nullable', 'string', 'max:500'],
 
+            // Organisation (multi-tenant)
+            'organisation_id' => ['sometimes', 'nullable', 'integer', 'exists:organisations,id'],
+
             // Préférences
             'language' => ['sometimes', 'string', 'max:5'],
 

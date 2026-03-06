@@ -29,6 +29,7 @@ class OrganisationUpdateRequest extends FormRequest
             'adresse'     => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
             'statut'      => ['nullable', Rule::enum(OrganisationStatut::class)],
+            'forfait_id'  => ['nullable', 'integer', 'exists:forfaits,id'],
         ];
     }
 }

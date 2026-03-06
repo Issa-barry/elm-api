@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\OrganisationStatut;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -23,6 +24,7 @@ class Organisation extends Model
         'adresse',
         'description',
         'statut',
+        'forfait_id',
     ];
 
     protected function casts(): array
@@ -44,6 +46,12 @@ class Organisation extends Model
     }
 
     // ── Relations ────────────────────────────────────────────────────────
+
+    /** Forfait souscrit par cette organisation */
+    public function forfait(): BelongsTo
+    {
+        return $this->belongsTo(Forfait::class);
+    }
 
     /** Sites opérationnels rattachés à cette organisation */
     public function sites(): HasMany

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\OrganisationStatut;
+use App\Models\Forfait;
 use App\Models\Organisation;
 use Illuminate\Database\Seeder;
 
@@ -17,7 +18,9 @@ class OrganisationSeeder extends Seeder
 {
     public function run(): void
     {
-        Organisation::firstOrCreate(
+        $starter = Forfait::where('slug', 'starter')->first();
+
+        $org = Organisation::firstOrCreate(
             ['code' => 'ELM-GN'],
             [
                 'nom'         => 'ELM Guinée',
@@ -28,8 +31,14 @@ class OrganisationSeeder extends Seeder
                 'quartier'    => 'Matoto',
                 'description' => 'Organisation principale — ELM Guinée',
                 'statut'      => OrganisationStatut::ACTIVE,
+                'forfait_id'  => $starter?->id,
             ]
         );
+
+        // Assigner le forfait si l'org existait déjà sans forfait
+        if ($org->forfait_id === null && $starter) {
+            $org->update(['forfait_id' => $starter->id]);
+        }
 
         $this->command->info('OrganisationSeeder : organisation ELM-GN créée ou existante.');
     }

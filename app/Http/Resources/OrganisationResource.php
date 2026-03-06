@@ -15,6 +15,13 @@ class OrganisationResource extends JsonResource
             'code'         => $this->code,
             'statut'       => $this->statut?->value,
             'statut_label' => $this->statut?->label(),
+            'forfait_id'   => $this->forfait_id,
+            'forfait'      => $this->whenLoaded('forfait', fn () => $this->forfait ? [
+                'id'   => $this->forfait->id,
+                'slug' => $this->forfait->slug,
+                'nom'  => $this->forfait->nom,
+                'prix' => $this->forfait->prix,
+            ] : null),
             'email'        => $this->email,
             'phone'        => $this->phone,
             'pays'         => $this->pays,
