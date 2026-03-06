@@ -21,12 +21,24 @@ use App\Http\Controllers\Role\UserRolesController;
 |
 */
 
+// Lecture : admin_entreprise et super_admin
 Route::middleware('role:admin_entreprise|super_admin')->group(function () {
-    // Rôles CRUD
     Route::prefix('roles')->group(function () {
         Route::get('/', RoleIndexController::class);
-        Route::post('/', RoleStoreController::class);
         Route::get('/{id}', RoleShowController::class)->where('id', '[0-9]+');
+    });
+
+    // Liste des permissions (matrice vide pour nouveau rôle)
+    Route::get('/permissions', PermissionIndexController::class);
+
+    // Rôles d'un utilisateur
+    Route::get('/users/{userId}/roles', UserRolesController::class)->where('userId', '[0-9]+');
+});
+
+// Écriture : super_admin uniquement
+Route::middleware('role:super_admin')->group(function () {
+    Route::prefix('roles')->group(function () {
+        Route::post('/', RoleStoreController::class);
         Route::put('/{id}', RoleUpdateController::class)->where('id', '[0-9]+');
         Route::delete('/{id}', RoleDestroyController::class)->where('id', '[0-9]+');
 
@@ -36,10 +48,4 @@ Route::middleware('role:admin_entreprise|super_admin')->group(function () {
         // Assigner un rôle à un utilisateur
         Route::post('/assign/{userId}', AssignRoleController::class)->where('userId', '[0-9]+');
     });
-
-    // Liste des permissions (matrice vide pour nouveau rôle)
-    Route::get('/permissions', PermissionIndexController::class);
-
-    // Rôles d'un utilisateur
-    Route::get('/users/{userId}/roles', UserRolesController::class)->where('userId', '[0-9]+');
 });

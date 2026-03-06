@@ -10,6 +10,7 @@ Route::prefix('v1')->group(function () {
     // Routes backoffice (staff uniquement)
     Route::middleware(['auth:sanctum', 'user.type:staff', 'site.context'])->group(function () {
         require __DIR__.'/api/organisations.php';
+        require __DIR__.'/api/billing.php';
         require __DIR__.'/api/dashboard.php';
         require __DIR__.'/api/roles.php';
         require __DIR__.'/api/produits.php';

@@ -44,7 +44,9 @@
       "Bash($PHP /c/laragon/www/elm-api/artisan test --no-coverage --exclude-group=none)",
       "Bash($PHP /c/laragon/www/elm-api/artisan test --no-coverage)",
       "Bash(powershell -ExecutionPolicy Bypass -File fix_usine_refs.ps1)",
-      "Bash(powershell -ExecutionPolicy Bypass -File fix_produit_controllers.ps1)"
+      "Bash(powershell -ExecutionPolicy Bypass -File fix_produit_controllers.ps1)",
+      "Bash(PHP=\"c:/laragon/bin/php/php-8.3.26-Win32-vs16-x64/php.exe\")",
+      "Bash(\"$PHP\" -r \":*)"
     ]
   }
 }

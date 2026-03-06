@@ -18,7 +18,8 @@ class OrganisationIndexController extends Controller
 
     public function __invoke(Request $request): JsonResponse
     {
-        $organisations = Organisation::withCount(['sites', 'users'])
+        $organisations = Organisation::with('forfait')
+            ->withCount(['sites', 'users'])
             ->orderBy('nom')
             ->get();
 
