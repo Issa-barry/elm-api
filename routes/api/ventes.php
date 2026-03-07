@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Livraisons\VehiculeOneShotController;
+use App\Http\Controllers\Ventes\CommandeVenteAnnulerController;
 use App\Http\Controllers\Ventes\CommandeVenteDestroyController;
 use App\Http\Controllers\Ventes\CommandeVenteIndexController;
 use App\Http\Controllers\Ventes\CommandeVenteShowController;
@@ -23,7 +24,11 @@ use Illuminate\Support\Facades\Route;
 | Une vente = une commande (lignes produits fabricables) liée à un véhicule.
 | La facture est créée automatiquement à la création de la commande.
 |
-| Statuts facture : impayee → partiel → payee | annulee
+| Statuts facture   : impayee → partiel → payee | annulee
+| Statuts commande  : active | annulee
+|
+| ⚠ RÈGLE MÉTIER : suppression physique interdite.
+|   DELETE /{id} → annulation (rétrocompat). Préférer POST /{id}/annuler.
 */
 
 // ── Création one-shot : véhicule + propriétaire + livreur ──────────────────
@@ -42,6 +47,10 @@ Route::prefix('ventes/commandes')->group(function () {
     Route::put('/{id}', CommandeVenteUpdateController::class)
         ->where('id', '[0-9]+')
         ->middleware('permission:commandes.update');
+    Route::post('/{id}/annuler', CommandeVenteAnnulerController::class)
+        ->where('id', '[0-9]+')
+        ->middleware('permission:commandes.delete');
+    // Rétrocompatibilité : DELETE délègue vers annulation (pas de suppression physique)
     Route::delete('/{id}', CommandeVenteDestroyController::class)
         ->where('id', '[0-9]+')
         ->middleware('permission:commandes.delete');

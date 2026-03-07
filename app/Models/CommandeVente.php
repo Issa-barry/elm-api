@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StatutCommandeVente;
 use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,12 +27,18 @@ class CommandeVente extends Model
         'total_commande',
         'created_by',
         'updated_by',
+        'statut',
+        'motif_annulation',
+        'annulee_at',
+        'annulee_par',
     ];
 
     protected function casts(): array
     {
         return [
             'total_commande' => 'decimal:2',
+            'statut'         => StatutCommandeVente::class,
+            'annulee_at'     => 'datetime',
         ];
     }
 
@@ -63,6 +70,11 @@ class CommandeVente extends Model
         });
     }
 
+    public function isAnnulee(): bool
+    {
+        return $this->statut === StatutCommandeVente::ANNULEE;
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');
@@ -71,6 +83,11 @@ class CommandeVente extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'updated_by');
+    }
+
+    public function annuleePar(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'annulee_par');
     }
 
     public function vehicule(): BelongsTo

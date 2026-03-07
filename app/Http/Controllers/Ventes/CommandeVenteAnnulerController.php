@@ -8,19 +8,16 @@ use App\Models\CommandeVente;
 use App\Services\CommandeVenteAnnulationService;
 use Illuminate\Http\Request;
 
-/**
- * DELETE /ventes/commandes/{id}
- *
- * La suppression physique est interdite par règle métier.
- * Ce endpoint est conservé pour rétrocompatibilité et délègue
- * à l'annulation. Passer motif_annulation dans le body est optionnel.
- */
-class CommandeVenteDestroyController extends Controller
+class CommandeVenteAnnulerController extends Controller
 {
     use ApiResponse;
 
     public function __invoke(Request $request, int $id, CommandeVenteAnnulationService $service)
     {
+        $request->validate([
+            'motif_annulation' => ['required', 'string', 'max:500'],
+        ]);
+
         $commande = CommandeVente::with(['facture.encaissements', 'commission.versements', 'lignes'])
             ->find($id);
 
@@ -28,10 +25,12 @@ class CommandeVenteDestroyController extends Controller
             return $this->notFoundResponse('Commande introuvable.');
         }
 
-        $motif = $request->input('motif_annulation', 'Annulation demandée via suppression.');
-
         try {
-            $commande = $service->annuler($commande, $request->user(), $motif);
+            $commande = $service->annuler(
+                $commande,
+                $request->user(),
+                $request->input('motif_annulation')
+            );
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         }

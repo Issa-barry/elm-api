@@ -21,6 +21,10 @@ class CommandeVenteUpdateController extends Controller
             return $this->notFoundResponse('Commande introuvable.');
         }
 
+        if ($commande->isAnnulee()) {
+            return $this->errorResponse('Impossible de modifier une commande annulée.', null, 422);
+        }
+
         if ($commande->facture && $commande->facture->encaissements()->exists()) {
             return $this->errorResponse(
                 'Impossible de modifier une commande ayant des encaissements.',
