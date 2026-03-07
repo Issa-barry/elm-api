@@ -14,6 +14,7 @@ class CommandeVenteIndexController extends Controller
     {
         $commandes = CommandeVente::with(['vehicule.livreurPrincipal', 'vehicule.proprietaire', 'lignes.produit', 'facture'])
             ->when(request('vehicule_id'), fn ($q, $v) => $q->where('vehicule_id', $v))
+            ->when(request('statut'), fn ($q, $v) => $q->where('statut', $v))
             ->orderByDesc('created_at')
             ->paginate(20);
 

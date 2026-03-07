@@ -13,11 +13,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class Packing extends Model
 {
     use HasFactory, SoftDeletes, HasSiteScope;
+
+    private const TEMP_REFERENCE_PREFIX = 'TMP-PACK-';
 
     public const STATUT_IMPAYEE  = PackingStatut::IMPAYEE->value;
     public const STATUT_PARTIELLE = PackingStatut::PARTIELLE->value;
@@ -70,6 +73,24 @@ class Packing extends Model
         static::updating(function (Packing $packing) {
             $packing->prepareForPersistence(false);
         });
+
+        static::created(function (Packing $packing): void {
+            if (!str_starts_with((string) $packing->reference, self::TEMP_REFERENCE_PREFIX)) {
+                return;
+            }
+
+            $datePart       = ($packing->created_at ?? now())->format('Ymd');
+            $finalReference = 'PACK-' . $datePart . '-' . str_pad((string) $packing->id, 4, '0', STR_PAD_LEFT);
+
+            static::withoutEvents(function () use ($packing, $finalReference): void {
+                $packing->newQueryWithoutScopes()
+                    ->whereKey($packing->id)
+                    ->update(['reference' => $finalReference]);
+            });
+
+            $packing->reference = $finalReference;
+            $packing->syncOriginalAttribute('reference');
+        });
     }
 
     protected function prepareForPersistence(bool $isCreating): void
@@ -108,11 +129,8 @@ class Packing extends Model
 
     protected static function generateReference(): string
     {
-        // Important: la référence est unique globalement sur la table packings.
-        // On doit donc ignorer le scope usine, sinon chaque usine repart à 0001.
-        $lastId = self::withoutSiteScope()->withTrashed()->max('id') ?? 0;
-
-        return 'PACK-' . now()->format('Ymd') . '-' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
+        // Placeholder unique pour passer la contrainte NOT NULL/UNIQUE avant d'avoir l'id réel.
+        return self::TEMP_REFERENCE_PREFIX . Str::uuid();
     }
 
     public function setNotesAttribute($value): void

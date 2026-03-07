@@ -13,6 +13,8 @@ class CommandeVenteShowController extends Controller
     public function __invoke(int $id)
     {
         $commande = CommandeVente::with([
+            'createdBy:id,nom,prenom,phone',
+            'updatedBy:id,nom,prenom,phone',
             'vehicule.proprietaire',
             'vehicule.livreurPrincipal',
             'lignes.produit',

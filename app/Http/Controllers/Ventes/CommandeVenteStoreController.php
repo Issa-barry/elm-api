@@ -72,6 +72,7 @@ class CommandeVenteStoreController extends Controller
             $commande = CommandeVente::create([
                 'vehicule_id'    => $validated['vehicule_id'],
                 'total_commande' => $totalCommande,
+                'created_by'     => auth()->id(),
             ]);
 
             // 3. Créer les lignes

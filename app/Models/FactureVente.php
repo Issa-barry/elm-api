@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class FactureVente extends Model
 {
     use HasFactory, SoftDeletes, HasSiteScope;
+
+    private const TEMP_REFERENCE_PREFIX = 'TMP-FAC-VNT-';
 
     protected $table = 'factures_ventes';
 
@@ -39,14 +42,27 @@ class FactureVente extends Model
     {
         static::creating(function (FactureVente $facture) {
             if (empty($facture->reference)) {
-                $lastId = self::withTrashed()->max('id') ?? 0;
-                $facture->reference = 'FAC-VNT-' . now()->format('Ymd') . '-' . str_pad(
-                    $lastId + 1,
-                    4,
-                    '0',
-                    STR_PAD_LEFT
-                );
+                // Placeholder unique pour passer la contrainte NOT NULL/UNIQUE avant d'avoir l'id réel.
+                $facture->reference = self::TEMP_REFERENCE_PREFIX . Str::uuid();
             }
+        });
+
+        static::created(function (FactureVente $facture): void {
+            if (!str_starts_with((string) $facture->reference, self::TEMP_REFERENCE_PREFIX)) {
+                return;
+            }
+
+            $datePart       = ($facture->created_at ?? now())->format('Ymd');
+            $finalReference = 'FAC-VNT-' . $datePart . '-' . str_pad((string) $facture->id, 4, '0', STR_PAD_LEFT);
+
+            static::withoutEvents(function () use ($facture, $finalReference): void {
+                $facture->newQueryWithoutScopes()
+                    ->whereKey($facture->id)
+                    ->update(['reference' => $finalReference]);
+            });
+
+            $facture->reference = $finalReference;
+            $facture->syncOriginalAttribute('reference');
         });
     }
 

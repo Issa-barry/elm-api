@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class Versement extends Model
 {
     use HasFactory, SoftDeletes, HasSiteScope;
+
+    private const TEMP_REFERENCE_PREFIX = 'TMP-VERS-';
 
     /* =========================
        MODES DE PAIEMENT
@@ -68,20 +71,33 @@ class Versement extends Model
 
     protected static function booted(): void
     {
-        static::creating(function ($versement) {
+        static::creating(function (Versement $versement) {
             if (empty($versement->reference)) {
-                $lastId = self::withTrashed()->max('id') ?? 0;
-                $versement->reference = 'VERS-' . now()->format('Ymd') . '-' . str_pad(
-                    $lastId + 1,
-                    4,
-                    '0',
-                    STR_PAD_LEFT
-                );
+                // Placeholder unique pour passer la contrainte NOT NULL/UNIQUE avant d'avoir l'id réel.
+                $versement->reference = self::TEMP_REFERENCE_PREFIX . Str::uuid();
             }
 
             if (Auth::check() && !$versement->created_by) {
                 $versement->created_by = Auth::id();
             }
+        });
+
+        static::created(function (Versement $versement): void {
+            if (!str_starts_with((string) $versement->reference, self::TEMP_REFERENCE_PREFIX)) {
+                return;
+            }
+
+            $datePart       = ($versement->created_at ?? now())->format('Ymd');
+            $finalReference = 'VERS-' . $datePart . '-' . str_pad((string) $versement->id, 4, '0', STR_PAD_LEFT);
+
+            static::withoutEvents(function () use ($versement, $finalReference): void {
+                $versement->newQueryWithoutScopes()
+                    ->whereKey($versement->id)
+                    ->update(['reference' => $finalReference]);
+            });
+
+            $versement->reference = $finalReference;
+            $versement->syncOriginalAttribute('reference');
         });
     }
 

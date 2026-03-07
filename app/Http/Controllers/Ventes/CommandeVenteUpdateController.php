@@ -21,6 +21,10 @@ class CommandeVenteUpdateController extends Controller
             return $this->notFoundResponse('Commande introuvable.');
         }
 
+        if ($commande->isAnnulee()) {
+            return $this->errorResponse('Impossible de modifier une commande annulée.', null, 422);
+        }
+
         if ($commande->facture && $commande->facture->encaissements()->exists()) {
             return $this->errorResponse(
                 'Impossible de modifier une commande ayant des encaissements.',
@@ -74,6 +78,7 @@ class CommandeVenteUpdateController extends Controller
                 }
             }
 
+            $commande->updated_by = auth()->id();
             $commande->save();
             $commande->load(['vehicule', 'lignes.produit', 'facture']);
 
