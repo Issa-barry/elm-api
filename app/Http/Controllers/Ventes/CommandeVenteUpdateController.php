@@ -74,6 +74,7 @@ class CommandeVenteUpdateController extends Controller
                 }
             }
 
+            $commande->updated_by = auth()->id();
             $commande->save();
             $commande->load(['vehicule', 'lignes.produit', 'facture']);
 

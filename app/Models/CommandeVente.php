@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class CommandeVente extends Model
 {
     use HasFactory, SoftDeletes, HasSiteScope;
+
+    private const TEMP_REFERENCE_PREFIX = 'TMP-VNT-';
 
     protected $table = 'commandes_ventes';
 
@@ -21,6 +24,8 @@ class CommandeVente extends Model
         'vehicule_id',
         'reference',
         'total_commande',
+        'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array
@@ -34,15 +39,38 @@ class CommandeVente extends Model
     {
         static::creating(function (CommandeVente $commande) {
             if (empty($commande->reference)) {
-                $lastId = self::withTrashed()->max('id') ?? 0;
-                $commande->reference = 'VNT-' . now()->format('Ymd') . '-' . str_pad(
-                    $lastId + 1,
-                    4,
-                    '0',
-                    STR_PAD_LEFT
-                );
+                // Placeholder unique pour passer la contrainte NOT NULL/UNIQUE avant d'avoir l'id réel.
+                $commande->reference = self::TEMP_REFERENCE_PREFIX . Str::uuid();
             }
         });
+
+        static::created(function (CommandeVente $commande): void {
+            if (!str_starts_with((string) $commande->reference, self::TEMP_REFERENCE_PREFIX)) {
+                return;
+            }
+
+            $datePart       = ($commande->created_at ?? now())->format('Ymd');
+            $finalReference = 'VNT-' . $datePart . '-' . str_pad((string) $commande->id, 4, '0', STR_PAD_LEFT);
+
+            static::withoutEvents(function () use ($commande, $finalReference): void {
+                $commande->newQueryWithoutScopes()
+                    ->whereKey($commande->id)
+                    ->update(['reference' => $finalReference]);
+            });
+
+            $commande->reference = $finalReference;
+            $commande->syncOriginalAttribute('reference');
+        });
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'updated_by');
     }
 
     public function vehicule(): BelongsTo
