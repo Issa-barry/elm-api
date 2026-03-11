@@ -20,6 +20,7 @@ return new class extends Migration
 
             // Stock et coût
             $table->unsignedInteger('qte_stock')->default(0);
+            $table->unsignedInteger('seuil_alerte_stock')->nullable()->comment('Seuil alerte stock personnalisé (null = fallback paramètre global)');
             $table->unsignedBigInteger('cout')->default(0);
 
             // Type : materiel, service, fabricable, achat_vente

@@ -11,6 +11,8 @@ return new class extends Migration
         Schema::create('paiements_commissions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('sortie_vehicule_id')->nullable()->unique()->constrained('sorties_vehicules');
+            $table->unsignedBigInteger('facture_vente_id')->nullable()->unique();
+            $table->index('facture_vente_id');
             $table->decimal('commission_brute_totale', 14, 2);
             $table->decimal('part_proprietaire_brute', 14, 2);
             $table->decimal('part_livreur_brute', 14, 2);

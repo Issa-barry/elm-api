@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Ventes;
 
-use App\Enums\StatutCommissionVente;
 use App\Enums\StatutFactureVente;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Vente\StoreEncaissementVenteRequest;
 use App\Http\Traits\ApiResponse;
-use App\Models\CommissionVente;
 use App\Models\EncaissementVente;
 use App\Models\FactureVente;
+use App\Services\CommissionVenteService;
 
 class EncaissementVenteStoreController extends Controller
 {
@@ -51,19 +50,8 @@ class EncaissementVenteStoreController extends Controller
         // Mise à jour automatique du statut facture
         $facture->recalculStatut();
 
-        // Déclencher l'éligibilité de la commission si la facture est maintenant payée
-        if ($facture->fresh()->isPayee() && $facture->commande_vente_id) {
-            $commission = CommissionVente::where('commande_vente_id', $facture->commande_vente_id)
-                ->where('statut', StatutCommissionVente::EN_ATTENTE->value)
-                ->first();
-
-            if ($commission) {
-                $commission->update([
-                    'statut'      => StatutCommissionVente::ELIGIBLE->value,
-                    'eligible_at' => now(),
-                ]);
-            }
-        }
+        // Créer (ou transitionner) la commission si la facture vient de passer à "payee"
+        app(CommissionVenteService::class)->creerSiEligible($facture->fresh());
 
         return $this->createdResponse($encaissement->load('facture'), 'Encaissement enregistré');
     }

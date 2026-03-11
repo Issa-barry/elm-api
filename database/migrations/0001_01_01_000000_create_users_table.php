@@ -27,8 +27,9 @@ return new class extends Migration
             $table->string('code_pays', 5);
             $table->string('code_phone_pays', 5);
             $table->string('ville');
-            $table->string('quartier');
-            $table->string('adresse')->nullable();
+            $table->string('quartier')->nullable();
+            $table->string('code_postal', 20)->nullable()->comment('Code postal (utilisé à la place du quartier selon le pays)');
+            $table->string('adresse')->nullable()->comment('Adresse complète (rue, numéro, etc.)');
 
             // Référence (auto-généré)
             $table->string('reference')->unique();
@@ -40,9 +41,14 @@ return new class extends Migration
             // Préférences
             $table->string('language', 5)->default('fr');
 
+            // Usine par défaut (FK ajouté par create_usines après création de la table usines)
+            $table->unsignedBigInteger('default_usine_id')->nullable()->comment('Usine affichée par défaut (raccourci vers user_usines.is_default)');
+
             // Auth
             $table->string('password');
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_archived')->default(false);
+            $table->timestamp('archived_at')->nullable();
             $table->rememberToken();
 
             // Pièce d'identité (KYC)

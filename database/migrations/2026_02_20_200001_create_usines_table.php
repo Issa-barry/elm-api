@@ -15,6 +15,9 @@ return new class extends Migration
             $table->enum('type', ['siege', 'usine'])->default('usine');
             $table->enum('statut', ['active', 'inactive'])->default('active');
             $table->string('localisation')->nullable()->comment('Ville / adresse');
+            $table->string('pays', 100)->nullable();
+            $table->string('ville', 100)->nullable();
+            $table->string('quartier', 100)->nullable();
             $table->text('description')->nullable();
             $table->foreignId('parent_id')
                 ->nullable()
@@ -24,10 +27,20 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
+
+        // Ajout du FK users.default_usine_id maintenant que usines existe
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('default_usine_id')
+                ->references('id')->on('usines')
+                ->nullOnDelete();
+        });
     }
 
     public function down(): void
     {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['default_usine_id']);
+        });
         Schema::dropIfExists('usines');
     }
 };

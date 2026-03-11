@@ -61,9 +61,9 @@ class StaffUserSeeder extends Seeder
             [
                 'nom'        => 'DIALLO',
                 'prenom'     => 'Thierno Oumar',
-                'phone'      => '+224620000020',
+                'phone'      => '+224622176056',
                 'email'      => 'tod@elm.gn',
-                'quartier'   => 'Kaloum',
+                'quartier'   => 'Wanindara',
                 'password'   => 'Staff@2025',
                 'role'       => 'manager',
                 'usine_role' => 'manager',

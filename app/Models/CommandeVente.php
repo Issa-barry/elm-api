@@ -75,6 +75,32 @@ class CommandeVente extends Model
         return $this->statut === StatutCommandeVente::ANNULEE;
     }
 
+    /**
+     * Clôture la commande si toutes les obligations financières sont soldées :
+     *  - facture payée
+     *  - commission payée (ou absente)
+     */
+    public function cloturerSiComplete(): void
+    {
+        if ($this->statut === StatutCommandeVente::ANNULEE) {
+            return;
+        }
+
+        $facture = $this->facture()->withoutGlobalScopes()->first();
+
+        if (! $facture || ! $facture->isPayee()) {
+            return;
+        }
+
+        $commission = $this->commission()->withoutGlobalScopes()->first();
+
+        if ($commission && $commission->statut !== \App\Enums\StatutCommissionVente::PAYEE) {
+            return;
+        }
+
+        $this->update(['statut' => StatutCommandeVente::CLOTUREE]);
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');

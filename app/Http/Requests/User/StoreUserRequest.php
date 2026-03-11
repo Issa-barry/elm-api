@@ -82,7 +82,8 @@ class StoreUserRequest extends FormRequest
             'code_pays' => ['required', 'string', 'max:10'],
             'code_phone_pays' => ['required', 'string', 'max:10'],
             'ville' => ['required', 'string', 'max:100'],
-            'quartier' => ['required', 'string', 'max:100'],
+            'quartier' => ['nullable', 'string', 'max:100'],
+            'code_postal' => ['nullable', 'string', 'max:20'],
             'adresse' => ['nullable', 'string', 'max:500'],
 
             // Organisation (multi-tenant)

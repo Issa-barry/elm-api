@@ -31,7 +31,7 @@ class AdminUserSeeder extends Seeder
 
         $moussa = $resolveUser('+22466617700', 'sidibemsa81@gmail.com');
         $moussa->fill([
-            'phone'           => '+224666101011',
+            'phone'           => '+224656555520',
             'nom'             => 'SIDIBE',
             'prenom'          => 'Moussa',
             'email'           => 'sidibemsa81@gmail.com',

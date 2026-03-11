@@ -96,6 +96,7 @@ class UpdateUserRequest extends FormRequest
             'code_phone_pays' => ['sometimes', 'nullable', 'string', 'max:10'],
             'ville' => ['sometimes', 'nullable', 'string', 'max:100'],
             'quartier' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'code_postal' => ['sometimes', 'nullable', 'string', 'max:20'],
             'adresse' => ['sometimes', 'nullable', 'string', 'max:500'],
 
             // Préférences

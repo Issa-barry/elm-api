@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('proprietaires', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('usine_id')->nullable()->constrained('usines')->nullOnDelete();
             $table->string('nom', 100);
             $table->string('prenom', 100);
             $table->string('phone', 20)->unique();
