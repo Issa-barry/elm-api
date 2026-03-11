@@ -30,6 +30,7 @@ return new class extends Migration
 
             // Professionnel
             $table->string('specialite')->nullable();
+            $table->string('type')->default('fournisseur');
             $table->integer('tarif_horaire')->nullable();
             $table->text('notes')->nullable();
 
@@ -40,6 +41,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
 
             $table->timestamps();
+            $table->index('type');
             $table->softDeletes();
         });
     }

@@ -17,7 +17,7 @@ class CommissionVenteShowController extends Controller
             'vehicule',
             'livreur',
             'proprietaire',
-            'versements',
+            'versements.paiements.versePar:id,nom,prenom',
         ])->find($id);
 
         if (!$commission) {

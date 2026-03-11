@@ -15,6 +15,17 @@ return new class extends Migration
             $table->foreign('vehicule_id')->references('id')->on('vehicules');
             $table->string('reference', 60)->unique();
             $table->decimal('total_commande', 14, 2)->default(0);
+
+            // Tracking utilisateur
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+
+            // Annulation
+            $table->string('statut', 20)->default('active');
+            $table->text('motif_annulation')->nullable();
+            $table->timestamp('annulee_at')->nullable();
+            $table->foreignId('annulee_par')->nullable()->constrained('users')->nullOnDelete();
+
             $table->timestamps();
             $table->softDeletes();
         });

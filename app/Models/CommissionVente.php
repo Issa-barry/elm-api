@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatutCommissionVente;
+use App\Enums\StatutVersementCommission;
 use App\Models\Traits\HasSiteScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -70,5 +71,38 @@ class CommissionVente extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * Recalcule et persiste le statut de la commission selon l'état de ses versements.
+     *
+     *  - tous les versements actifs EFFECTUE → payee  → déclenche clôture commande
+     *  - au moins un versement partiel       → partielle
+     *  - aucun paiement                      → impayee (inchangé)
+     */
+    public function recalculStatut(): void
+    {
+        $versements = $this->versements()
+            ->whereNotIn('statut', [StatutVersementCommission::ANNULE->value])
+            ->get();
+
+        if ($versements->isEmpty()) {
+            return;
+        }
+
+        $tousEffectues     = $versements->every(
+            fn ($v) => $v->statut === StatutVersementCommission::EFFECTUE
+        );
+        $auMoinsUnPaiement = $versements->some(
+            fn ($v) => in_array($v->statut->value ?? $v->statut, ['effectue', 'partiellement_verse'])
+        );
+
+        if ($tousEffectues) {
+            $this->update(['statut' => StatutCommissionVente::PAYEE->value]);
+            $this->commande()->withoutGlobalScopes()->first()?->cloturerSiComplete();
+        } elseif ($auMoinsUnPaiement) {
+            $this->update(['statut' => StatutCommissionVente::PARTIELLE->value]);
+        }
+        // sinon : impayee → on ne régresse pas
     }
 }

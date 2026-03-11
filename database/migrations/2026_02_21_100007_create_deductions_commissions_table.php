@@ -11,6 +11,8 @@ return new class extends Migration
         Schema::create('deductions_commissions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('sortie_vehicule_id')->nullable()->constrained('sorties_vehicules');
+            $table->unsignedBigInteger('facture_vente_id')->nullable();
+            $table->index('facture_vente_id');
             $table->string('cible', 30);        // proprietaire | livreur | usine
             $table->string('type_deduction', 30); // carburant | reparation | avance | autre
             $table->decimal('montant', 12, 2);

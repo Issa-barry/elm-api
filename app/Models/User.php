@@ -36,6 +36,7 @@ class User extends Authenticatable
         'code_phone_pays',
         'ville',
         'quartier',
+        'code_postal',
         'adresse',
         'reference',
         'type',

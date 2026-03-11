@@ -12,6 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('usine_id')->constrained('usines');
             $table->string('nom_vehicule', 100);
+            $table->string('marque', 100)->nullable();
+            $table->string('modele', 100)->nullable();
             $table->string('immatriculation', 20);
             $table->string('type_vehicule', 50);
             $table->unsignedInteger('capacite_packs');
@@ -19,11 +21,9 @@ return new class extends Migration
             $table->unsignedBigInteger('livreur_principal_id')->nullable();
             $table->foreign('livreur_principal_id')->references('id')->on('livreurs');
             $table->boolean('pris_en_charge_par_usine')->default(false);
-            $table->string('mode_commission', 30); // forfait | pourcentage
-            $table->decimal('valeur_commission', 12, 2);
-            $table->decimal('pourcentage_proprietaire', 5, 2)->default(0);
-            $table->decimal('pourcentage_livreur', 5, 2)->default(0);
-            $table->string('photo_path');
+            $table->decimal('taux_commission_livreur', 5, 2)->default(100.00);
+            $table->boolean('commission_active')->default(true);
+            $table->string('photo_path')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();
