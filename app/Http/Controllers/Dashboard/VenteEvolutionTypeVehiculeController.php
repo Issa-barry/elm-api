@@ -9,23 +9,13 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
  * GET /api/v1/dashboard/ventes/evolution-par-type
  *
- * Retourne la série temporelle du CA (montant_brut) par type de véhicule.
- * Granularité automatique selon la période :
- *   ≤ 14 jours  → journalier
- *   ≤ 90 jours  → hebdomadaire
- *   > 90 jours  → mensuel
- *
- * Réponse :
- *  {
- *    "period"   : { "from", "to", "granularity" },
- *    "labels"   : ["Jan 2026", "Fév 2026", ...],
- *    "datasets" : [{ "type_vehicule", "label", "data": [150000, 200000, ...] }]
- *  }
+ * Retourne la serie temporelle du CA (montant_brut) par type de vehicule.
  */
 class VenteEvolutionTypeVehiculeController extends Controller
 {
@@ -48,18 +38,18 @@ class VenteEvolutionTypeVehiculeController extends Controller
     ];
 
     private const MOIS_FR = [
-        1 => 'Jan', 2 => 'Fév', 3 => 'Mar', 4 => 'Avr',
-        5 => 'Mai', 6 => 'Juin', 7 => 'Juil', 8 => 'Août',
-        9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Déc',
+        1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Avr',
+        5 => 'Mai', 6 => 'Juin', 7 => 'Juil', 8 => 'Aout',
+        9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec',
     ];
 
     public function __invoke(Request $request): JsonResponse
     {
         $period = $request->get('period', 'this_year');
 
-        if (! in_array($period, self::ALLOWED_PERIODS)) {
+        if (! in_array($period, self::ALLOWED_PERIODS, true)) {
             return $this->errorResponse(
-                'Période invalide. Valeurs acceptées : ' . implode(', ', self::ALLOWED_PERIODS),
+                'Periode invalide. Valeurs acceptees : ' . implode(', ', self::ALLOWED_PERIODS),
                 null,
                 422
             );
@@ -69,75 +59,81 @@ class VenteEvolutionTypeVehiculeController extends Controller
         if ($period === 'last_x_days') {
             $days = (int) $request->get('days', 30);
             if ($days < 1) {
-                return $this->errorResponse('Le paramètre days doit être un entier > 0.', null, 422);
+                return $this->errorResponse('Le parametre days doit etre un entier > 0.', null, 422);
             }
         }
 
         [$from, $to] = $this->resolvePeriod($period, $days);
-
-        $nbJours      = (int) $from->diffInDays($to) + 1;
-        $granularity  = $this->resolveGranularity($nbJours);
-
+        $nbJours = (int) $from->diffInDays($to) + 1;
+        $granularity = $this->resolveGranularity($nbJours);
         $siteId = app(SiteContext::class)->getCurrentSiteId();
 
-        // ── Buckets de temps (labels) ──────────────────────────────────────
-        $buckets = $this->buildBuckets($from, $to, $granularity);
+        $cacheKey = sprintf(
+            'dashboard:ventes:evolution-type:%s:%s:%s',
+            $siteId ?? 'all',
+            $period,
+            $days ?? 'na'
+        );
 
-        // ── Requête groupée ────────────────────────────────────────────────
-        $formatSQL = match ($granularity) {
-            'day'   => "DATE_FORMAT(cv.created_at, '%Y-%m-%d')",
-            'week'  => "DATE_FORMAT(cv.created_at, '%x-W%v')",  // ISO year-week
-            default => "DATE_FORMAT(cv.created_at, '%Y-%m')",
-        };
+        $payload = Cache::remember($cacheKey, now()->addMinutes(5), function () use (
+            $from,
+            $to,
+            $siteId,
+            $period,
+            $granularity
+        ) {
+            $buckets = $this->buildBuckets($from, $to, $granularity);
 
-        $rows = DB::table('commandes_ventes as cv')
-            ->join('vehicules as v', 'v.id', '=', 'cv.vehicule_id')
-            ->join('factures_ventes as fv', 'fv.commande_vente_id', '=', 'cv.id')
-            ->selectRaw("v.type_vehicule, {$formatSQL} as bucket, SUM(fv.montant_brut) as ca_total")
-            ->whereNull('cv.deleted_at')
-            ->whereNull('fv.deleted_at')
-            ->where('fv.statut_facture', '!=', 'annulee')
-            ->when($siteId, fn ($q) => $q->where('cv.site_id', $siteId))
-            ->whereBetween('cv.created_at', [$from, $to])
-            ->groupByRaw("v.type_vehicule, {$formatSQL}")
-            ->orderBy('bucket')
-            ->get();
+            $formatSQL = match ($granularity) {
+                'day'   => "DATE_FORMAT(fv.created_at, '%Y-%m-%d')",
+                'week'  => "DATE_FORMAT(fv.created_at, '%x-W%v')",
+                default => "DATE_FORMAT(fv.created_at, '%Y-%m')",
+            };
 
-        // ── Construire les datasets ────────────────────────────────────────
-        // Indexer les données : [type_vehicule][bucket] = ca_total
-        $index = [];
-        foreach ($rows as $row) {
-            $index[$row->type_vehicule][$row->bucket] = (float) $row->ca_total;
-        }
+            $rows = DB::table('factures_ventes as fv')
+                ->join('vehicules as v', 'v.id', '=', 'fv.vehicule_id')
+                ->selectRaw("v.type_vehicule, {$formatSQL} as bucket, SUM(fv.montant_brut) as ca_total")
+                ->whereNull('fv.deleted_at')
+                ->where('fv.statut_facture', '!=', 'annulee')
+                ->when($siteId, fn ($q) => $q->where('fv.site_id', $siteId))
+                ->whereBetween('fv.created_at', [$from, $to])
+                ->groupByRaw("v.type_vehicule, {$formatSQL}")
+                ->orderBy('bucket')
+                ->get();
 
-        // Tous les types connus sont toujours présents (données = 0 si aucune vente)
-        $datasets = [];
-        foreach (self::TYPE_LABELS as $type => $label) {
-            $data = [];
-            foreach ($buckets as $bucket) {
-                $data[] = round($index[$type][$bucket['key']] ?? 0, 2);
+            $index = [];
+            foreach ($rows as $row) {
+                $index[$row->type_vehicule][$row->bucket] = (float) $row->ca_total;
             }
 
-            $datasets[] = [
-                'type_vehicule' => $type,
-                'label'         => $label,
-                'data'          => $data,
+            $datasets = [];
+            foreach (self::TYPE_LABELS as $type => $label) {
+                $data = [];
+                foreach ($buckets as $bucket) {
+                    $data[] = round($index[$type][$bucket['key']] ?? 0, 2);
+                }
+
+                $datasets[] = [
+                    'type_vehicule' => $type,
+                    'label'         => $label,
+                    'data'          => $data,
+                ];
+            }
+
+            return [
+                'period' => [
+                    'key'         => $period,
+                    'from'        => $from->toDateString(),
+                    'to'          => $to->toDateString(),
+                    'granularity' => $granularity,
+                ],
+                'labels'   => array_column($buckets, 'label'),
+                'datasets' => $datasets,
             ];
-        }
+        });
 
-        return $this->successResponse([
-            'period' => [
-                'key'         => $period,
-                'from'        => $from->toDateString(),
-                'to'          => $to->toDateString(),
-                'granularity' => $granularity,
-            ],
-            'labels'   => array_column($buckets, 'label'),
-            'datasets' => $datasets,
-        ], 'Évolution CA par type de véhicule');
+        return $this->successResponse($payload, 'Evolution CA par type de vehicule');
     }
-
-    // ── Granularité auto ───────────────────────────────────────────────────
 
     private function resolveGranularity(int $nbJours): string
     {
@@ -150,8 +146,6 @@ class VenteEvolutionTypeVehiculeController extends Controller
 
         return 'month';
     }
-
-    // ── Buckets ────────────────────────────────────────────────────────────
 
     private function buildBuckets(Carbon $from, Carbon $to, string $granularity): array
     {
@@ -193,8 +187,6 @@ class VenteEvolutionTypeVehiculeController extends Controller
         return $buckets;
     }
 
-    // ── Period resolution ──────────────────────────────────────────────────
-
     private function resolvePeriod(string $period, ?int $days): array
     {
         $now = Carbon::now();
@@ -219,3 +211,4 @@ class VenteEvolutionTypeVehiculeController extends Controller
         };
     }
 }
+

@@ -8,15 +8,16 @@ use App\Services\SiteContext;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
  * GET /api/v1/dashboard/ventes/encaissements
  *
- * Métriques financières globales des factures vente pour la période :
- *   - total_factures    : SUM(montant_brut) toutes factures non annulées
+ * Metriques financieres globales des factures vente pour la periode :
+ *   - total_factures    : SUM(montant_brut) toutes factures non annulees
  *   - factures_payees   : SUM(montant_brut) des factures statut = payee
- *   - reste_a_encaisser : SUM(montant_net - encaissé) des factures impayee / partiel
+ *   - reste_a_encaisser : SUM(montant_net - encaisse) des factures impayee / partiel
  *
  * Query params :
  *   - period  : today | yesterday | this_week | last_week | this_month | last_month
@@ -41,9 +42,9 @@ class VenteEncaissementStatController extends Controller
     {
         $period = $request->get('period', 'this_month');
 
-        if (! in_array($period, self::ALLOWED_PERIODS)) {
+        if (! in_array($period, self::ALLOWED_PERIODS, true)) {
             return $this->errorResponse(
-                'Période invalide. Valeurs acceptées : ' . implode(', ', self::ALLOWED_PERIODS),
+                'Periode invalide. Valeurs acceptees : ' . implode(', ', self::ALLOWED_PERIODS),
                 null,
                 422
             );
@@ -53,81 +54,66 @@ class VenteEncaissementStatController extends Controller
         if ($period === 'last_x_days') {
             $days = (int) $request->get('days', 30);
             if ($days < 1) {
-                return $this->errorResponse('Le paramètre days doit être un entier > 0.', null, 422);
+                return $this->errorResponse('Le parametre days doit etre un entier > 0.', null, 422);
             }
         }
 
         [$from, $to] = $this->resolvePeriod($period, $days);
-
         $siteId = app(SiteContext::class)->getCurrentSiteId();
 
-        // ── Base : factures non supprimées de la période ───────────────────
-        $base = DB::table('factures_ventes as fv')
-            ->join('commandes_ventes as cv', 'cv.id', '=', 'fv.commande_vente_id')
-            ->whereNull('fv.deleted_at')
-            ->whereNull('cv.deleted_at')
-            ->when($siteId, fn ($q) => $q->where('fv.site_id', $siteId))
-            ->whereBetween('cv.created_at', [$from, $to]);
+        $cacheKey = sprintf(
+            'dashboard:ventes:encaissements:%s:%s:%s',
+            $siteId ?? 'all',
+            $period,
+            $days ?? 'na'
+        );
 
-        // ── Total factures (hors annulées) ────────────────────────────────
-        $totalFactures = (clone $base)
-            ->where('fv.statut_facture', '!=', 'annulee')
-            ->sum('fv.montant_brut');
+        $payload = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($from, $to, $siteId, $period) {
+            // Agrégats factures en 1 seul scan
+            $factureAgg = DB::table('factures_ventes as fv')
+                ->selectRaw("
+                    SUM(CASE WHEN fv.statut_facture != 'annulee' THEN fv.montant_brut ELSE 0 END) AS total_factures,
+                    SUM(CASE WHEN fv.statut_facture != 'annulee' THEN 1 ELSE 0 END) AS nb_factures_total,
+                    SUM(CASE WHEN fv.statut_facture = 'payee' THEN fv.montant_brut ELSE 0 END) AS factures_payees,
+                    SUM(CASE WHEN fv.statut_facture = 'payee' THEN 1 ELSE 0 END) AS nb_factures_payees,
+                    SUM(CASE WHEN fv.statut_facture IN ('impayee', 'partiel') THEN fv.montant_net ELSE 0 END) AS montant_du,
+                    SUM(CASE WHEN fv.statut_facture IN ('impayee', 'partiel') THEN 1 ELSE 0 END) AS nb_factures_impayees,
+                    SUM(CASE WHEN fv.statut_facture = 'annulee' THEN 1 ELSE 0 END) AS nb_factures_annulees
+                ")
+                ->whereNull('fv.deleted_at')
+                ->when($siteId, fn ($q) => $q->where('fv.site_id', $siteId))
+                ->whereBetween('fv.created_at', [$from, $to])
+                ->first();
 
-        $nbFacturesTotal = (clone $base)
-            ->where('fv.statut_facture', '!=', 'annulee')
-            ->count();
+            // Encaissements lies aux factures non soldees
+            $montantEncaisse = DB::table('encaissements_ventes as ev')
+                ->join('factures_ventes as fv', 'fv.id', '=', 'ev.facture_vente_id')
+                ->whereNull('fv.deleted_at')
+                ->whereIn('fv.statut_facture', ['impayee', 'partiel'])
+                ->when($siteId, fn ($q) => $q->where('fv.site_id', $siteId))
+                ->whereBetween('fv.created_at', [$from, $to])
+                ->sum('ev.montant');
 
-        // ── Factures payées ────────────────────────────────────────────────
-        $facturesPayees = (clone $base)
-            ->where('fv.statut_facture', 'payee')
-            ->sum('fv.montant_brut');
+            $montantDu = (float) ($factureAgg->montant_du ?? 0);
+            $resteAEncaisser = max(0, $montantDu - (float) $montantEncaisse);
 
-        $nbFacturesPayees = (clone $base)
-            ->where('fv.statut_facture', 'payee')
-            ->count();
+            return [
+                'period' => [
+                    'key'  => $period,
+                    'from' => $from->toDateString(),
+                    'to'   => $to->toDateString(),
+                ],
+                'total_factures'       => round((float) ($factureAgg->total_factures ?? 0), 2),
+                'factures_payees'      => round((float) ($factureAgg->factures_payees ?? 0), 2),
+                'reste_a_encaisser'    => round($resteAEncaisser, 2),
+                'nb_factures_total'    => (int) ($factureAgg->nb_factures_total ?? 0),
+                'nb_factures_payees'   => (int) ($factureAgg->nb_factures_payees ?? 0),
+                'nb_factures_impayees' => (int) ($factureAgg->nb_factures_impayees ?? 0),
+                'nb_factures_annulees' => (int) ($factureAgg->nb_factures_annulees ?? 0),
+            ];
+        });
 
-        // ── Reste à encaisser (impayee + partiel) ─────────────────────────
-        // = SUM(montant_net) - SUM(encaissements) pour factures non soldées
-        $montantDu = (clone $base)
-            ->whereIn('fv.statut_facture', ['impayee', 'partiel'])
-            ->sum('fv.montant_net');
-
-        $montantEncaisse = DB::table('encaissements_ventes as ev')
-            ->join('factures_ventes as fv', 'fv.id', '=', 'ev.facture_vente_id')
-            ->join('commandes_ventes as cv', 'cv.id', '=', 'fv.commande_vente_id')
-            ->whereNull('fv.deleted_at')
-            ->whereNull('cv.deleted_at')
-            ->whereIn('fv.statut_facture', ['impayee', 'partiel'])
-            ->when($siteId, fn ($q) => $q->where('fv.site_id', $siteId))
-            ->whereBetween('cv.created_at', [$from, $to])
-            ->sum('ev.montant');
-
-        $resteAEncaisser = max(0, (float) $montantDu - (float) $montantEncaisse);
-
-        $nbFacturesImpayees = (clone $base)
-            ->whereIn('fv.statut_facture', ['impayee', 'partiel'])
-            ->count();
-
-        // ── Factures annulées (info) ───────────────────────────────────────
-        $nbFacturesAnnulees = (clone $base)
-            ->where('fv.statut_facture', 'annulee')
-            ->count();
-
-        return $this->successResponse([
-            'period' => [
-                'key'  => $period,
-                'from' => $from->toDateString(),
-                'to'   => $to->toDateString(),
-            ],
-            'total_factures'      => round((float) $totalFactures, 2),
-            'factures_payees'     => round((float) $facturesPayees, 2),
-            'reste_a_encaisser'   => round($resteAEncaisser, 2),
-            'nb_factures_total'   => (int) $nbFacturesTotal,
-            'nb_factures_payees'  => (int) $nbFacturesPayees,
-            'nb_factures_impayees'=> (int) $nbFacturesImpayees,
-            'nb_factures_annulees'=> (int) $nbFacturesAnnulees,
-        ], 'Statistiques d\'encaissement des factures vente');
+        return $this->successResponse($payload, 'Statistiques d\'encaissement des factures vente');
     }
 
     private function resolvePeriod(string $period, ?int $days): array
@@ -154,3 +140,4 @@ class VenteEncaissementStatController extends Controller
         };
     }
 }
+
