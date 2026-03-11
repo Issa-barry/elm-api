@@ -28,6 +28,13 @@ class FakeDataSeeder extends Seeder
     private const JOURS_COMMANDES    = 30;      // 30 j × 60k = 1,8M commandes/site
     private const COMMANDES_PAR_JOUR = 60_000;
 
+    // Commandes historiques : fenêtre longue, volume léger → couvre TOUS les filtres
+    // dashboard-ventes (aujourd'hui/hier/cette semaine/semaine dernière/ce mois/
+    // mois dernier/cette année/année dernière)
+    // Jours 31→400 = Feb N-1 ... Année N-1 complète
+    private const JOURS_COMMANDES_HISTORIQUE    = 400;   // couvre année N-1
+    private const COMMANDES_HISTORIQUE_PAR_JOUR = 300;   // léger — juste pour les filtres
+
     // Packings : fenêtre longue → couvre TOUS les filtres date du frontend :
     //   aujourd'hui / hier / cette semaine / semaine dernière /
     //   ce mois / mois dernier / cette année / année dernière
@@ -141,19 +148,33 @@ class FakeDataSeeder extends Seeder
         $vehiculeArr = $vehicules->toArray();
 
         // ── 1. Clients ────────────────────────────────────────────────────────
-        $this->command->line('  [1/3] Clients...');
+        $this->command->line('  [1/4] Clients...');
         $this->bulkCreateClients($siteId);
 
         // ── 2. Packings ───────────────────────────────────────────────────────
         if (! empty($prestataireIds)) {
-            $this->command->line('  [2/3] Packings...');
+            $this->command->line('  [2/4] Packings...');
             $this->ensureStockRouleaux($siteId);
             $this->bulkCreatePackings($siteId, $prestataireIds);
         }
 
-        // ── 3. Commandes (le gros) ────────────────────────────────────────────
-        $this->command->line('  [3/3] Commandes (' . number_format(self::COMMANDES_PAR_JOUR) . '/jour × ' . self::JOURS_COMMANDES . ' jours)...');
-        $this->bulkCreateCommandes($siteId, $userId, $vehiculeArr, $produitIds, $livreur, $proprietaire);
+        // ── 3. Commandes stress-test (J-0 → J-29) ────────────────────────────
+        $this->command->line('  [3/4] Commandes stress-test (' . number_format(self::COMMANDES_PAR_JOUR) . '/j × ' . self::JOURS_COMMANDES . ' j)...');
+        $this->bulkCreateCommandes(
+            $siteId, $userId, $vehiculeArr, $produitIds, $livreur, $proprietaire,
+            dayFrom: 0,
+            dayTo:   self::JOURS_COMMANDES - 1,
+            perDay:  self::COMMANDES_PAR_JOUR,
+        );
+
+        // ── 4. Commandes historiques (J-30 → J-399) → couvre tous les filtres ──
+        $this->command->line('  [4/4] Commandes historiques (' . self::COMMANDES_HISTORIQUE_PAR_JOUR . '/j × ' . (self::JOURS_COMMANDES_HISTORIQUE - self::JOURS_COMMANDES) . ' j — filtres dashboard)...');
+        $this->bulkCreateCommandes(
+            $siteId, $userId, $vehiculeArr, $produitIds, $livreur, $proprietaire,
+            dayFrom: self::JOURS_COMMANDES,
+            dayTo:   self::JOURS_COMMANDES_HISTORIQUE - 1,
+            perDay:  self::COMMANDES_HISTORIQUE_PAR_JOUR,
+        );
     }
 
     // =========================================================================
@@ -345,7 +366,10 @@ class FakeDataSeeder extends Seeder
         array   $vehiculeArr,
         array   $produitIds,
         ?object $livreur,
-        ?object $proprietaire
+        ?object $proprietaire,
+        int     $dayFrom = 0,
+        int     $dayTo   = 29,
+        int     $perDay  = self::COMMANDES_PAR_JOUR,
     ): void {
         $nbVehicules = count($vehiculeArr);
         $nbProduits  = count($produitIds);
@@ -362,14 +386,15 @@ class FakeDataSeeder extends Seeder
         }
         $vehiculeIds = array_column($vehiculeArr, 'id');
 
-        $bar = $this->command->getOutput()->createProgressBar(self::JOURS_COMMANDES);
+        $nbJours = $dayTo - $dayFrom + 1;
+        $bar     = $this->command->getOutput()->createProgressBar($nbJours);
         $bar->setFormat(' Jour %current%/%max% [%bar%] %percent:3s%%  %elapsed:6s% écoulé');
 
-        for ($day = 0; $day < self::JOURS_COMMANDES; $day++) {
+        for ($day = $dayFrom; $day <= $dayTo; $day++) {
             $date        = Carbon::now()->subDays($day);
             $dateStr     = $date->toDateTimeString();
             $dateDay     = $date->toDateString();
-            $remaining   = self::COMMANDES_PAR_JOUR;
+            $remaining   = $perDay;
 
             while ($remaining > 0) {
                 $batchSize = min(self::CHUNK_SIZE, $remaining);
