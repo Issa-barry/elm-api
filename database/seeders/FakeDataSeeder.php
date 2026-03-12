@@ -183,8 +183,15 @@ class FakeDataSeeder extends Seeder
 
     private function bulkCreateClients(int $siteId): void
     {
-        $count      = self::CLIENTS_TOTAL;
-        $phoneBase  = 630_000_000 + ($siteId * $count);
+        $count = self::CLIENTS_TOTAL;
+
+        // Phone unique par run × site :
+        //   prefix 10-99 dérivé du runId (crc32 → stable par run, différent entre runs)
+        //   chaque site obtient 100 000 numéros → largement suffisant pour 10 000 clients
+        // SET UNIQUE_CHECKS=0 ne désactive PAS les contraintes unique sur InnoDB ;
+        // on utilise insertOrIgnore pour être robuste aux re-runs.
+        $runPrefix  = (abs(crc32($this->runId)) % 90) + 10;          // 10–99
+        $phoneBase  = 600_000_000 + ($runPrefix * 1_000_000) + ($siteId * 100_000);
         $noms       = self::NOMS;
         $prenoms    = self::PRENOMS;
         $quartiers  = self::QUARTIERS;
@@ -220,7 +227,7 @@ class FakeDataSeeder extends Seeder
                 ];
             }
 
-            DB::table('clients')->insert($rows);
+            DB::table('clients')->insertOrIgnore($rows);
             $bar->advance($batchSize);
         }
 

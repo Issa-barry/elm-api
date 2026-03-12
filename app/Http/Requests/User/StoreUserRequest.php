@@ -89,6 +89,10 @@ class StoreUserRequest extends FormRequest
             // Organisation (multi-tenant)
             'organisation_id' => ['sometimes', 'nullable', 'integer', 'exists:organisations,id'],
 
+            // Affectation site
+            'site_id'   => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
+            'site_role' => ['sometimes', 'nullable', 'string', Rule::in(\App\Enums\SiteRole::values())],
+
             // Préférences
             'language' => ['sometimes', 'string', 'max:5'],
 
