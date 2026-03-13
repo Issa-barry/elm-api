@@ -21,8 +21,14 @@ class StoreProduitRequest extends FormRequest
         $type = $this->input('type', ProduitType::MATERIEL->value);
 
         return [
-            'nom' => 'required|string|max:255',
+            'nom'  => 'required|string|max:255',
             'code' => 'nullable|string|size:12|regex:/^\\d+$/|unique:produits,code',
+
+            // Codes-barres Code128 (ASCII imprimable 0x21–0x7E, normalisé uppercase)
+            // @deprecated code — utiliser code_interne pour les nouveaux clients
+            'code_interne'     => ['nullable', 'string', 'max:50',  'regex:/^[\\x21-\\x7E]+$/', 'unique:produits,code_interne'],
+            'code_fournisseur' => ['nullable', 'string', 'max:100', 'regex:/^[\\x21-\\x7E]+$/'],
+
             'type' => ['required', Rule::enum(ProduitType::class)],
             'statut' => ['nullable', Rule::enum(ProduitStatut::class)],
 
@@ -112,8 +118,15 @@ class StoreProduitRequest extends FormRequest
             'nom.required' => 'Le nom du produit est obligatoire.',
             'nom.max' => 'Le nom ne peut pas dépasser 255 caractères.',
 
-            // Code
+            // Code legacy
             'code.unique' => 'Ce code produit existe déjà.',
+
+            // Code-barres Code128
+            'code_interne.unique'      => 'Ce code interne est déjà utilisé par un autre produit.',
+            'code_interne.max'         => 'Le code interne ne peut pas dépasser 50 caractères.',
+            'code_interne.regex'       => 'Le code interne ne doit contenir que des caractères imprimables (ASCII 33–126).',
+            'code_fournisseur.max'     => 'Le code fournisseur ne peut pas dépasser 100 caractères.',
+            'code_fournisseur.regex'   => 'Le code fournisseur ne doit contenir que des caractères imprimables (ASCII 33–126).',
             'code.size' => 'Le code doit contenir exactement 12 chiffres.',
             'code.regex' => 'Le code produit doit être uniquement numérique.',
 

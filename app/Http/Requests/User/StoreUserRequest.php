@@ -34,7 +34,10 @@ class StoreUserRequest extends FormRequest
         }
 
         if ($this->exists('phone')) {
-            $normalized['phone'] = $this->normalizePhone($this->input('phone'));
+            $normalized['phone'] = $this->normalizePhone(
+                $this->input('phone'),
+                $this->input('code_phone_pays')
+            );
         }
         if ($this->exists('nom')) {
             $normalized['nom'] = $this->normalizeString($this->input('nom'));
@@ -48,9 +51,10 @@ class StoreUserRequest extends FormRequest
         if ($this->exists('role')) {
             $normalized['role'] = $this->normalizeLowercase($this->input('role'));
         }
-        if ($this->exists('type')) {
-            $normalized['type'] = $this->normalizeLowercase($this->input('type'));
-        }
+        // Type : défaut 'staff' si absent (formulaire de création rapide)
+        $normalized['type'] = $this->exists('type')
+            ? $this->normalizeLowercase($this->input('type'))
+            : UserType::STAFF->value;
 
         if ($normalized !== []) {
             $this->merge($normalized);
@@ -88,6 +92,10 @@ class StoreUserRequest extends FormRequest
 
             // Organisation (multi-tenant)
             'organisation_id' => ['sometimes', 'nullable', 'integer', 'exists:organisations,id'],
+
+            // Affectation site
+            'site_id'   => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
+            'site_role' => ['sometimes', 'nullable', 'string', Rule::in(\App\Enums\SiteRole::values())],
 
             // Préférences
             'language' => ['sometimes', 'string', 'max:5'],

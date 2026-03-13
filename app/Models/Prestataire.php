@@ -355,6 +355,12 @@ class Prestataire extends Model
             }
 
             $phone = $countryCode . $localDigits;
+        } elseif ($dialCode !== null) {
+            // Cas : frontend a concaténé +33 + 0658... → +330658... — supprimer le 0 redondant
+            $prefix = self::normalizeDialCode($dialCode);
+            if ($prefix !== null && str_starts_with($phone, $prefix . '0')) {
+                $phone = $prefix . substr($phone, strlen($prefix) + 1);
+            }
         }
 
         $digits = preg_replace('/\D/', '', ltrim($phone, '+')) ?? '';

@@ -3,9 +3,10 @@ cd ~/domains/usine-eau-api.fr/public_html
 composer2 update
 php artisan migrate:fresh --seed
 php artisan optimize:clear
-php artisan storage:link
 php artisan optimize
 
+php artisan db:seed --class=FakeDataSeeder
+php artisan storage:link
 
 
 composer require barryvdh/laravel-dompdf

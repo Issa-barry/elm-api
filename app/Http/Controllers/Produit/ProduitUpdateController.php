@@ -100,32 +100,38 @@ class ProduitUpdateController extends Controller
                 // Toute modification de prix est locale à l'usine courante.
                 if (!empty($localPrix)) {
                     $siteId = app(SiteContext::class)->getCurrentSiteId();
-                    if ($siteId) {
-                        $produitUsine = ProduitSite::firstOrCreate(
-                            ['produit_id' => $produit->id, 'site_id' => $siteId],
-                            ['is_active' => false]
+                    if (!$siteId) {
+                        throw new \RuntimeException(
+                            'X-Site-Id manquant : impossible de mettre à jour les prix sans contexte d\'usine.'
                         );
-                        $produitUsine->update($localPrix);
                     }
+                    $produitUsine = ProduitSite::firstOrCreate(
+                        ['produit_id' => $produit->id, 'site_id' => $siteId],
+                        ['is_active' => false]
+                    );
+                    $produitUsine->update($localPrix);
                 }
 
                 // ── Mise à jour du stock de l'usine courante dans stocks ─────────
                 if ($produit->type !== ProduitType::SERVICE && ($qteStock !== null || $stockSeuil !== null)) {
                     $siteId = app(SiteContext::class)->getCurrentSiteId();
-                    if ($siteId) {
-                        $stock = Stock::firstOrCreate(
-                            ['produit_id' => $produit->id, 'site_id' => $siteId],
-                            ['qte_stock' => 0, 'seuil_alerte_stock' => null]
+                    if (!$siteId) {
+                        throw new \RuntimeException(
+                            'X-Site-Id manquant : impossible de mettre à jour le stock sans contexte d\'usine.'
                         );
-
-                        if ($qteStock !== null) {
-                            $stock->qte_stock = $qteStock;
-                        }
-                        if ($stockSeuil !== null) {
-                            $stock->seuil_alerte_stock = $stockSeuil;
-                        }
-                        $stock->save();
                     }
+                    $stock = Stock::firstOrCreate(
+                        ['produit_id' => $produit->id, 'site_id' => $siteId],
+                        ['qte_stock' => 0, 'seuil_alerte_stock' => null]
+                    );
+
+                    if ($qteStock !== null) {
+                        $stock->qte_stock = $qteStock;
+                    }
+                    if ($stockSeuil !== null) {
+                        $stock->seuil_alerte_stock = $stockSeuil;
+                    }
+                    $stock->save();
                 }
 
                 $produit->load(['creator:id,nom,prenom', 'updater:id,nom,prenom', 'stockCourant', 'produitSiteCourant']);

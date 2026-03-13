@@ -51,6 +51,12 @@ class ProduitPackSeeder extends Seeder
         $produit->prix_vente  = 5000;
         $produit->is_critique = true;
         $produit->statut      = ProduitStatut::ACTIF;
+
+        // code_interne requis (NOT NULL) — backfill depuis code si absent
+        if (empty($produit->code_interne)) {
+            $produit->code_interne = $produit->code;
+        }
+
         $produit->save();
 
         // Créer une entrée stock pour chaque usine existante

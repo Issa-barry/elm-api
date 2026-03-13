@@ -19,21 +19,38 @@ trait NormalizesInputFields
             return null;
         }
         $v = trim((string) $value);
-        return $v === '' ? null : strtolower($v);
+        // Si vide ou ne contient pas '@', considérer comme absent (champ facultatif mal rempli)
+        if ($v === '' || !str_contains($v, '@')) {
+            return null;
+        }
+        return strtolower($v);
     }
 
     /**
      * Supprime tout caractère autre que chiffres et '+'.
+     * Si code_phone_pays est fourni, supprime le zéro local redondant.
+     * Ex: +33 + 0658855039 → +33658855039 (format E.164)
      * Retourne null si vide après nettoyage.
-     * Usage : numéros de téléphone basiques (non E.164).
      */
-    protected function normalizePhone(mixed $value): ?string
+    protected function normalizePhone(mixed $value, mixed $countryCode = null): ?string
     {
         if ($value === null) {
             return null;
         }
         $v = preg_replace('/[^0-9+]/', '', (string) $value);
-        return ($v === null || $v === '') ? null : $v;
+        if ($v === null || $v === '') {
+            return null;
+        }
+
+        // Supprime le 0 local redondant : +33 0658... → +33658...
+        if ($countryCode !== null) {
+            $prefix = preg_replace('/[^0-9+]/', '', (string) $countryCode);
+            if ($prefix !== '' && str_starts_with($v, $prefix . '0')) {
+                $v = $prefix . substr($v, strlen($prefix) + 1);
+            }
+        }
+
+        return $v;
     }
 
     /**

@@ -35,6 +35,11 @@ class ProduitStoreController extends Controller
                     $data['code'] = $this->generateNumericProductCode();
                 }
 
+                // Auto-générer code_interne depuis code si absent
+                if (empty($data['code_interne'])) {
+                    $data['code_interne'] = $data['code'];
+                }
+
                 // Statut par défaut : BROUILLON — activation explicite requise
                 if (empty($data['statut'])) {
                     $data['statut'] = ProduitStatut::BROUILLON->value;
