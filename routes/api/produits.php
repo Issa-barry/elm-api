@@ -15,6 +15,7 @@ use App\Http\Controllers\Produit\ProduitUnarchiveController;
 use App\Http\Controllers\Produit\ProduitArchivedListController;
 use App\Http\Controllers\Produit\ProduitUploadImageController;
 use App\Http\Controllers\Produit\ProduitDeleteImageController;
+use App\Http\Controllers\Produit\ProduitByCodeController;
 use App\Http\Controllers\Produit\ProduitPosController;
 use App\Http\Controllers\Produit\ProduitUsineAffecterController;
 use App\Http\Controllers\Produit\ProduitUsineDesaffecterController;
@@ -42,6 +43,9 @@ Route::prefix('produits')->group(function () {
 
     // Catalogue POS : produits actifs localement dans l'usine courante
     Route::get('/pos', ProduitPosController::class)->middleware('permission:produits.read');
+
+    // Lookup par code-barres Code128 (exact match)
+    Route::get('/by-code/{code}', ProduitByCodeController::class)->middleware('permission:produits.read');
 
     Route::get('/{id}', ProduitShowController::class)->where('id', '[0-9]+')->middleware('permission:produits.read');
 

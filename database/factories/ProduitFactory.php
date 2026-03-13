@@ -26,15 +26,18 @@ class ProduitFactory extends Factory
         $this->stockQte   = fake()->numberBetween(1, 100);
         $this->stockSeuil = null;
 
+        $code = fake()->unique()->numerify('############'); // 12 chiffres
+
         return [
-            'nom'         => fake()->words(3, true),
-            'code'        => fake()->unique()->numerify('############'), // 12 chiffres
-            'type'        => ProduitType::MATERIEL->value,
-            'statut'      => ProduitStatut::ACTIF->value,
-            'prix_achat'  => fake()->numberBetween(100, 10000),
-            'is_critique' => false,
-            'is_global'  => false,
-            'site_id'    => fn () => Site::withoutGlobalScopes()->firstOrCreate(
+            'nom'          => fake()->words(3, true),
+            'code'         => $code,
+            'code_interne' => $code, // requis NOT NULL — même valeur que code par défaut
+            'type'         => ProduitType::MATERIEL->value,
+            'statut'       => ProduitStatut::ACTIF->value,
+            'prix_achat'   => fake()->numberBetween(100, 10000),
+            'is_critique'  => false,
+            'is_global'   => false,
+            'site_id'     => fn () => Site::withoutGlobalScopes()->firstOrCreate(
                 ['code' => 'TEST-DEFAULT'],
                 ['nom' => 'Site Test Default', 'type' => SiteType::USINE->value, 'statut' => 'active']
             )->id,

@@ -35,6 +35,8 @@ class Produit extends Model
         'image_url',
         'is_critique',
         'last_stockout_notified_at',
+        'code_interne',
+        'code_fournisseur',
         'created_by',
         'updated_by',
         'deleted_by',
@@ -88,6 +90,34 @@ class Produit extends Model
         $normalizedCode = preg_replace('/\s+/u', '', $normalizedCode) ?? $normalizedCode;
 
         $this->attributes['code'] = mb_strtoupper($normalizedCode, 'UTF-8');
+    }
+
+    /**
+     * Code128 : trim + suppression espaces parasites + uppercase.
+     * Accepte tout caractère ASCII imprimable (0x20–0x7E).
+     */
+    public function setCodeInterneAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['code_interne'] = null;
+            return;
+        }
+        $this->attributes['code_interne'] = mb_strtoupper(
+            preg_replace('/\s+/', '', trim((string) $value)),
+            'UTF-8'
+        );
+    }
+
+    public function setCodeFournisseurAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['code_fournisseur'] = null;
+            return;
+        }
+        $this->attributes['code_fournisseur'] = mb_strtoupper(
+            preg_replace('/\s+/', '', trim((string) $value)),
+            'UTF-8'
+        );
     }
 
     public function setDescriptionAttribute($value): void

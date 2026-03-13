@@ -26,8 +26,13 @@ class UpdateProduitRequest extends FormRequest
         $type = $this->input('type', $produit?->type?->value ?? ProduitType::MATERIEL->value);
 
         return [
-            'nom' => 'sometimes|required|string|max:255',
+            'nom'  => 'sometimes|required|string|max:255',
             'code' => ['sometimes', 'nullable', 'string', 'size:12', 'regex:/^\d+$/', Rule::unique('produits', 'code')->ignore($produitId)],
+
+            // Codes-barres Code128
+            'code_interne'     => ['sometimes', 'nullable', 'string', 'max:50',  'regex:/^[\x21-\x7E]+$/', Rule::unique('produits', 'code_interne')->ignore($produitId)],
+            'code_fournisseur' => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[\x21-\x7E]+$/'],
+
             'type' => ['sometimes', Rule::enum(ProduitType::class)],
             'statut' => ['sometimes', Rule::enum(ProduitStatut::class)],
 

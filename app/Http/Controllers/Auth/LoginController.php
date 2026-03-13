@@ -20,12 +20,18 @@ class LoginController extends Controller
         try {
             // Validation
             $validated = $request->validate([
-                'phone' => ['required', 'string'],
-                'password' => ['required', 'string'],
-                'remember_me' => ['nullable', 'boolean'],
+                'phone'          => ['required', 'string'],
+                'code_phone_pays' => ['nullable', 'string', 'regex:/^\+[0-9]{1,4}$/'],
+                'password'       => ['required', 'string'],
+                'remember_me'    => ['nullable', 'boolean'],
             ]);
 
-            $user = User::where('phone', $validated['phone'])->first();
+            $phone = $this->normalizePhone(
+                $validated['phone'],
+                $validated['code_phone_pays'] ?? null
+            );
+
+            $user = User::where('phone', $phone)->first();
 
             if (!$user || !Hash::check($validated['password'], $user->password)) {
                 throw ValidationException::withMessages([
@@ -71,5 +77,32 @@ class LoginController extends Controller
             Log::error('Erreur lors de la connexion', ['error' => $e->getMessage()]);
             return $this->errorResponse('Erreur lors de la connexion', $e->getMessage());
         }
+    }
+
+    /**
+     * Normalise un numéro de téléphone au format international (+XXXXXXXXXXX).
+     *
+     * - "+33758855039"  → "+33758855039"  (déjà international, inchangé)
+     * - "0033758855039" → "+33758855039"  (préfixe 00)
+     * - "0758855039" + "+33" → "+33758855039"  (format local français)
+     * - "0624000013" + "+224" → "+224624000013" (format local guinéen)
+     */
+    private function normalizePhone(string $phone, ?string $countryCode = null): string
+    {
+        $phone = trim($phone);
+
+        if (str_starts_with($phone, '+')) {
+            return $phone;
+        }
+
+        if (str_starts_with($phone, '00')) {
+            return '+' . substr($phone, 2);
+        }
+
+        if (str_starts_with($phone, '0') && $countryCode) {
+            return $countryCode . substr($phone, 1);
+        }
+
+        return $phone;
     }
 }
