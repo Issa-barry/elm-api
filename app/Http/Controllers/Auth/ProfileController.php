@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Models\Site;
 use App\Services\SiteContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,25 @@ class ProfileController extends Controller
                     'is_default' => (bool) $site->pivot->is_default,
                 ];
             });
+
+        // Fallback : si aucun site via user_sites, utiliser le site courant ou default_site_id
+        if ($accessibleSites->isEmpty()) {
+            $fallbackSiteId = $ctx->getCurrentSiteId() ?? $user->default_site_id;
+            if ($fallbackSiteId) {
+                $fallbackSite = Site::find($fallbackSiteId);
+                if ($fallbackSite) {
+                    $accessibleSites = collect([[
+                        'id'         => $fallbackSite->id,
+                        'nom'        => $fallbackSite->nom,
+                        'code'       => $fallbackSite->code,
+                        'type'       => $fallbackSite->type,
+                        'statut'     => $fallbackSite->statut,
+                        'mon_role'   => null,
+                        'is_default' => true,
+                    ]]);
+                }
+            }
+        }
 
         return $this->successResponse([
             'user'             => $user,

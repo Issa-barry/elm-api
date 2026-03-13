@@ -32,9 +32,12 @@ class SiteUserAffectController extends Controller
 
         $validated = $request->validate([
             'user_id'    => ['required', 'integer', 'exists:users,id'],
-            'role'       => ['required', Rule::enum(SiteRole::class)],
+            'role'       => ['nullable', Rule::enum(SiteRole::class)],
             'is_default' => ['nullable', 'boolean'],
         ]);
+
+        // Valeur par défaut si le frontend n'envoie pas de rôle site
+        $validated['role'] ??= SiteRole::STAFF->value;
 
         $user = User::findOrFail($validated['user_id']);
 

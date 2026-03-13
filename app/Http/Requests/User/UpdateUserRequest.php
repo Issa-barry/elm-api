@@ -34,7 +34,10 @@ class UpdateUserRequest extends FormRequest
         }
 
         if ($this->exists('phone')) {
-            $normalized['phone'] = $this->normalizePhone($this->input('phone'));
+            $normalized['phone'] = $this->normalizePhone(
+                $this->input('phone'),
+                $this->input('code_phone_pays')
+            );
         }
         if ($this->exists('nom')) {
             $normalized['nom'] = $this->normalizeString($this->input('nom'));
@@ -98,6 +101,10 @@ class UpdateUserRequest extends FormRequest
             'quartier' => ['sometimes', 'nullable', 'string', 'max:100'],
             'code_postal' => ['sometimes', 'nullable', 'string', 'max:20'],
             'adresse' => ['sometimes', 'nullable', 'string', 'max:500'],
+
+            // Affectation site
+            'site_id'   => ['sometimes', 'nullable', 'integer', 'exists:sites,id'],
+            'site_role' => ['sometimes', 'nullable', 'string', Rule::in(\App\Enums\SiteRole::values())],
 
             // Préférences
             'language' => ['sometimes', 'string', 'max:5'],
