@@ -84,9 +84,9 @@ class LoginController extends Controller
      * Même logique que NormalizesInputFields::normalizePhone.
      *
      * - "0758855039" + "+33"  → "+33758855039"
-     * - "+330758855039" + "+33" → "+33758855039"  (0 redondant)
+     * - "+330605751596"       → "+33605751596"  (0 trunk FR supprimé)
      * - "0033758855039"       → "+33758855039"  (préfixe 00)
-     * - "+33758855039"        → "+33758855039"  (inchangé)
+     * - "+33605751596"        → "+33605751596"  (inchangé, pas de 0 après +33)
      * - "758855039" + "+33"   → "+33758855039"  (national sans 0)
      */
     private function normalizePhone(string $phone, ?string $countryCode = null): string
@@ -113,11 +113,9 @@ class LoginController extends Controller
             }
         }
 
-        // Pas de code pays fourni mais numéro déjà international (+CC0XXXXXXX).
-        // Le front peut concaténer +33 + 0654321987 → +330654321987.
-        // Détecter et supprimer le 0 redondant : +{1-4 chiffres}0{6+ chiffres}.
-        if (str_starts_with($v, '+')) {
-            $v = (string) preg_replace('/^(\+\d{1,4})0(\d{6,})$/', '$1$2', $v);
+        // France : +330XXXXXXXXX → +33XXXXXXXXX (0 trunk redondant)
+        if (str_starts_with($v, '+330')) {
+            $v = '+33' . substr($v, 4);
         }
 
         return $v;
