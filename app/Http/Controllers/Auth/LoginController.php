@@ -80,29 +80,46 @@ class LoginController extends Controller
     }
 
     /**
-     * Normalise un numéro de téléphone au format international (+XXXXXXXXXXX).
+     * Normalise un numéro de téléphone au format E.164.
+     * Même logique que NormalizesInputFields::normalizePhone.
      *
-     * - "+33758855039"  → "+33758855039"  (déjà international, inchangé)
-     * - "0033758855039" → "+33758855039"  (préfixe 00)
-     * - "0758855039" + "+33" → "+33758855039"  (format local français)
-     * - "0624000013" + "+224" → "+224624000013" (format local guinéen)
+     * - "0758855039" + "+33"  → "+33758855039"
+     * - "+330758855039" + "+33" → "+33758855039"  (0 redondant)
+     * - "0033758855039"       → "+33758855039"  (préfixe 00)
+     * - "+33758855039"        → "+33758855039"  (inchangé)
+     * - "758855039" + "+33"   → "+33758855039"  (national sans 0)
      */
     private function normalizePhone(string $phone, ?string $countryCode = null): string
     {
-        $phone = trim($phone);
+        $v = preg_replace('/[^0-9+]/', '', trim($phone)) ?? '';
 
-        if (str_starts_with($phone, '+')) {
-            return $phone;
+        if (str_starts_with($v, '00')) {
+            $v = '+' . substr($v, 2);
         }
 
-        if (str_starts_with($phone, '00')) {
-            return '+' . substr($phone, 2);
+        if ($countryCode !== null) {
+            $prefix = preg_replace('/[^0-9+]/', '', $countryCode) ?? '';
+            if ($prefix !== '') {
+                if (str_starts_with($v, $prefix . '0')) {
+                    return $prefix . substr($v, strlen($prefix) + 1);
+                }
+                if (str_starts_with($v, $prefix)) {
+                    return $v;
+                }
+                if (str_starts_with($v, '0')) {
+                    return $prefix . substr($v, 1);
+                }
+                return $prefix . $v;
+            }
         }
 
-        if (str_starts_with($phone, '0') && $countryCode) {
-            return $countryCode . substr($phone, 1);
+        // Pas de code pays fourni mais numéro déjà international (+CC0XXXXXXX).
+        // Le front peut concaténer +33 + 0654321987 → +330654321987.
+        // Détecter et supprimer le 0 redondant : +{1-4 chiffres}0{6+ chiffres}.
+        if (str_starts_with($v, '+')) {
+            $v = (string) preg_replace('/^(\+\d{1,4})0(\d{6,})$/', '$1$2', $v);
         }
 
-        return $phone;
+        return $v;
     }
 }

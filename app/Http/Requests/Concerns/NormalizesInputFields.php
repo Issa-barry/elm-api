@@ -27,9 +27,15 @@ trait NormalizesInputFields
     }
 
     /**
-     * Supprime tout caractère autre que chiffres et '+'.
-     * Si code_phone_pays est fourni, supprime le zéro local redondant.
-     * Ex: +33 + 0658855039 → +33658855039 (format E.164)
+     * Normalise un numéro de téléphone au format E.164 international.
+     *
+     * Cas gérés (avec code_phone_pays = "+33") :
+     *   "0658855039"      → "+33658855039"   (format local : préfixe + suppression 0)
+     *   "+330658855039"   → "+33658855039"   (déjà international mais 0 redondant)
+     *   "0033658855039"   → "+33658855039"   (préfixe 00)
+     *   "+33658855039"    → "+33658855039"   (déjà correct, inchangé)
+     *   "658855039"       → "+33658855039"   (national sans 0 : préfixe ajouté)
+     *
      * Retourne null si vide après nettoyage.
      */
     protected function normalizePhone(mixed $value, mixed $countryCode = null): ?string
@@ -42,12 +48,40 @@ trait NormalizesInputFields
             return null;
         }
 
-        // Supprime le 0 local redondant : +33 0658... → +33658...
+        // Normalise le préfixe 00XXXXX → +XXXXX
+        if (str_starts_with($v, '00')) {
+            $v = '+' . substr($v, 2);
+        }
+
         if ($countryCode !== null) {
             $prefix = preg_replace('/[^0-9+]/', '', (string) $countryCode);
-            if ($prefix !== '' && str_starts_with($v, $prefix . '0')) {
-                $v = $prefix . substr($v, strlen($prefix) + 1);
+            if ($prefix === '') {
+                return $v;
             }
+
+            // Déjà international avec 0 redondant : +CC0XXXXXXX → +CCXXXXXXX
+            if (str_starts_with($v, $prefix . '0')) {
+                return $prefix . substr($v, strlen($prefix) + 1);
+            }
+
+            // Déjà international et correct : retourner tel quel
+            if (str_starts_with($v, $prefix)) {
+                return $v;
+            }
+
+            // Format local avec 0 : 0XXXXXXX → +CCXXXXXXX
+            if (str_starts_with($v, '0')) {
+                return $prefix . substr($v, 1);
+            }
+
+            // Nombre national sans 0 : XXXXXXX → +CCXXXXXXX
+            return $prefix . $v;
+        }
+
+        // Pas de code pays fourni mais numéro déjà international (+CC0XXXXXXX).
+        // Ex : front concatène +33 + 0654321987 → +330654321987 → +33654321987.
+        if (str_starts_with($v, '+')) {
+            $v = (string) preg_replace('/^(\+\d{1,4})0(\d{6,})$/', '$1$2', $v);
         }
 
         return $v;
